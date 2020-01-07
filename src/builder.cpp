@@ -1,5 +1,7 @@
 #include <iostream>
+#include <sstream>
 #include <regex>
+#include <numeric>
 // #include <filesystem>
 
 #include "mrsrc.h"
@@ -14,6 +16,11 @@ namespace fs = boost::filesystem;
 // --------------------------------------------------------------------
 
 int VERBOSE;
+
+enum class Mode
+{
+	Collapse, Longest
+};
 
 // -----------------------------------------------------------------------
 
@@ -39,33 +46,24 @@ struct Exon : public Range
 
 enum CHROM : int8_t
 {
-	INVALID,
-	CHR_1,
-	CHR_2,
-	CHR_3,
-	CHR_4,
-	CHR_5,
-	CHR_6,
-	CHR_7,
-	CHR_8,
-	CHR_9,
-	CHR_10,
-	CHR_11,
-	CHR_12,
-	CHR_13,
-	CHR_14,
-	CHR_15,
-	CHR_16,
-	CHR_17,
-	CHR_18,
-	CHR_19,
-	CHR_20,
-	CHR_21,
-	CHR_22,
-	CHR_23,
-	CHR_X,
-	CHR_Y
+	INVALID, CHR_1, CHR_2, CHR_3, CHR_4, CHR_5, CHR_6, CHR_7, CHR_8, CHR_9, CHR_10,
+	CHR_11, CHR_12, CHR_13, CHR_14, CHR_15, CHR_16, CHR_17, CHR_18, CHR_19, CHR_20,
+	CHR_21, CHR_22, CHR_23, CHR_X, CHR_Y
 };
+
+std::ostream& operator<<(std::ostream& os, CHROM chr)
+{
+	switch (chr)
+	{
+		case INVALID: os << "invalid"; break;
+		case CHR_X: os << "chrX"; break;
+		case CHR_Y: os << "chrY"; break;
+		default:
+			os << "chr" << std::to_string(static_cast<int>(chr));
+			break;
+	}
+	return os;
+}
 
 struct Transcript
 {
@@ -77,6 +75,9 @@ struct Transcript
 	std::vector<Exon> exons;
 	float score;
 	std::string geneName;
+
+	// used by algorithms
+	bool longest = false;
 };
 
 struct splitted_range
@@ -279,8 +280,23 @@ std::vector<Transcript> loadGenes(const std::string& file)
 						ts.score = stof(f);
 						break;
 					case 12:// name2
+					{
+						// strip underscores...
 						ts.geneName = f;
+
+						auto b = ts.geneName.begin();
+						for (auto a = b; a != ts.geneName.end(); ++a)
+							if (*a != '_') *b++ = *a;
+						
+						if (b != ts.geneName.end())
+						{
+							ts.geneName.erase(b, ts.geneName.end());
+							if (VERBOSE)
+								std::cerr << "Replacing gene name " << f << " with " << ts.geneName << std::endl;
+						}
+
 						break;
+					}
 					case 13:// cdsStartStat
 						if (f == "cmpl")
 							ts.cds.stat = CDSStat::COMPLETE;
@@ -304,6 +320,210 @@ std::vector<Transcript> loadGenes(const std::string& file)
 	}
 
 	return transcripts;
+}
+
+// --------------------------------------------------------------------
+
+void onlyCompleteAndNoReadThrough(std::vector<Transcript>& transcripts)
+{
+	// First remove all incomplete transcripts
+	transcripts.erase(
+		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.cds.stat != CDSStat::COMPLETE; }),
+		transcripts.end());
+
+	// the unique names
+	std::set<std::string> geneNames;
+	for (auto& t: transcripts)
+		geneNames.insert(t.geneName);
+
+	// Now remove transcripts for read-through proteins
+	transcripts.erase(
+		std::remove_if(transcripts.begin(), transcripts.end(), [&geneNames](auto& t)
+		{
+			auto s = t.geneName.find('-');
+			bool result = s != std::string::npos and
+				(geneNames.count(t.geneName.substr(0, s)) > 0 or geneNames.count(t.geneName.substr(s + 1)) > 0);
+
+			if (result and VERBOSE)
+				std::cerr << "Removing read-through gene " << t.geneName << std::endl;
+
+			return result;
+		}),
+		transcripts.end());
+}
+
+// --------------------------------------------------------------------
+
+void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode)
+{
+	using std::vector;
+
+	// Now build an index based on gene name and position
+
+	vector<size_t> index(transcripts.size());
+	std::iota(index.begin(), index.end(), 0);
+
+	std::sort(index.begin(), index.end(), [&transcripts](size_t ix_a, size_t ix_b)
+	{
+		auto& a = transcripts[ix_a];
+		auto& b = transcripts[ix_b];
+
+		int d = a.geneName.compare(b.geneName);
+		if (d == 0)
+			d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.tx.start - b.tx.start;
+		
+		return d < 0;
+	});
+
+	// rename genes that are found on both strands or multiple chromosomes
+	for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+	{
+		auto ix_a = index[i];
+		auto& a = transcripts[ix_a];
+
+		size_t j = i;
+		bool rename = false;
+
+		while (j + 1 < transcripts.size())
+		{
+			auto ix_b = index[j + 1];
+			auto& b = transcripts[ix_b];
+
+			if (b.geneName != a.geneName)
+				break;
+
+			rename = rename or a.chrom != b.chrom or a.strand != b.strand;
+			++j;
+		}
+		
+		if (not rename)
+		{
+			i = j;
+			continue;
+		}
+
+		for (size_t k = i; k <= j; ++k)
+		{
+			auto ix_b = index[k];
+			auto& b = transcripts[ix_b];
+
+			std::stringstream s;
+			s << b.geneName << '@' << b.chrom << b.strand;
+			b.geneName = s.str();
+		}
+
+		i = j;
+	}
+
+	if (mode == Mode::Longest)
+	{
+		// Find the longest transcript for each gene
+		for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+		{
+			auto ix_a = index[i];
+			auto& a = transcripts[ix_a];
+
+			auto l = ix_a;
+
+			assert(a.tx.end > a.tx.start);
+
+			auto len_a = a.tx.end - a.tx.start;
+
+			for (size_t j = i + 1; j < transcripts.size(); ++j)
+			{
+				auto ix_b = index[j];
+				auto& b = transcripts[ix_b];
+
+				assert(b.tx.end > b.tx.start);
+
+				if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
+					break;
+
+				++i;
+
+				auto len_b = b.tx.end - b.tx.start;
+				if (len_b > len_a)
+					l = ix_b;
+			}
+
+			transcripts[l].longest = true;
+		}
+
+		transcripts.erase(
+			std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+			transcripts.end()
+		);
+	}
+
+	// reorder index, now only on position
+	index.resize(transcripts.size());
+	std::iota(index.begin(), index.end(), 0);
+
+	std::sort(index.begin(), index.end(), [&transcripts](size_t ix_a, size_t ix_b)
+	{
+		auto& a = transcripts[ix_a];
+		auto& b = transcripts[ix_b];
+
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.tx.start - b.tx.start;
+		
+		return d < 0;
+	});
+
+	// designate overlapping genes
+
+	vector<bool> overlapped(transcripts.size(), false);
+
+	for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+	{
+		auto ix_a = index[i];
+		auto& a = transcripts[ix_a];
+
+		for (size_t j = i + 1; j < transcripts.size(); ++j)
+		{
+			auto ix_b = index[j];
+			auto& b = transcripts[ix_b];
+
+			if (b.chrom != a.chrom or b.tx.start > a.tx.end)
+				break;
+
+			if (a.tx.start <= b.tx.start and a.tx.end >= b.tx.end)
+			{
+				if (VERBOSE)
+					std::cerr << "Gene " << a.geneName << " overlaps " << b.geneName << std::endl;
+				overlapped[ix_b] = true;
+			}
+			else if (b.tx.start <= a.tx.start and b.tx.end >= a.tx.end)
+			{
+				if (VERBOSE)
+					std::cerr << "Gene " << b.geneName << " overlaps " << a.geneName << std::endl;
+
+				overlapped[ix_a] = true;
+			}
+		}
+	}
+
+	// print the list
+	for (size_t i: index)
+	{
+		auto& t = transcripts[i];
+
+		if (overlapped[i])
+			continue;
+
+		// auto& t = transcripts[i];
+		std::cout << t.chrom << '\t'
+				  << t.tx.start << '\t'
+				  << t.tx.end << '\t'
+				  << t.geneName << '\t'
+				  << 0 << '\t'
+				  << t.strand << std::endl;
+	}
+
+
 }
 
 // -----------------------------------------------------------------------
@@ -359,6 +579,8 @@ int main(int argc, const char* argv[])
 		
 		("genes", po::value<std::string>(),		"Input gene file")
 
+		("mode", po::value<std::string>(),		"Mode, should be either collapse or longest")
+
 		("verbose,v",							"Verbose output")
 		;
 
@@ -394,7 +616,18 @@ int main(int argc, const char* argv[])
 		exit(0);
 	}
 
-	if (vm.count("help") or vm.count("genes") == 0)
+	if (vm.count("help") or vm.count("genes") == 0 or vm.count("mode") == 0)
+	{
+		std::cerr << visible_options << std::endl;
+		exit(1);
+	}
+
+	Mode mode;
+	if (vm["mode"].as<std::string>() == "collapse")
+		mode = Mode::Collapse;
+	else if (vm["mode"].as<std::string>() == "longest")
+		mode = Mode::Longest;
+	else
 	{
 		std::cerr << visible_options << std::endl;
 		exit(1);
@@ -404,11 +637,15 @@ int main(int argc, const char* argv[])
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
 
-
 	auto transcripts = loadGenes(vm["genes"].as<std::string>());
 
+	onlyCompleteAndNoReadThrough(transcripts);
+
+	// Find longest transcripts
+	reduceToLongestTranscripts(transcripts, 0, mode);
+
 	if (VERBOSE)
-		std::cout << "Loaded " << transcripts.size() << " genes" << std::endl;
+		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
 
 	return result;
 }
