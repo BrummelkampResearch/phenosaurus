@@ -8,3 +8,17 @@ PTGES3L-AARSD1?
 
 ECE2?
 
+Voorstel algoritme:
+
+- lees UCSC tabel met alle transcripts
+- strip alle niet complete CDS
+- strip optioneel 3' UTR en 5' UTR
+- maak intersectie van exonen voor ieder gen
+- bepaal min en max van exonen voor ieder gen, dit is de ruwe grens
+- bij overlap:
+	- bij volledige overlap
+		- als kortste gen binnen intron van langste ligt:
+			- snij kortste uit langste
+		- anders verwijder transcripts die overlap veroorzaken en begin opnieuw
+	- bij gedeeltelijke overlap
+		- verwijder regio van overlap uit beide

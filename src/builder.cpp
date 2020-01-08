@@ -78,6 +78,10 @@ struct Transcript
 
 	// used by algorithms
 	bool longest = false;
+	bool overlapped = false;
+
+	// The final range as calculated
+	Range r;
 };
 
 struct splitted_range
@@ -165,7 +169,7 @@ struct splitted_range
 	char m_d;
 };
 
-std::vector<Transcript> loadGenes(const std::string& file)
+std::vector<Transcript> loadGenes(const std::string& file, bool completeOnly)
 {
 	std::ifstream in(file);
 
@@ -311,10 +315,17 @@ std::vector<Transcript> loadGenes(const std::string& file)
 		catch(const std::exception& ex)
 		{
 			std::cerr << "Parse error at line " << lineNr << ": " << ex.what() << '\n';
+			throw;
 		}
 		
 		if (ts.chrom == INVALID)
 			continue;
+		
+		if (completeOnly and ts.cds.stat != CDSStat::COMPLETE)
+			continue;
+
+		// initially we take the whole transcription region
+		ts.r = ts.tx;
 
 		transcripts.push_back(std::move(ts));
 	}
@@ -322,43 +333,43 @@ std::vector<Transcript> loadGenes(const std::string& file)
 	return transcripts;
 }
 
+// // --------------------------------------------------------------------
+
+// void onlyCompleteAndNoReadThrough(std::vector<Transcript>& transcripts)
+// {
+// 	// First remove all incomplete transcripts
+// 	transcripts.erase(
+// 		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.cds.stat != CDSStat::COMPLETE; }),
+// 		transcripts.end());
+
+// 	// the unique names
+// 	std::set<std::string> geneNames;
+// 	for (auto& t: transcripts)
+// 		geneNames.insert(t.geneName);
+
+// 	// Now remove transcripts for read-through proteins
+// 	transcripts.erase(
+// 		std::remove_if(transcripts.begin(), transcripts.end(), [&geneNames](auto& t)
+// 		{
+// 			auto s = t.geneName.find('-');
+// 			bool result = s != std::string::npos and
+// 				(geneNames.count(t.geneName.substr(0, s)) > 0 or geneNames.count(t.geneName.substr(s + 1)) > 0);
+
+// 			if (result and VERBOSE)
+// 				std::cerr << "Removing read-through gene " << t.geneName << std::endl;
+
+// 			return result;
+// 		}),
+// 		transcripts.end());
+// }
+
 // --------------------------------------------------------------------
 
-void onlyCompleteAndNoReadThrough(std::vector<Transcript>& transcripts)
-{
-	// First remove all incomplete transcripts
-	transcripts.erase(
-		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.cds.stat != CDSStat::COMPLETE; }),
-		transcripts.end());
-
-	// the unique names
-	std::set<std::string> geneNames;
-	for (auto& t: transcripts)
-		geneNames.insert(t.geneName);
-
-	// Now remove transcripts for read-through proteins
-	transcripts.erase(
-		std::remove_if(transcripts.begin(), transcripts.end(), [&geneNames](auto& t)
-		{
-			auto s = t.geneName.find('-');
-			bool result = s != std::string::npos and
-				(geneNames.count(t.geneName.substr(0, s)) > 0 or geneNames.count(t.geneName.substr(s + 1)) > 0);
-
-			if (result and VERBOSE)
-				std::cerr << "Removing read-through gene " << t.geneName << std::endl;
-
-			return result;
-		}),
-		transcripts.end());
-}
-
-// --------------------------------------------------------------------
-
-void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode)
+void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode)
 {
 	using std::vector;
 
-	// Now build an index based on gene name and position
+	// build an index based on gene name and position
 
 	vector<size_t> index(transcripts.size());
 	std::iota(index.begin(), index.end(), 0);
@@ -372,7 +383,7 @@ void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t m
 		if (d == 0)
 			d = a.chrom - b.chrom;
 		if (d == 0)
-			d = a.tx.start - b.tx.start;
+			d = a.r.start - b.r.start;
 		
 		return d < 0;
 	});
@@ -417,44 +428,49 @@ void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t m
 		i = j;
 	}
 
-	if (mode == Mode::Longest)
+	switch (mode)
 	{
-		// Find the longest transcript for each gene
-		for (size_t i = 0; i + 1 < transcripts.size(); ++i)
-		{
-			auto ix_a = index[i];
-			auto& a = transcripts[ix_a];
-
-			auto l = ix_a;
-
-			assert(a.tx.end > a.tx.start);
-
-			auto len_a = a.tx.end - a.tx.start;
-
-			for (size_t j = i + 1; j < transcripts.size(); ++j)
+		case Mode::Longest:
+			// Find the longest transcript for each gene
+			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
 			{
-				auto ix_b = index[j];
-				auto& b = transcripts[ix_b];
+				auto ix_a = index[i];
+				auto& a = transcripts[ix_a];
 
-				assert(b.tx.end > b.tx.start);
+				auto l = ix_a;
 
-				if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
-					break;
+				assert(a.r.end > a.r.start);
 
-				++i;
+				auto len_a = a.r.end - a.r.start;
 
-				auto len_b = b.tx.end - b.tx.start;
-				if (len_b > len_a)
-					l = ix_b;
+				for (size_t j = i + 1; j < transcripts.size(); ++j)
+				{
+					auto ix_b = index[j];
+					auto& b = transcripts[ix_b];
+
+					assert(b.r.end > b.r.start);
+
+					if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
+						break;
+
+					++i;
+
+					auto len_b = b.r.end - b.r.start;
+					if (len_b > len_a)
+						l = ix_b;
+				}
+
+				transcripts[l].longest = true;
 			}
 
-			transcripts[l].longest = true;
-		}
-
-		transcripts.erase(
-			std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
-			transcripts.end()
-		);
+			transcripts.erase(
+				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+				transcripts.end()
+			);			
+			break;
+		
+		default:
+			break;
 	}
 
 	// reorder index, now only on position
@@ -468,14 +484,12 @@ void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t m
 
 		int d = a.chrom - b.chrom;
 		if (d == 0)
-			d = a.tx.start - b.tx.start;
+			d = a.r.start - b.r.start;
 		
 		return d < 0;
 	});
 
 	// designate overlapping genes
-
-	vector<bool> overlapped(transcripts.size(), false);
 
 	for (size_t i = 0; i + 1 < transcripts.size(); ++i)
 	{
@@ -487,43 +501,24 @@ void reduceToLongestTranscripts(std::vector<Transcript>& transcripts, uint32_t m
 			auto ix_b = index[j];
 			auto& b = transcripts[ix_b];
 
-			if (b.chrom != a.chrom or b.tx.start > a.tx.end)
+			if (b.chrom != a.chrom or b.r.start > a.r.end)
 				break;
 
-			if (a.tx.start <= b.tx.start and a.tx.end >= b.tx.end)
+			if (a.r.start <= b.r.start and a.r.end >= b.r.end)
 			{
 				if (VERBOSE)
 					std::cerr << "Gene " << a.geneName << " overlaps " << b.geneName << std::endl;
-				overlapped[ix_b] = true;
+				b.overlapped = true;
 			}
-			else if (b.tx.start <= a.tx.start and b.tx.end >= a.tx.end)
+			else if (b.r.start <= a.r.start and b.r.end >= a.r.end)
 			{
 				if (VERBOSE)
 					std::cerr << "Gene " << b.geneName << " overlaps " << a.geneName << std::endl;
 
-				overlapped[ix_a] = true;
+				a.overlapped = true;
 			}
 		}
 	}
-
-	// print the list
-	for (size_t i: index)
-	{
-		auto& t = transcripts[i];
-
-		if (overlapped[i])
-			continue;
-
-		// auto& t = transcripts[i];
-		std::cout << t.chrom << '\t'
-				  << t.tx.start << '\t'
-				  << t.tx.end << '\t'
-				  << t.geneName << '\t'
-				  << 0 << '\t'
-				  << t.strand << std::endl;
-	}
-
-
 }
 
 // -----------------------------------------------------------------------
@@ -572,27 +567,31 @@ int main(int argc, const char* argv[])
 {
 	int result = 0;
 
-	po::options_description visible_options("reference-annotation-builder [options]" );
+	po::options_description visible_options("reference-annotation-builder [options] --mode=[mode] inputfile [outputfile]" );
 	visible_options.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
 		
-		("genes", po::value<std::string>(),		"Input gene file")
-
 		("mode", po::value<std::string>(),		"Mode, should be either collapse or longest")
+
+		("no-5-utr",							"Exclude the mRNA's 5' UTR from the region")
+		("no-3-utr",							"Exclude the mRNA's 3' UTR from the region")
 
 		("verbose,v",							"Verbose output")
 		;
 
 	po::options_description hidden_options("hidden options");
 	hidden_options.add_options()
-		("debug,d",		po::value<int>(),				"Debug level (for even more verbose output)");
+		("genes", po::value<std::string>(),		"Input gene file")
+		("output,o", po::value<std::string>(),	"Output file")
+		("debug,d", po::value<int>(),			"Debug level (for even more verbose output)");
 
 	po::options_description cmdline_options;
 	cmdline_options.add(visible_options).add(hidden_options);
 
 	po::positional_options_description p;
 	p.add("genes", 1);
+	p.add("output", 1);
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
@@ -637,12 +636,38 @@ int main(int argc, const char* argv[])
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
 
-	auto transcripts = loadGenes(vm["genes"].as<std::string>());
+	auto transcripts = loadGenes(vm["genes"].as<std::string>(), true);
 
-	onlyCompleteAndNoReadThrough(transcripts);
+	// onlyCompleteAndNoReadThrough(transcripts);
+
+	if (vm.count("no-5-utr"))
+	{
+		for (auto& ts: transcripts)
+			ts.r.start = ts.cds.start;
+	}
+
+	if (vm.count("no-3-utr"))
+	{
+		for (auto& ts: transcripts)
+			ts.r.end = ts.cds.end;
+	}
+
 
 	// Find longest transcripts
-	reduceToLongestTranscripts(transcripts, 0, mode);
+	selectTranscripts(transcripts, 0, mode);
+
+	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(), [](auto& ts) { return ts.overlapped; }), transcripts.end());
+
+	// print the list
+	for (auto& ts: transcripts)
+	{
+		std::cout << ts.chrom << '\t'
+				  << ts.r.start << '\t'
+				  << ts.r.end << '\t'
+				  << ts.geneName << '\t'
+				  << ts.score << '\t'
+				  << ts.strand << std::endl;
+	}
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
