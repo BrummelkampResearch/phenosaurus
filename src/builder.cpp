@@ -658,6 +658,33 @@ int main(int argc, const char* argv[])
 
 	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(), [](auto& ts) { return ts.overlapped; }), transcripts.end());
 
+	if (VERBOSE)
+		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
+
+	std::ofstream out;
+	std::streambuf* coutRdBuf = nullptr;
+
+	if (vm.count("output"))
+	{
+		out.open(vm["output"].as<std::string>());
+		if (not out.is_open())
+		{
+			std::cerr << "Unable to open output file" << std::endl;
+			exit(1);
+		}
+
+		coutRdBuf = std::cout.rdbuf(out.rdbuf());
+	}
+
+	// reorder transcripts
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.r.start - b.r.start;
+		return d < 0;
+	});
+
 	// print the list
 	for (auto& ts: transcripts)
 	{
@@ -669,8 +696,8 @@ int main(int argc, const char* argv[])
 				  << ts.strand << std::endl;
 	}
 
-	if (VERBOSE)
-		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
+	if (coutRdBuf != nullptr)
+		std::cout.rdbuf(coutRdBuf);
 
 	return result;
 }
