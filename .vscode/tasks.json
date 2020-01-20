@@ -5,11 +5,11 @@
 	"tasks": [
 		{
 			"type": "process",
-			"label": "make builder debug",
+			"label": "make debug",
 			"command": "make",
 			"args": [
 				"DEBUG=1",
-				"builder"
+				"refannb"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}"

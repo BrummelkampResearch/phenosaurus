@@ -1,4 +1,4 @@
-# makefile for builder
+# makefile for refannb
 
 .PHONY: firstTarget
 firstTarget: all
@@ -81,6 +81,7 @@ OBJDIR				= obj
 
 ifneq ($(DEBUG),1)
 CFLAGS				+= -O3 -ffunction-sections -fdata-sections -DNDEBUG -g
+LDFLAGS				+= -static
 else
 CFLAGS				+= -g -DDEBUG 
 OBJDIR				:= $(OBJDIR).dbg
@@ -101,7 +102,7 @@ SRC_VPATH = $(subst $(space),:,$(SOURCE_DIRS))
 
 VPATH += $(SRC_VPATH)
 
-OBJECTS = $(OBJDIR)/builder.o
+OBJECTS = $(OBJDIR)/refannb.o
 
 $(OBJDIR)/%.o: %.cpp | $(OBJDIR)
 	@ echo ">>" $<
@@ -145,10 +146,10 @@ endif
 $(subst .,%,$(SCRIPT_FILES)): $(subst .,%,$(WEBAPP_FILES))
 	yarn webpack $(WEBPACK_OPTIONS)
 
-$(OBJDIR)/builder_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
+$(OBJDIR)/refannb_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 	$(MRC) -o $@ $(RSRC)
 
-builder: $(OBJDIR)/builder.o $(OBJDIR)/builder_rsrc.o
+refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
@@ -156,7 +157,7 @@ builder: $(OBJDIR)/builder.o $(OBJDIR)/builder_rsrc.o
 clean:
 	rm -rf $(PROGRAMS) $(OBJDIR)/* $(REVISION_FILE)
 
-all: builder
+all: refannb
 
 .PHONY: help
 help:

@@ -16,10 +16,11 @@ namespace fs = boost::filesystem;
 // --------------------------------------------------------------------
 
 int VERBOSE;
+#define APP_NAME "refannb"
 
 enum class Mode
 {
-	Collapse, Longest
+	Collapse, Longest, Start, End
 };
 
 // -----------------------------------------------------------------------
@@ -469,6 +470,46 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 			);			
 			break;
 		
+
+		case Mode::Collapse:
+			// Find the longest possible span for each gene, i.e. min start - max end
+			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+			{
+				auto ix_a = index[i];
+				auto& a = transcripts[ix_a];
+				a.longest = true;
+
+				assert(a.r.end > a.r.start);
+
+				for (size_t j = i + 1; j < transcripts.size(); ++j)
+				{
+					auto ix_b = index[j];
+					auto& b = transcripts[ix_b];
+
+					assert(b.r.end > b.r.start);
+
+					if (b.chrom != a.chrom)
+						break;
+
+					if (b.geneName != a.geneName or a.strand != b.strand)
+						continue;
+
+					++i;
+
+					if (a.r.start > b.r.start)
+						a.r.start = b.r.start;
+					
+					if (a.r.end < b.r.end)
+						a.r.end = b.r.end;
+				}
+			}
+
+			transcripts.erase(
+				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+				transcripts.end()
+			);			
+			break;
+
 		default:
 			break;
 	}
@@ -519,6 +560,11 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 			}
 		}
 	}
+
+	// // remove overlapped genes
+	// transcripts.erase(
+	// 	std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.overlapped; }),
+	// 	transcripts.end());
 }
 
 // -----------------------------------------------------------------------
@@ -567,22 +613,27 @@ int main(int argc, const char* argv[])
 {
 	int result = 0;
 
-	po::options_description visible_options("reference-annotation-builder [options] --mode=[mode] inputfile [outputfile]" );
+	po::options_description visible_options(APP_NAME R"( [options] --mode=[mode] --start=[startpos] --end=[endpos] inputfile [outputfile])");
 	visible_options.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
 		
-		("mode", po::value<std::string>(),		"Mode, should be either collapse or longest")
+		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
 
-		("no-5-utr",							"Exclude the mRNA's 5' UTR from the region")
-		("no-3-utr",							"Exclude the mRNA's 3' UTR from the region")
+		("start", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+		("end", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+
+		// ("split-on-start-diff", po::value<int>(),
+		// 										"Split transcripts when their start is more than this apart")
+
+		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
 
 		("verbose,v",							"Verbose output")
 		;
 
 	po::options_description hidden_options("hidden options");
 	hidden_options.add_options()
-		("genes", po::value<std::string>(),		"Input gene file")
+		("input", po::value<std::string>(),		"Input gene file")
 		("output,o", po::value<std::string>(),	"Output file")
 		("debug,d", po::value<int>(),			"Debug level (for even more verbose output)");
 
@@ -590,15 +641,17 @@ int main(int argc, const char* argv[])
 	cmdline_options.add(visible_options).add(hidden_options);
 
 	po::positional_options_description p;
-	p.add("genes", 1);
+	p.add("input", 1);
 	p.add("output", 1);
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
 
-	fs::path configFile = "screen-qc.conf";
+	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
+
+	fs::path configFile = APP_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / "screen-qc.conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
 	
 	if (fs::exists(configFile))
 	{
@@ -615,51 +668,107 @@ int main(int argc, const char* argv[])
 		exit(0);
 	}
 
-	if (vm.count("help") or vm.count("genes") == 0 or vm.count("mode") == 0)
+	if (vm.count("help") or vm.count("input") == 0 or
+		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
+		vm.count("start") == 0 or not std::regex_match(vm["start"].as<std::string>(), kPosRx) or
+		vm.count("end") == 0 or not std::regex_match(vm["end"].as<std::string>(), kPosRx) or
+		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
-		std::cerr << visible_options << std::endl;
-		exit(1);
+		std::cerr << visible_options << std::endl
+				  << R"(
+Mode longest means take the longest transcript for each gene
+
+Mode collapse means, for each gene take the region between the first 
+start and last end.
+
+Start and end should be either 'cds' or 'tx' with an optional offset 
+appended.
+
+Overlap: in case of both, all genes will be added, in case of neither
+the parts with overlap will be left out.
+
+Examples:
+
+    --mode=longest --start=cds-100 --end=cds
+
+        For each gene take the longest transcript. For these we take the 
+        cdsStart minus 100 basepairs as start and cdsEnd as end. This means
+        no  3' UTR and whatever fits in the 100 basepairs of the 5' UTR.
+
+    --mode=collapse --start=tx --end=tx+1000
+
+        For each gene take the minimum txStart of all transcripts as start
+        and the maximum txEnd plus 1000 basepairs as end. This obviously
+        includes both 5' UTR and 3' UTR.
+
+)"				<< std::endl;
+		exit(vm.count("help") ? 0 : 1);
 	}
 
 	Mode mode;
 	if (vm["mode"].as<std::string>() == "collapse")
 		mode = Mode::Collapse;
-	else if (vm["mode"].as<std::string>() == "longest")
+	else // if (vm["mode"].as<std::string>() == "longest")
 		mode = Mode::Longest;
-	else
-	{
-		std::cerr << visible_options << std::endl;
-		exit(1);
-	}
 
 	VERBOSE = vm.count("verbose") != 0;
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
 
-	auto transcripts = loadGenes(vm["genes"].as<std::string>(), true);
-
-	// onlyCompleteAndNoReadThrough(transcripts);
-
-	if (vm.count("no-5-utr"))
-	{
-		for (auto& ts: transcripts)
-			ts.r.start = ts.cds.start;
-	}
-
-	if (vm.count("no-3-utr"))
-	{
-		for (auto& ts: transcripts)
-			ts.r.end = ts.cds.end;
-	}
-
+	auto transcripts = loadGenes(vm["input"].as<std::string>(), true);
 
 	// Find longest transcripts
 	selectTranscripts(transcripts, 0, mode);
 
-	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(), [](auto& ts) { return ts.overlapped; }), transcripts.end());
+	// transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(), [](auto& ts) { return ts.overlapped; }), transcripts.end());
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
+
+	// reassign start and end
+
+	int64_t startOffset = 0, endOffset = 0;
+
+	std::smatch m;
+	regex_match(vm["start"].as<std::string>(), m, kPosRx);
+	
+	bool startCDS = m[1] == "cds";
+	if (m[2].matched)
+		startOffset = std::stol(m[2]);
+	
+	regex_match(vm["end"].as<std::string>(), m, kPosRx);
+
+	bool endCDS = m[1] == "cds";
+	if (m[2].matched)
+		endOffset = std::stol(m[2]);
+
+	for (auto& t: transcripts)
+	{
+		if (t.strand == '+')
+		{
+			if (startCDS)
+				t.r.start = t.cds.start + startOffset;
+			else
+				t.r.start = t.tx.start + startOffset;
+
+			if (endCDS)
+				t.r.end = t.cds.end + endOffset;
+			else
+				t.r.end = t.tx.end + endOffset;
+		}
+		else
+		{
+			if (startCDS)
+				t.r.end = t.cds.end - startOffset;
+			else
+				t.r.end = t.tx.end;
+
+			if (endCDS)
+				t.r.start = t.cds.start - endOffset;
+			else
+				t.r.start = t.tx.start - endOffset;
+		}
+	}
 
 	std::ofstream out;
 	std::streambuf* coutRdBuf = nullptr;
@@ -676,24 +785,60 @@ int main(int argc, const char* argv[])
 		coutRdBuf = std::cout.rdbuf(out.rdbuf());
 	}
 
-	// reorder transcripts
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	auto cmp = [](auto& a, auto& b)
 	{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
 			d = a.r.start - b.r.start;
 		return d < 0;
-	});
+	};
+
+	// reorder transcripts
+	std::sort(transcripts.begin(), transcripts.end(), cmp);
+
+	// cut out overlapping regions, if requested
+	if (vm.count("overlap") == 0 or vm["overlap"].as<std::string>() == "neither")
+	{
+		for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+		{
+			size_t j = i + 1;
+
+			if (transcripts[i].chrom != transcripts[j].chrom)
+				continue;
+			
+			if (transcripts[i].r.end <= transcripts[j].r.start)
+				continue;
+			
+			auto e = transcripts[i].r.end;
+			transcripts[i].r.end = transcripts[j].r.start;
+
+			// check to see if first overlaps second completely with extra
+			if (e > transcripts[j].r.end)
+			{
+				// need to insert copy
+
+				auto t = transcripts[i];
+				t.r.start = transcripts[j].r.end;
+				t.r.end = e;
+
+				auto k = std::upper_bound(transcripts.begin() + i, transcripts.end(), t, cmp);
+				transcripts.insert(k, t);
+			}
+		}
+	}
 
 	// print the list
 	for (auto& ts: transcripts)
 	{
+		if (ts.r.end <= ts.r.start)
+			continue;
+
 		std::cout << ts.chrom << '\t'
-				  << ts.r.start << '\t'
-				  << ts.r.end << '\t'
-				  << ts.geneName << '\t'
-				  << ts.score << '\t'
-				  << ts.strand << std::endl;
+				<< ts.r.start << '\t'
+				<< ts.r.end << '\t'
+				<< ts.geneName << '\t'
+				<< ts.score << '\t'
+				<< ts.strand << std::endl;
 	}
 
 	if (coutRdBuf != nullptr)
