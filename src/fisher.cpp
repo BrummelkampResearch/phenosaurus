@@ -5,6 +5,8 @@
 #include <iostream>
 #include <cassert>
 
+#include "fisher.hpp"
+
 /*
 	Bereken  x * log(x / np) + np - x;  
 
@@ -67,7 +69,7 @@ const double kStirlingErrors[16] = {
 	calculate_sterling_error(15)
 };
 
-double stirling_error(int64_t n)
+double stirling_error(long n)
 {
 	double result;
 
@@ -78,16 +80,11 @@ double stirling_error(int64_t n)
 		auto n2 = n * n;
 
 		result = 0;
-
-		if (n <= 35)
-			result = (1 / 1188.0) / n2;
-		if (n <= 80)
-			result = (1 / 1680.0 - result) / n2;
-		if (n <= 500)
-			result = (1 / 1260.0 - result) / n2;
-
-		result = (1 / 360.0 - result) / n2;
-		result = (1 / 12.0 - result) / n2;
+		if (n <= 35)	result = (1 / 1188.0) / n2;
+		if (n <= 80)	result = (1 / 1680.0 - result) / n2;
+		if (n <= 500)	result = (1 / 1260.0 - result) / n2;
+						result = (1 / 360.0 - result) / n2;
+						result = (1 / 12.0 - result) / n2;
 
 		result *= n;
 	}
@@ -112,15 +109,9 @@ double binomial_coefficient(long x, long n, double p)
 		else if (x == 0 and n == 0)
 			result = 1;
 		else if (x == 0)
-		{
-			auto lc = (p < 0.1) ? -bd0(n, n * q) - n * p : n * log(q);
-			result = lc;
-		}
+			result = (p < 0.1) ? -bd0(n, n * q) - n * p : n * log(q);
 		else if (x == n)
-		{
-			auto lc = (q < 0.1) ? -bd0(n, n * p) - n * q : n * log(p);
-			result = lc;
-		}
+			result = (q < 0.1) ? -bd0(n, n * p) - n * q : n * log(p);
 		else if (x < 0 or x > n)
 			result = 0;
 		else
@@ -137,7 +128,7 @@ double binomial_coefficient(long x, long n, double p)
 	return result;
 }
 
-double dhyper(int64_t x, int64_t r, int64_t b, int64_t n)
+double hypergeometric_probability(long x, long r, long b, long n)
 {
 	double result;
 	if (n < x or r < x or n - x > b)
@@ -158,7 +149,7 @@ double dhyper(int64_t x, int64_t r, int64_t b, int64_t n)
 	return result;
 }
 
-double fisherTest(int64_t v[2][2])
+double fisherTest2x2(long v[2][2])
 {
 	auto m = v[0][0] + v[0][1];
 	auto n = v[1][0] + v[1][1];
@@ -173,7 +164,7 @@ double fisherTest(int64_t v[2][2])
 
 	std::vector<double> d(hi - lo + 1);
 	for (auto i = lo; i <= hi; ++i)
-		d[i] = dhyper(i, m, n, k);
+		d[i] = hypergeometric_probability(i, m, n, k);
 	
 	auto dmax = *std::max_element(d.begin(), d.end());
 
@@ -208,18 +199,18 @@ std::vector<double> adjustFDR_BH(const std::vector<double>& p)
 	return result;
 }
 
-int main()
-{
-	// int64_t p[2][2] = { { 7, 1876460 }, { 6, 2137355 }};
-	int64_t p[2][2] = { { 186, 3229712 }, {	95,	2208992} };
+// int main()
+// {
+// 	// long p[2][2] = { { 7, 1876460 }, { 6, 2137355 }};
+// 	long p[2][2] = { { 186, 3229712 }, {	95,	2208992} };
 
-	std::cout << std::fixed << fisherTest(p) << std::endl;
+// 	std::cout << std::fixed << fisherTest2x2(p) << std::endl;
 
-	std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });
-	auto a = adjustFDR_BH(pv);
+// 	std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });
+// 	auto a = adjustFDR_BH(pv);
 
-	for (size_t i = 0; i < pv.size(); ++i)
-		std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
+// 	for (size_t i = 0; i < pv.size(); ++i)
+// 		std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
 
-	return 0;
-}
+// 	return 0;
+// }

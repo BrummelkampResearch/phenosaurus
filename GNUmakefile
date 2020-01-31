@@ -64,7 +64,7 @@ BOOST_LIBS			:= $(BOOST_LIBS:%=$(BOOST_LIB_DIR)/lib%.a)
 ZEEP_LIBS			?= xml el generic
 ZEEP_LIBS			:= $(ZEEP_LIBS:%=-lzeep-%)
 
-LIBS				+= m rt
+LIBS				+= m rt stdc++fs
 LIBS				:= $(LIBS:%=-l%)
 LIBS				+= $(ZEEP_LIBS) $(BOOST_LIBS) -lz -lbz2 -lpthread 
 
@@ -101,6 +101,8 @@ join-with =
 SRC_VPATH = $(subst $(space),:,$(SOURCE_DIRS))
 
 VPATH += $(SRC_VPATH)
+
+PROGRAMS = refannb adjust
 
 OBJECTS = $(OBJDIR)/refannb.o
 
@@ -150,6 +152,10 @@ $(OBJDIR)/refannb_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 	$(MRC) -o $@ $(RSRC)
 
 refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
+	@ echo '->' $@
+	@ $(CXX) -o $@ $^ $(LDFLAGS)
+
+adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
