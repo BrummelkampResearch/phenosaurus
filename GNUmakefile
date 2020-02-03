@@ -155,7 +155,7 @@ refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
-adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/refannb_rsrc.o
+adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 

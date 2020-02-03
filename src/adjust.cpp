@@ -1,4 +1,8 @@
+#include <termios.h>
+#include <sys/ioctl.h>
+
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <regex>
 #include <filesystem>
@@ -17,10 +21,26 @@
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
+using namespace std::literals;
 
 #define APP_NAME "adjust"
 
 int VERBOSE = 0;
+
+// -----------------------------------------------------------------------
+
+uint32_t get_terminal_width()
+{
+    uint32_t result = 80;
+
+    if (isatty(STDOUT_FILENO))
+    {
+        struct winsize w;
+        ioctl(0, TIOCGWINSZ, &w);
+        result = w.ws_col;
+    }
+    return result;
+}
 
 // -----------------------------------------------------------------------
 
@@ -61,32 +81,7 @@ void showVersionInfo()
 	}
 }
 
-// // --------------------------------------------------------------------
-
-// std::vector<Insertion> getInsertions()
-// {
-// 	fs::ifstream inFile(p, ios_base::in | ios_base::binary);
-// 	if (not inFile.is_open())
-// 		throw runtime_error("No such file: " + p.string());
-	
-// 	io::filtering_stream<io::input> in;
-// 	string ext = p.extension().string();
-	
-// 	if (p.extension() == ".bz2")
-// 	{
-// 		in.push(io::bzip2_decompressor());
-// 		ext = p.stem().extension().string();
-// 	}
-// 	else if (p.extension() == ".gz")
-// 	{
-// 		in.push(io::gzip_decompressor());
-// 		ext = p.stem().extension().string();
-// 	}
-	
-// 	in.push(inFile);
-
-// }
-
+// -----------------------------------------------------------------------
 
 int main(int argc, const char* argv[])
 {
@@ -189,6 +184,15 @@ Examples:
 		exit(vm.count("help") ? 0 : 1);
 	}
 
+	// fail early
+	std::ofstream out;
+	if (vm.count("output"))
+	{
+		out.open(vm["output"].as<std::string>());
+		if (not out.is_open())
+			throw std::runtime_error("Could not open output file");
+	}
+
 	Mode mode;
 	if (vm["mode"].as<std::string>() == "collapse")
 		mode = Mode::Collapse;
@@ -207,19 +211,24 @@ Examples:
 		mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(),
 		cutOverlap);
 
-	std::vector<Insertion> lowInsertions;
+	std::vector<Insertions> lowInsertions, highInsertions;
 
-	if (vm.count("low"))
+	for (std::string lh: { "low", "high" })
 	{
-		auto low = vm["low"].as<std::string>();
+		if (not vm.count(lh))
+			throw std::runtime_error("Missing "s + lh + " parameter");
 
-		if (low.find(".bwt") != std::string::npos)	// bowtie output file
+		auto infile = vm[lh].as<std::string>();
+
+		std::vector<Insertions> insertions;
+
+		if (infile.find(".bwt") != std::string::npos)	// bowtie output file
 		{
-			fs::path p = low;
+			fs::path p = infile;
 			std::ifstream file(p, std::ios::binary);
 
 			if (not file.is_open())
-				throw std::runtime_error("Could not open file " + low);
+				throw std::runtime_error("Could not open file " + infile);
 
 			io::filtering_stream<io::input> in;
 			std::string ext = p.extension().string();
@@ -237,9 +246,9 @@ Examples:
 			
 			in.push(file);
 
-			lowInsertions = assignInsertions(in, transcripts);
+			insertions = assignInsertions(in, transcripts);
 		}
-		else if (low.find(".fastq") != std::string::npos or vm.count("bowtie"))
+		else if (infile.find(".fastq") != std::string::npos or vm.count("bowtie"))
 		{
 			std::string bowtie("/usr/bin/bowtie");
 			if (vm.count("bowtie"))
@@ -251,14 +260,92 @@ Examples:
 			if (proc < 1)
 				proc = 1;
 
-			lowInsertions = assignInsertions(bowtie, vm["bowtie-index"].as<std::string>(), low, transcripts, proc);
+			insertions = assignInsertions(bowtie, vm["bowtie-index"].as<std::string>(), infile, transcripts, proc);
 		}
-
-		std::cout << "Low insertions: " << lowInsertions.size() << std::endl;
+		
+		if (lh == "low")
+			std::swap(insertions, lowInsertions);
+		else
+			std::swap(insertions, highInsertions);
 	}
 
+	long lowSenseCount = 0, lowAntiSenseCount = 0;
+	for (auto& i: lowInsertions)
+	{
+		lowSenseCount += i.sense.size();
+		lowAntiSenseCount += i.antiSense.size();
+	}
 
+	long highSenseCount = 0, highAntiSenseCount = 0;
+	for (auto& i: highInsertions)
+	{
+		highSenseCount += i.sense.size();
+		highAntiSenseCount += i.antiSense.size();
+	}
 
+	// -----------------------------------------------------------------------
+	
+	std::cerr << std::endl
+			  << std::string(get_terminal_width(), '-') << std::endl
+			  << "Low: " << std::endl
+			  << " sense      : " << std::setw(10) << lowSenseCount << std::endl
+			  << " anti sense : " << std::setw(10) << lowAntiSenseCount << std::endl
+			  << "High: " << std::endl
+			  << " sense      : " << std::setw(10) << highSenseCount << std::endl
+			  << " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
+
+	std::vector<double> pvalues(transcripts.size(), 0);
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		long low = lowInsertions[i].sense.size();
+		long high = highInsertions[i].sense.size();
+	
+		long v[2][2] = {
+			{ low, high },
+			{ lowSenseCount - low, highSenseCount - high }
+		};
+
+		pvalues[i] = fisherTest2x2(v);
+	}
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	std::streambuf* sb = nullptr;
+	if (out.is_open())
+		sb = std::cout.rdbuf(out.rdbuf());
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto& t = transcripts[i];
+		auto low = lowInsertions[i].sense.size();
+		auto high = highInsertions[i].sense.size();
+
+		double miL = low, miH = high, miLT = lowSenseCount - low, miHT = highSenseCount - high;
+		if (low == 0)
+		{
+			miL = 1;
+			miLT -= 1;
+		}
+
+		if (high == 0)
+		{
+			miH = 1;
+			miHT -= 1;
+		}
+
+		double mi = ((miH / miHT) / (miL / miLT));
+
+		std::cout << t.geneName << '\t'
+				  << low << '\t'
+				  << high << '\t'
+				  << pvalues[i] << '\t'
+				  << fcpv[i] << '\t'
+				  << std::log2(mi) << std::endl;
+	}
+
+	if (sb)
+		std::cout.rdbuf(sb);
 
 	return result;
 }

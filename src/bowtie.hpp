@@ -6,24 +6,20 @@
 
 #include "refann.hpp"
 
-struct Insertion
-{
-	long pos;
-	const Transcript* transcript;
-	bool sense;
-};
+// struct Insertion
+// {
+// 	long pos;
+// 	const Transcript* transcript;
+// 	bool sense;
+// };
 
-struct GeneInsertions
+struct Insertions
 {
-	size_t transcriptIndex;
 	std::vector<long> sense, antiSense;
-	float pValue;
-	float fdrCorrectedPValue;
 };
 
+std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts);
 
-std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts);
-
-std::vector<Insertion> assignInsertions(const std::string& bowtie,
+std::vector<Insertions> assignInsertions(const std::string& bowtie,
 	const std::string& index, const std::string& fastq,
 	const std::vector<Transcript>& transcripts, size_t nrOfThreads);

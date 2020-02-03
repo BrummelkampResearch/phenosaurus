@@ -38,216 +38,20 @@ double system_time()
 	return tv.tv_sec + tv.tv_usec / 1e6;
 }
 
-// // --------------------------------------------------------------------
-
-// const size_t kBufferSize = 4096;
-
-// struct Sink
-// {
-// 	char buffer[kBufferSize];
-	
-// 	void flush(size_t r)
-// 	{
-// 		// if r == 0 we're eof, flush whatever is left
-// 		process(buffer, )
-
-// 		auto s = buffer;
-// 		while (s < buffer + r)
-// 		{
-// 			auto e = strchr(s, '\n');
-// 			if (e == nullptr)
-// 			{
-// 				// unfinished data
-// 				break;
-// 			}
-			
-
-
-// 		}
-
-// 	}
-// };
-
-// int ForkExec(std::vector<const char*>& args, double maxRunTime, int stdin, sink&& stdout, sink&& stderr)
-// {
-//     if (args.empty() or args.front() == nullptr)
-//         throw std::runtime_error("No arguments to ForkExec");
-
-//     if (args.back() != nullptr)
-//         args.push_back(nullptr);
-
-//     if (not fs::exists(args.front()))
-//         throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
-
-//     // ready to roll
-//     double startTime = system_time();
-
-//     int ifd[2], ofd[2], efd[2], err;
-
-//     err = pipe(ifd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-//     err = pipe(ofd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-//     err = pipe(efd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-
-//     int pid = fork();
-
-//     if (pid == 0)    // the child
-//     {
-//         setpgid(0, 0);        // detach from the process group, create new
-
-//         signal(SIGCHLD, SIG_IGN);    // block child died signals
-
-//         dup2(ifd[0], STDIN_FILENO);
-//         close(ifd[0]);
-//         close(ifd[1]);
-
-//         dup2(ofd[1], STDOUT_FILENO);
-//         close(ofd[0]);
-//         close(ofd[1]);
-
-//         dup2(efd[1], STDERR_FILENO);
-//         close(efd[0]);
-//         close(efd[1]);
-
-//         const char* env[] = { nullptr };
-//         (void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
-//         exit(-1);
-//     }
-
-//     if (pid == -1)
-//     {
-//         close(ifd[0]);
-//         close(ifd[1]);
-//         close(ofd[0]);
-//         close(ofd[1]);
-//         close(efd[0]);
-//         close(efd[1]);
-
-//         throw std::runtime_error("fork failed: "s + strerror(errno));
-//     }
-
-//     // handle stdin, if any
-//     close(ifd[0]);
-
-//     // std::thread thread([&stdin, ifd, args]()
-//     // {
-//     //     char buffer[1024];
-
-//     //     while (not stdin.eof())
-//     //     {
-//     //         std::streamsize k = io::read(stdin, buffer, sizeof(buffer));
-
-//     //         if (k <= -1)
-//     //             break;
-
-//     //         const char* b = buffer;
-
-//     //         while (k > 0)
-//     //         {
-//     //             int r = write(ifd[1], b, k);
-//     //             if (r > 0)
-//     //                 b += r, k -= r;
-//     //             else if (r < 0 and errno != EAGAIN)
-//     //                 throw std::runtime_error("Error writing to command "s + args.front());
-//     //         }
-//     //     }
-
-//     //     close(ifd[1]);
-//     // });
-
-//     // make stdout and stderr non-blocking
-//     int flags;
-
-//     close(ofd[1]);
-//     flags = fcntl(ofd[0], F_GETFL, 0);
-//     fcntl(ofd[0], F_SETFL, flags | O_NONBLOCK);
-
-//     close(efd[1]);
-//     flags = fcntl(efd[0], F_GETFL, 0);
-//     fcntl(efd[0], F_SETFL, flags | O_NONBLOCK);
-
-//     // OK, so now the executable is started and the pipes are set up
-//     // read from the pipes until done.
-
-//     bool errDone = false, outDone = false, killed = false;
-
-//     while (not errDone and not outDone and not killed)
-//     {
-//         char buffer[1024];
-//         int r;
-
-//         while (not outDone)
-//         {
-//             r = read(ofd[0], buffer, sizeof(buffer));
-
-			
-
-
-//             if (r > 0)
-//                 stdout.write(buffer, r);
-//             else if (r == 0 or errno != EAGAIN)
-//                 outDone = true;
-//             else
-//                 break;
-//         }
-
-//         while (not errDone)
-//         {
-//             r = read(efd[0], buffer, sizeof(buffer));
-
-//             if (r > 0)
-//                 stderr.write(buffer, r);
-//             else if (r == 0 and errno != EAGAIN)
-//                 errDone = true;
-//             else
-//                 break;
-//         }
-
-//         if (not errDone and not outDone)
-//         {
-//             if (not killed and maxRunTime > 0 and startTime + maxRunTime < system_time())
-//             {
-//                 kill(pid, SIGKILL);
-//                 killed = true;
-
-//                 stderr << std::endl
-//                        << "maximum run time exceeded"
-//                        << std::endl;
-//             }
-//             else
-//                 sleep(1);
-//         }
-//     }
-
-//     // thread.join();
-
-//     close(ofd[0]);
-//     close(efd[0]);
-
-//     // no zombies please, removed the WNOHANG. the forked application should really stop here.
-//     int status = 0;
-//     waitpid(pid, &status, 0);
-
-//     int result = -1;
-//     if (WIFEXITED(status))
-//         result = WEXITSTATUS(status);
-
-//     return result;
-// }
-
 // --------------------------------------------------------------------
 
 void assignInsertions(const char* line, const std::vector<Transcript>& transcripts,
-	std::vector<Insertion>& insertions)
+	std::vector<Insertions>& insertions)
 {
 	if (VERBOSE >= 2)
 	{
 		static size_t n = 0;
-		if (++n % 1000 == 0)
+		if (++n % 100000 == 0)
 		{
 			std::cout << '.';
 			std::cout.flush();
 
-			if (n % 60000 == 0)
+			if (n % 6000000 == 0)
 				std::cout << ' ' << std::setw(8) << n << std::endl;
 		}
 	}
@@ -322,32 +126,32 @@ void assignInsertions(const char* line, const std::vector<Transcript>& transcrip
 				L = i + 1;
 		}
 
-		assert(L > 0);
-
 		auto e = t + transcripts.size();
-		t += L - 1;
+		t += L > 0 ? L - 1 : L;
 		while (t < e and t->chrom == chr and t->r.start <= pos)
 		{
 			if (t->r.end > pos)
 			{
-				if (VERBOSE)
+				if (VERBOSE >= 3)
 					std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
 
-				insertions.push_back({ pos, t, strand == t->strand });
+				// insertions.push_back({ pos, t, strand == t->strand });
+				if (strand == t->strand)
+					insertions[t - transcripts.data()].sense.push_back(pos);
+				else
+					insertions[t - transcripts.data()].antiSense.push_back(pos);
 			}
 			
 			++t;
 		}
 	}
-	else
-		std::cerr << "niet" << std::endl;
 }
 
 // --------------------------------------------------------------------
 
-std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts)
+std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts)
 {
-	std::vector<Insertion> result;
+	std::vector<Insertions> result(transcripts.size());
 
 	std::string line;
 
@@ -359,7 +163,7 @@ std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Tr
 
 // --------------------------------------------------------------------
 
-std::vector<Insertion> assignInsertions(const std::string& bowtie,
+std::vector<Insertions> assignInsertions(const std::string& bowtie,
 	const std::string& index, const std::string& fastq,
 	const std::vector<Transcript>& transcripts,
 	size_t nrOfThreads)
@@ -478,7 +282,7 @@ std::vector<Insertion> assignInsertions(const std::string& bowtie,
 	char buffer[kBufferSize + 1] = {};
 	int remaining = 0;
 
-	std::vector<Insertion> insertions;
+	std::vector<Insertions> insertions(transcripts.size());
 
 	while (not errDone and not outDone and not killed)
 	{
@@ -563,9 +367,7 @@ std::vector<Insertion> assignInsertions(const std::string& bowtie,
 
 	// return result;
 
-
-
-	return {};
+	return insertions;
 
 	// std::vector<Insertion> result;
 
