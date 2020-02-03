@@ -4,6 +4,9 @@
 #include <filesystem>
 
 #include <boost/program_options.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 
 #include "refann.hpp"
 #include "fisher.hpp"
@@ -13,6 +16,7 @@
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
+namespace io = boost::iostreams;
 
 #define APP_NAME "adjust"
 
@@ -57,7 +61,32 @@ void showVersionInfo()
 	}
 }
 
-// --------------------------------------------------------------------
+// // --------------------------------------------------------------------
+
+// std::vector<Insertion> getInsertions()
+// {
+// 	fs::ifstream inFile(p, ios_base::in | ios_base::binary);
+// 	if (not inFile.is_open())
+// 		throw runtime_error("No such file: " + p.string());
+	
+// 	io::filtering_stream<io::input> in;
+// 	string ext = p.extension().string();
+	
+// 	if (p.extension() == ".bz2")
+// 	{
+// 		in.push(io::bzip2_decompressor());
+// 		ext = p.stem().extension().string();
+// 	}
+// 	else if (p.extension() == ".gz")
+// 	{
+// 		in.push(io::gzip_decompressor());
+// 		ext = p.stem().extension().string();
+// 	}
+	
+// 	in.push(inFile);
+
+// }
+
 
 int main(int argc, const char* argv[])
 {
@@ -83,6 +112,8 @@ int main(int argc, const char* argv[])
 		("bowtie", po::value<std::string>(), 	"The bowtie executable to use")
 		("bowtie-index", po::value<std::string>(),
 												"Stem of the filenames for the bowtie index")
+
+		("threads", po::value<size_t>(),		"Nr of threads")
 
 		("verbose,v",							"Verbose output")
 		;
@@ -176,21 +207,58 @@ Examples:
 		mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(),
 		cutOverlap);
 
+	std::vector<Insertion> lowInsertions;
+
 	if (vm.count("low"))
 	{
-		std::ifstream in(vm["low"].as<std::string>());
-		if (in.is_open())
-		{
-			auto ins = assignInsertions(in, transcripts);
+		auto low = vm["low"].as<std::string>();
 
-			std::cout << "hits: " << ins.size() << std::endl;
+		if (low.find(".bwt") != std::string::npos)	// bowtie output file
+		{
+			fs::path p = low;
+			std::ifstream file(p, std::ios::binary);
+
+			if (not file.is_open())
+				throw std::runtime_error("Could not open file " + low);
+
+			io::filtering_stream<io::input> in;
+			std::string ext = p.extension().string();
+			
+			if (p.extension() == ".bz2")
+			{
+				in.push(io::bzip2_decompressor());
+				ext = p.stem().extension().string();
+			}
+			else if (p.extension() == ".gz")
+			{
+				in.push(io::gzip_decompressor());
+				ext = p.stem().extension().string();
+			}
+			
+			in.push(file);
+
+			lowInsertions = assignInsertions(in, transcripts);
 		}
+		else if (low.find(".fastq") != std::string::npos or vm.count("bowtie"))
+		{
+			std::string bowtie("/usr/bin/bowtie");
+			if (vm.count("bowtie"))
+				bowtie = vm["bowtie"].as<std::string>();
+
+			size_t proc = 4;
+			if (vm.count("threads"))
+				proc = vm["threads"].as<size_t>();
+			if (proc < 1)
+				proc = 1;
+
+			lowInsertions = assignInsertions(bowtie, vm["bowtie-index"].as<std::string>(), low, transcripts, proc);
+		}
+
+		std::cout << "Low insertions: " << lowInsertions.size() << std::endl;
 	}
-	else
-	{
-		auto ins = assignInsertions(std::cin, transcripts);
-		std::cout << "hits: " << ins.size() << std::endl;
-	}
+
+
+
 
 	return result;
 }

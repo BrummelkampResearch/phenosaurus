@@ -26,4 +26,4 @@ std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Tr
 
 std::vector<Insertion> assignInsertions(const std::string& bowtie,
 	const std::string& index, const std::string& fastq,
-	const std::vector<Transcript>& transcripts);
+	const std::vector<Transcript>& transcripts, size_t nrOfThreads);
