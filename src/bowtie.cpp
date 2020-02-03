@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <string.h>
 
+#include <cassert>
+
 #include <iostream>
 #include <filesystem>
 #include <thread>
@@ -17,6 +19,8 @@
 
 namespace fs = std::filesystem;
 using namespace std::literals;
+
+extern int VERBOSE;
 
 // --------------------------------------------------------------------
 
@@ -212,14 +216,14 @@ std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Tr
 			throw std::runtime_error("Invalid input file");
 
 		// this should be strand
-		char strand = *s;
+		char strand = *++s;
 		s = strchr(s + 1, '\t');
-		if ((strand != '+' and strand) or s == nullptr)
+		if ((strand != '+' and strand != '-') or s == nullptr)
 			throw std::runtime_error("Invalid input file");
 		
 		// next is chromosome
 		CHROM chr = INVALID;
-		if (*s == 'c' and s[1] == 'h' and s[2] == 'r')
+		if (*++s == 'c' and s[1] == 'h' and s[2] == 'r')
 		{
 			s += 3;
 			switch (*s++)
@@ -251,7 +255,7 @@ std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Tr
 		}
 
 		if (chr == INVALID or *s++ != '\t' or *s == '\t')
-			throw std::runtime_error("Invalid input file");
+			continue;
 
 		long pos = strtoul(s, const_cast<char**>(&s), 10);
 		if (*s != '\t')
@@ -264,23 +268,30 @@ std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Tr
 
 		while (L <= R)
 		{
-			auto i = (R - L) / 2;
-			auto ti = t[i];
-			long d = chr - ti.chrom;
+			auto i = (L + R) / 2;
+			auto ti = t + i;
+			long d = ti->chrom - chr;
 			if (d == 0)
-				d = pos - ti.r.start;
-			if (d <= 0)
-				R = i;
+				d = ti->r.start - pos;
+			if (d >= 0)
+				R = i - 1;
 			else
-				L = i;
+				L = i + 1;
 		}
 
+		assert(L >= 0);
+
 		auto e = t + transcripts.size();
-		t += R;
-		while (t < e and t->r.start <= pos)
+		t += L;
+		while (t < e and t->chrom == chr and t->r.start <= pos)
 		{
-			if (t->r.end >= pos)
+			if (t->r.end > pos)
+			{
+				if (VERBOSE)
+					std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
 				result.push_back({ pos, t, strand == t->strand });
+			}
 			
 			++t;
 		}
@@ -299,6 +310,7 @@ std::vector<Insertion> assignInsertions(const std::string& bowtie,
 
 	std::vector<const char*> args = {
 		bowtie.c_str(),
+		
 
 
 	};

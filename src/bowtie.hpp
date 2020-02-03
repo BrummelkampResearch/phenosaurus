@@ -13,6 +13,15 @@ struct Insertion
 	bool sense;
 };
 
+struct GeneInsertions
+{
+	size_t transcriptIndex;
+	std::vector<long> sense, antiSense;
+	float pValue;
+	float fdrCorrectedPValue;
+};
+
+
 std::vector<Insertion> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts);
 
 std::vector<Insertion> assignInsertions(const std::string& bowtie,

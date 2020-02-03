@@ -176,14 +176,21 @@ Examples:
 		mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(),
 		cutOverlap);
 
-	std::ifstream in("low.mapped.bwt");
-	if (in.is_open())
+	if (vm.count("low"))
 	{
-		auto ins = assignInsertions(in, transcripts);
+		std::ifstream in(vm["low"].as<std::string>());
+		if (in.is_open())
+		{
+			auto ins = assignInsertions(in, transcripts);
 
+			std::cout << "hits: " << ins.size() << std::endl;
+		}
+	}
+	else
+	{
+		auto ins = assignInsertions(std::cin, transcripts);
 		std::cout << "hits: " << ins.size() << std::endl;
 	}
-
 
 	return result;
 }

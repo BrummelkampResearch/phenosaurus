@@ -13,7 +13,9 @@
 				"--start=tx",
 				"--end=cds",
 				"--mode=collapse",
-				"--reference=ncbi-genes.txt"
+				"--reference=ncbi-genes-hg19.txt",
+				"--low=low.mapped.bwt",
+				"--verbose"
 			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
