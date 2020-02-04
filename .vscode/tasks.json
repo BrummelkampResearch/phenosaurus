@@ -3,11 +3,10 @@
     "tasks": [
         {
             "type": "process",
-            "label": "make refannb debug",
+            "label": "make screen-analyzer",
             "command": "make",
             "args": [
-                "DEBUG=1",
-                "refannb"
+                "screen-analyzer"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

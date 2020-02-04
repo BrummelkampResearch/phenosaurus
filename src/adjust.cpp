@@ -1,5 +1,4 @@
-#include <termios.h>
-#include <sys/ioctl.h>
+// copyright 2020 M.L. Hekkelman, NKI/AVL
 
 #include <iostream>
 #include <iomanip>
@@ -15,6 +14,7 @@
 #include "refann.hpp"
 #include "fisher.hpp"
 #include "bowtie.hpp"
+#include "utils.hpp"
 
 #include "mrsrc.h"
 
@@ -26,60 +26,6 @@ using namespace std::literals;
 #define APP_NAME "adjust"
 
 int VERBOSE = 0;
-
-// -----------------------------------------------------------------------
-
-uint32_t get_terminal_width()
-{
-    uint32_t result = 80;
-
-    if (isatty(STDOUT_FILENO))
-    {
-        struct winsize w;
-        ioctl(0, TIOCGWINSZ, &w);
-        result = w.ws_col;
-    }
-    return result;
-}
-
-// -----------------------------------------------------------------------
-
-void showVersionInfo()
-{
-	mrsrc::rsrc version("version.txt");
-	if (not version)
-		std::cerr << "unknown version, version resource is missing" << std::endl;
-	else
-	{
-		struct membuf : public std::streambuf
-		{
-			membuf(char* data, size_t length)		{ this->setg(data, data, data + length); }
-		} buffer(const_cast<char*>(version.data()), version.size());
-		
-		std::istream is(&buffer);
-		std::string line;
-		std::regex
-			rxVersionNr(R"(Last Changed Rev: (\d+))"),
-			rxVersionDate(R"(Last Changed Date: (\d{4}-\d{2}-\d{2}).*)");
-
-		while (std::getline(is, line))
-		{
-			std::smatch m;
-
-			if (std::regex_match(line, m, rxVersionNr))
-			{
-				std::cout << "Last changed revision number: " << m[1] << std::endl;
-				continue;
-			}
-
-			if (std::regex_match(line, m, rxVersionDate))
-			{
-				std::cout << "Last changed revision date: " << m[1] << std::endl;
-				continue;
-			}
-		}
-	}
-}
 
 // -----------------------------------------------------------------------
 

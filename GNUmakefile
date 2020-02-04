@@ -102,7 +102,7 @@ SRC_VPATH = $(subst $(space),:,$(SOURCE_DIRS))
 
 VPATH += $(SRC_VPATH)
 
-PROGRAMS = refannb adjust
+PROGRAMS = screen-analyzer
 
 OBJECTS = $(OBJDIR)/refannb.o
 
@@ -155,7 +155,11 @@ refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
-adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/refannb_rsrc.o
+adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
+	@ echo '->' $@
+	@ $(CXX) -o $@ $^ $(LDFLAGS)
+
+screen-analyzer: $(OBJDIR)/screen-analyzer.o $(OBJDIR)/screendata.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
@@ -163,7 +167,7 @@ adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fish
 clean:
 	rm -rf $(PROGRAMS) $(OBJDIR)/* $(REVISION_FILE)
 
-all: refannb
+all: $(PROGRAMS)
 
 .PHONY: help
 help:
