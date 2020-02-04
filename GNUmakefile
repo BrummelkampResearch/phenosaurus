@@ -55,7 +55,7 @@ endif
 CFLAGS				+= -std=c++17 -pthread
 CFLAGS				+= -ffunction-sections -fdata-sections
 CFLAGS				+= $(addprefix -I, $(INCLUDE_DIR))
-LDFLAGS				+= -Wl,--gc-sections
+LDFLAGS				+= -Wl,--gc-sections -static-libgcc -static-libstdc++
 
 BOOST_LIBS			= date_time iostreams program_options filesystem thread math_c99 math_c99f timer chrono system regex random
 BOOST_LIBS			:= $(BOOST_LIBS:%=boost_%$(BOOST_LIB_SUFFIX))

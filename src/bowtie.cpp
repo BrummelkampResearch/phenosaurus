@@ -137,9 +137,9 @@ void assignInsertions(const char* line, const std::vector<Transcript>& transcrip
 
 				// insertions.push_back({ pos, t, strand == t->strand });
 				if (strand == t->strand)
-					insertions[t - transcripts.data()].sense.push_back(pos);
+					insertions[t - transcripts.data()].sense.insert(pos);
 				else
-					insertions[t - transcripts.data()].antiSense.push_back(pos);
+					insertions[t - transcripts.data()].antiSense.insert(pos);
 			}
 			
 			++t;

@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <set>
+
 #include "refann.hpp"
 
 // struct Insertion
@@ -15,7 +17,7 @@
 
 struct Insertions
 {
-	std::vector<long> sense, antiSense;
+	std::set<long> sense, antiSense;
 };
 
 std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts);
