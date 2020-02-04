@@ -86,7 +86,11 @@ int main_create(int argc, char* const argv[])
 
 	po::options_description config(APP_NAME R"( config file options)");
 	config.add_options()
-		("screen-dir", po::value<std::string>(), "Directory containing the screen data");
+		("bowtie", po::value<std::string>(),	"Bowtie executable")
+		("threads", po::value<unsigned>(),		"Nr of threads to use")
+		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
+		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
+		("bowtie-index-hg38", po::value<std::string>(), "Bowtie index parameter for HG38");
 
 	po::options_description hidden("hidden options");
 	hidden.add_options()

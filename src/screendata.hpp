@@ -26,12 +26,15 @@ class AnalyzedScreenData
 class MappedScreenData
 {
   public:
-	MappedScreenData();
+	MappedScreenData(std::filesystem::path dir, const std::string& assembly, unsigned readLength);
 
 	MappedScreenData(const MappedScreenData&) = delete;
 	MappedScreenData& operator=(const MappedScreenData&) = delete;
 
 	const std::string& assembly() const		{ return mAssembly; }
+	unsigned readLength() const				{ return mReadLength; }
+
+	void analyze();
 
 	AnalyzedScreenData& getAnalyzedScreenData(const ReferenceGenes& refSeq);
 
@@ -39,6 +42,7 @@ class MappedScreenData
   private:
 
 	std::string mAssembly;
+	unsigned mReadLength;
 	std::list<AnalyzedScreenData> mAnalyzed;
 };
 

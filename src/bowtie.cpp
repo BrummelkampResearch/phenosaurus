@@ -19,6 +19,7 @@
 
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <boost/process.hpp>
 
 #include "bowtie.hpp"
 
@@ -453,6 +454,9 @@ std::vector<Insertions> assignInsertions(const std::string& bowtie,
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned readLength)
 {
+	if (readLength)
+		throw std::runtime_error("Sorry, not implemented yet");
+
 	auto p = std::to_string(threads);
 	auto m = "/tmp/max-" + std::to_string(getpid()) + ".fastq";
 
@@ -575,7 +579,8 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		while (not outDone)
 		{
 			int r = read(ofd[0], buffer + remaining, kBufferSize - remaining);
-			if (r >= 0 and r < kBufferSize)
+			assert(r <= 0 or r + remaining < kBufferSize + 1);
+			if (r > 0)
 				buffer[r + remaining] = 0;
 
 			if (r > 0)
@@ -596,9 +601,18 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 					}
 
 					*l = 0;
-					auto ins = parseLine(s);
-					if (ins.chr != INVALID)
-						result.push_back(ins);
+
+					try
+					{
+						auto ins = parseLine(s);
+						if (ins.chr != INVALID)
+							result.push_back(ins);
+					}
+					catch(const std::exception& e)
+					{
+						std::cerr << e.what() << std::endl
+								  << s << std::endl;
+					}
 
 					s = l + 1;
 				}
@@ -607,9 +621,17 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 			{
 				if (remaining > 0)
 				{
-					auto ins = parseLine(buffer);
-					if (ins.chr != INVALID)
-						result.push_back(ins);
+					try
+					{
+						auto ins = parseLine(buffer);
+						if (ins.chr != INVALID)
+							result.push_back(ins);
+					}
+					catch(const std::exception& e)
+					{
+						std::cerr << e.what() << std::endl
+								  << buffer << std::endl;
+					}
 				}
 
 				outDone = true;
