@@ -154,7 +154,7 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, const
 				auto ti = t + i;
 				long d = ti->chrom - chr;
 				if (d == 0)
-					d = ti->r.start - pos;
+					d = static_cast<long>(ti->r.start) - pos;
 				if (d >= 0)
 					R = i - 1;
 				else

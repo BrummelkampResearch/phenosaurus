@@ -486,7 +486,9 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
-	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
+	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
+
+	const std::regex kPosRx(R"((cds|tx)(Start|End)?((?:\+|-)[0-9]+)?)");
 
 	auto transcripts = loadGenes(refGenesFile, true);
 
@@ -504,40 +506,96 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 	regex_match(startPos, m, kPosRx);
 	
 	bool startCDS = m[1] == "cds";
-	if (m[2].matched)
+
+	POS start;
+	if (m[1] == "cds")
+	{
+		if (not m[2].matched or m[2] == "Start")
+			start = POS::CDS_START;
+		else
+			start = POS::CDS_END;
+	}
+	else
+	{
+		if (not m[2].matched or m[2] == "Start")
+			start = POS::TX_START;
+		else
+			start = POS::TX_END;
+	}
+	
+	if (m[3].matched)
 		startOffset = std::stol(m[2]);
 	
 	regex_match(endPos, m, kPosRx);
 
-	bool endCDS = m[1] == "cds";
-	if (m[2].matched)
+	POS end;
+	if (m[1] == "cds")
+	{
+		if (not m[2].matched or m[2] == "End")
+			start = POS::CDS_END;
+		else
+			start = POS::CDS_START;
+	}
+	else
+	{
+		if (not m[2].matched or m[2] == "End")
+			start = POS::TX_END;
+		else
+			start = POS::TX_START;
+	}
+	
+	if (m[3].matched)
 		endOffset = std::stol(m[2]);
 
 	for (auto& t: transcripts)
 	{
 		if (t.strand == '+')
 		{
-			if (startCDS)
-				t.r.start = t.cds.start + startOffset;
-			else
-				t.r.start = t.tx.start + startOffset;
+			switch (start)
+			{
+				case POS::TX_START:		t.r.start = t.tx.start + startOffset; break;
+				case POS::CDS_START:	t.r.start = t.cds.start + startOffset; break;
+				case POS::CDS_END:		t.r.start = t.cds.end + startOffset; break;
+				case POS::TX_END:		t.r.start = t.tx.end + startOffset; break;
+			}
 
-			if (endCDS)
-				t.r.end = t.cds.end + endOffset;
-			else
-				t.r.end = t.tx.end + endOffset;
+			switch (end)
+			{
+				case POS::TX_START:		t.r.end = t.tx.start + startOffset; break;
+				case POS::CDS_START:	t.r.end = t.cds.start + startOffset; break;
+				case POS::CDS_END:		t.r.end = t.cds.end + startOffset; break;
+				case POS::TX_END:		t.r.end = t.tx.end + startOffset; break;
+			}
 		}
 		else
 		{
-			if (startCDS)
-				t.r.end = t.cds.end - startOffset;
-			else
-				t.r.end = t.tx.end;
+#error fout
+			switch (start)
+			{
+				case POS::TX_START:		t.r.start = t.tx.start + startOffset; break;
+				case POS::CDS_START:	t.r.start = t.cds.start + startOffset; break;
+				case POS::CDS_END:		t.r.start = t.cds.end + startOffset; break;
+				case POS::TX_END:		t.r.start = t.tx.end + startOffset; break;
+			}
 
-			if (endCDS)
-				t.r.start = t.cds.start - endOffset;
-			else
-				t.r.start = t.tx.start - endOffset;
+			switch (end)
+			{
+				case POS::TX_START:		t.r.end = t.tx.start + startOffset; break;
+				case POS::CDS_START:	t.r.end = t.cds.start + startOffset; break;
+				case POS::CDS_END:		t.r.end = t.cds.end + startOffset; break;
+				case POS::TX_END:		t.r.end = t.tx.end + startOffset; break;
+			}
+
+
+			// if (startCDS)
+			// 	t.r.end = t.cds.end - startOffset;
+			// else
+			// 	t.r.end = t.tx.end;
+
+			// if (endCDS)
+			// 	t.r.start = t.cds.start - endOffset;
+			// else
+			// 	t.r.start = t.tx.start - endOffset;
 		}
 	}
 

@@ -34,7 +34,7 @@ struct Insertion
 	CHROM		chr;
 	char		strand;
 	uint16_t	filler = 0;
-	uint32_t	pos;
+	int32_t		pos;
 
 	bool operator<(const Insertion& rhs) const
 	{
