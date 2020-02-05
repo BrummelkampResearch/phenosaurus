@@ -57,7 +57,7 @@ int usage()
 			  << "Where command is one of" << std::endl
 			  << std::endl
 			  << "  create" << std::endl
-			  << "  bowtie" << std::endl
+			  << "  map" << std::endl
 			  << "  analyze" << std::endl
 			  << std::endl;
 	return 1;

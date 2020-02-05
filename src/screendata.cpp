@@ -108,9 +108,6 @@ void ScreenData::map(const std::string& assembly,
 			p = mDataDir / (ch + ".fastq.gz");
 
 		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, readLength);
-		std::sort(hits.begin(), hits.end());
-		hits.erase(std::unique(hits.begin(), hits.end()), hits.end());
-
 		std::cout << "Unique hits in " << ch << " channel: " << hits.size() << std::endl;
 
 		std::ofstream out(assemblyDataPath / ch, std::ios::binary);

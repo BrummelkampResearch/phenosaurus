@@ -464,6 +464,7 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		bowtie.c_str(),
 		"-m", "1",
 		"-v", "1",
+		"--best",
 		"-p", p.c_str(),
 		bowtieIndex.c_str(),
 		fastq.c_str(),
@@ -475,8 +476,6 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
 
 	// ready to roll
-	double startTime = system_time();
-
 	int ifd[2], ofd[2], efd[2], err;
 
 	err = pipe(ifd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
@@ -551,125 +550,102 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	//     close(ifd[1]);
 	// });
 
-	// make stdout and stderr non-blocking
-	int flags;
-
 	close(ofd[1]);
-	flags = fcntl(ofd[0], F_GETFL, 0);
-	fcntl(ofd[0], F_SETFL, flags | O_NONBLOCK);
-
 	close(efd[1]);
-	flags = fcntl(efd[0], F_GETFL, 0);
-	fcntl(efd[0], F_SETFL, flags | O_NONBLOCK);
 
 	// OK, so now the executable is started and the pipes are set up
 	// read from the pipes until done.
 
-	bool errDone = false, outDone = false, killed = false;
-	double maxRunTime = 0;
+	// start a thread to read stderr, can be used for logging
 
-	const size_t kBufferSize = 4096;
-	char buffer[kBufferSize + 1] = {};
-	int remaining = 0;
+	std::thread err_thread([fd = efd[0]]()
+	{
+		char buffer[1024];
+		for (;;)
+		{
+			int r = read(fd, buffer, sizeof(buffer));
+			if (r == 0)
+				break;
+			
+			if (r > 0)
+			{
+				std::cerr.write(buffer, r);
+				continue;
+			}
 
+			if (errno == EAGAIN)
+				continue;
+			
+			break;
+		}
+	});
+
+	char buffer[8192];
+	std::string line;
 	std::vector<Insertion> result;
 
-	while (not errDone and not outDone and not killed)
+	for (;;)
 	{
-		while (not outDone)
+		int r = read(ofd[0], buffer, sizeof(buffer));
+
+		if (r == 0)
+			break;
+		
+		if (r < 0)
 		{
-			int r = read(ofd[0], buffer + remaining, kBufferSize - remaining);
-			assert(r <= 0 or r + remaining < kBufferSize + 1);
-			if (r > 0)
-				buffer[r + remaining] = 0;
-
-			if (r > 0)
-			{
-				auto s = buffer;
-				auto e = buffer + remaining + r;
-				while (s < e)
-				{
-					auto l = strchr(s, '\n');
-					assert(l < e);
-
-					if (l == nullptr)
-					{
-						remaining = e - s;
-						memmove(buffer, s, remaining);
-						buffer[remaining] = 0;
-						break;
-					}
-
-					*l = 0;
-
-					try
-					{
-						auto ins = parseLine(s);
-						if (ins.chr != INVALID)
-							result.push_back(ins);
-					}
-					catch(const std::exception& e)
-					{
-						std::cerr << e.what() << std::endl
-								  << s << std::endl;
-					}
-
-					s = l + 1;
-				}
-			}
-			else if (r == 0 or errno != EAGAIN)
-			{
-				if (remaining > 0)
-				{
-					try
-					{
-						auto ins = parseLine(buffer);
-						if (ins.chr != INVALID)
-							result.push_back(ins);
-					}
-					catch(const std::exception& e)
-					{
-						std::cerr << e.what() << std::endl
-								  << buffer << std::endl;
-					}
-				}
-
-				outDone = true;
-			}
-			else
-				break;
+			if (errno == EAGAIN)
+				continue;
+			break;
 		}
 
-		while (not errDone)
+		for (char* s = buffer; s < buffer + r; ++s)
 		{
-			char errBuffer[1024];
-			int r = read(efd[0], errBuffer, sizeof(errBuffer));
-
-			if (r > 0)
-				std::cerr.write(errBuffer, r);
-				// stderr.write(buffer, r);
-			else if (r == 0 and errno != EAGAIN)
-				errDone = true;
-			else
-				break;
-		}
-
-		if (not errDone and not outDone)
-		{
-			if (not killed and maxRunTime > 0 and startTime + maxRunTime < system_time())
+			char ch = *s;
+			if (ch != '\n')
 			{
-				kill(pid, SIGKILL);
-				killed = true;
-
-				std::cerr << std::endl
-						  << "maximum run time exceeded" << std::endl;
+				line += ch;
+				continue;
 			}
-			else
-				sleep(1);
+			
+			try
+			{
+				auto ins = parseLine(line.c_str());
+				if (ins.chr != INVALID)
+				{
+					result.push_back(ins);
+					std::push_heap(result.begin(), result.end());
+				}
+			}
+			catch(const std::exception& e)
+			{
+				std::cerr << e.what() << std::endl
+							<< line << std::endl;
+			}
+
+			line.clear();
 		}
 	}
 
-	// thread.join();
+	// should not happen... bowtie output is always terminated with a newline, right?
+	if (not line.empty())
+	{
+		try
+		{
+			auto ins = parseLine(line.c_str());
+			if (ins.chr != INVALID)
+			{
+				result.push_back(ins);
+				std::push_heap(result.begin(), result.end());
+			}
+		}
+		catch(const std::exception& e)
+		{
+			std::cerr << e.what() << std::endl
+						<< line << std::endl;
+		}
+	}
+
+	err_thread.join();
 
 	close(ofd[0]);
 	close(efd[0]);
@@ -684,6 +660,10 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	
 	if (r != 0)
 		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
+
+	// return sorted and unique array of hits
+	std::sort_heap(result.begin(), result.end());
+	result.erase(std::unique(result.begin(), result.end()), result.end());
 
 	return result;
 }
