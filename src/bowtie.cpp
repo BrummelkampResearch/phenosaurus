@@ -483,26 +483,33 @@ struct counting_filter
 // -----------------------------------------------------------------------
 
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned readLength)
+	std::filesystem::path fastq, unsigned threads, unsigned readLength,
+	int maxmismatch, std::filesystem::path mismatchfile)
 {
 	if (readLength)
 		throw std::runtime_error("Sorry, not implemented yet");
 
 	auto p = std::to_string(threads);
-	auto m = "/tmp/max-" + std::to_string(getpid()) + ".fastq";
+	auto v = std::to_string(maxmismatch);
 
 	std::vector<const char*> args = {
 		bowtie.c_str(),
 		"-m", "1",
-		"-v", "1",
+		"-v", v.c_str(),
 		"--best",
 		"-p", p.c_str(),
 		bowtieIndex.c_str(),
 		// fastq.c_str(),
-		"-",
-		"--max", m.c_str(),
-		nullptr
+		"-"
 	};
+
+	if (maxmismatch > 0)
+	{
+		args.push_back("--max");
+		args.push_back(mismatchfile.c_str());
+	}
+
+	args.push_back(nullptr);
 
 	if (not fs::exists(args.front()))
 		throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
@@ -716,6 +723,37 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	
 	if (r != 0)
 		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
+
+	return result;
+}
+
+// -----------------------------------------------------------------------
+
+std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
+	std::filesystem::path fastq, unsigned threads, unsigned readLength)
+{
+	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + ".fastq");
+
+	auto result = runBowtie(bowtie, bowtieIndex, fastq, threads, readLength, 1, m);
+
+	if (fs::exists(m))
+	{
+		if (fs::file_size(m) > 0)
+		{
+			auto ins_2 = runBowtie(bowtie, bowtieIndex, m, threads, readLength, 0, m);
+
+			std::vector<Insertion> merged;
+			merged.reserve(result.size() + ins_2.size());
+
+			std::merge(result.begin(), result.end(), ins_2.begin(), ins_2.end(), std::back_inserter(merged));
+
+			std::swap(result, merged);
+
+			result.erase(std::unique(result.begin(), result.end()), result.end());
+		}
+
+		fs::remove(m);
+	}
 
 	return result;
 }

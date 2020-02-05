@@ -15,6 +15,8 @@ namespace fs = std::filesystem;
 namespace io = boost::iostreams;
 using namespace std::literals;
 
+extern int VERBOSE;
+
 // --------------------------------------------------------------------
 
 void checkIsFastQ(fs::path infile)
@@ -94,8 +96,8 @@ ScreenData::ScreenData(std::filesystem::path dir, std::filesystem::path low, std
 	}
 }
 
-void ScreenData::map(const std::string& assembly,
-	fs::path bowtie, fs::path bowtieIndex, unsigned threads, unsigned readLength)
+void ScreenData::map(const std::string& assembly, unsigned readLength,
+	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
 	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(readLength);
 	if (not fs::exists(assemblyDataPath))
@@ -115,6 +117,76 @@ void ScreenData::map(const std::string& assembly,
 		size_t length = hits.size() * sizeof(Insertion);
 		out.write(data, length);
 	}
+}
+
+void ScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
+	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
+{
+	for (std::string lh: { "low", "high" })
+	{
+		auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
+		if (not fs::exists(infile))
+			throw std::runtime_error("Missing " + lh + " file, did you run map already?");
+
+		std::vector<Insertions> insertions(transcripts.size());
+
+		auto size = fs::file_size(infile);
+		auto N = size / sizeof(Insertion);
+
+		std::vector<Insertion> bwt(N);
+
+		std::ifstream file(infile, std::ios::binary);
+		if (not file.is_open())
+			throw std::runtime_error("Could not open " + lh + " file, did you run map already?");
+		
+		file.read(reinterpret_cast<char*>(bwt.data()), size);
+	
+		for (auto&& [chr, strand, pos]: bwt)
+		{
+			// we have a valid hit at chr:pos, see if it matches a transcript
+
+			long L = 0, R = transcripts.size() - 1;
+			auto t = transcripts.data();
+
+			while (L <= R)
+			{
+				auto i = (L + R) / 2;
+				auto ti = t + i;
+				long d = ti->chrom - chr;
+				if (d == 0)
+					d = ti->r.start - pos;
+				if (d >= 0)
+					R = i - 1;
+				else
+					L = i + 1;
+			}
+
+			auto e = t + transcripts.size();
+			t += L > 0 ? L - 1 : L;
+			while (t < e and t->chrom == chr and t->r.start <= pos)
+			{
+				if (t->r.end > pos)
+				{
+					if (VERBOSE >= 3)
+						std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+					// insertions.push_back({ pos, t, strand == t->strand });
+					if (strand == t->strand)
+						insertions[t - transcripts.data()].sense.insert(pos);
+					else
+						insertions[t - transcripts.data()].antiSense.insert(pos);
+				}
+				
+				++t;
+			}
+		}
+	
+		if (lh == "low")
+			std::swap(insertions, lowInsertions);
+		else
+			std::swap(insertions, highInsertions);
+	}
+
 }
 
 ScreenData* ScreenData::create(fs::path dir, fs::path lowFastQ, fs::path highFastQ)

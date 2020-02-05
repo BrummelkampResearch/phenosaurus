@@ -48,6 +48,25 @@ void print_what (const std::exception& e)
 	}
 }
 
+// -----------------------------------------------------------------------
+
+po::options_description get_config_options()
+{
+	po::options_description config(APP_NAME R"( config file options)");
+	
+	config.add_options()
+		("bowtie", po::value<std::string>(),	"Bowtie executable")
+		("assembly", po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
+		("reference", po::value<std::string>(),	"Path to the refseq file containing reference genes")
+		("read-length", po::value<unsigned>(),	"Read length to use, if specified reads will be trimmed to this size")
+		("threads", po::value<unsigned>(),		"Nr of threads to use")
+		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
+		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
+		("bowtie-index-hg38", po::value<std::string>(), "Bowtie index parameter for HG38");
+
+	return config;
+}
+
 // --------------------------------------------------------------------
 
 int usage()
@@ -84,13 +103,7 @@ int main_create(int argc, char* const argv[])
 		("verbose,v",							"Verbose output")
 		;
 
-	po::options_description config(APP_NAME R"( config file options)");
-	config.add_options()
-		("bowtie", po::value<std::string>(),	"Bowtie executable")
-		("threads", po::value<unsigned>(),		"Nr of threads to use")
-		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
-		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
-		("bowtie-index-hg38", po::value<std::string>(), "Bowtie index parameter for HG38");
+	po::options_description config = get_config_options();
 
 	po::options_description hidden("hidden options");
 	hidden.add_options()
@@ -144,6 +157,10 @@ int main_create(int argc, char* const argv[])
 		exit(-1);
 	}
 
+	VERBOSE = vm.count("verbose") != 0;
+	if (vm.count("debug"))
+		VERBOSE = vm["debug"].as<int>();
+
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
@@ -182,18 +199,11 @@ int main_map(int argc, char* const argv[])
 		("verbose,v",							"Verbose output")
 		;
 
-	po::options_description config;
-	config.add_options()
-		("bowtie", po::value<std::string>(),	"Bowtie executable")
-		("threads", po::value<unsigned>(),		"Nr of threads to use")
-		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
-		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
-		("bowtie-index-hg38", po::value<std::string>(), "Bowtie index parameter for HG38");
+	po::options_description config = get_config_options();
 
 	po::options_description hidden("hidden options");
 	hidden.add_options()
 		("screen-name", po::value<std::string>(),	"Screen name")
-		("assembly", po::value<std::string>(),		"Assembly name")
 		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
 
 	po::options_description cmdline_options;
@@ -246,6 +256,10 @@ int main_map(int argc, char* const argv[])
 		exit(-1);
 	}
 
+	VERBOSE = vm.count("verbose") != 0;
+	if (vm.count("debug"))
+		VERBOSE = vm["debug"].as<int>();
+
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
@@ -275,15 +289,258 @@ int main_map(int argc, char* const argv[])
 	if (vm.count("threads"))
 		threads = vm["threads"].as<unsigned>();
 
-	data->map(assembly, bowtie, bowtieIndex, threads, readLength);
+	data->map(assembly, readLength, bowtie, bowtieIndex, threads);
 
-	return result;}
+	return result;
+}
 
 // --------------------------------------------------------------------
 
 int main_analyze(int argc, char* const argv[])
 {
-	return 0;
+	int result = 0;
+
+	po::options_description visible(APP_NAME R"( analyze screen-name assembly reference [options])");
+	visible.add_options()
+		("help,h",								"Display help message")
+		("version",								"Print version")
+
+		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
+
+		("start", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+		("end", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+
+		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
+
+		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+
+		("output", po::value<std::string>(),	"Output file")
+
+		("verbose,v",							"Verbose output")
+		;
+
+	po::options_description config = get_config_options();
+
+	po::options_description hidden("hidden options");
+	hidden.add_options()
+		("screen-name", po::value<std::string>(),	"Screen name")
+		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
+
+	po::options_description cmdline_options;
+	cmdline_options.add(visible).add(config).add(hidden);
+
+	po::positional_options_description p;
+	p.add("screen-name", 1);
+	p.add("assembly", 1);
+	p.add("reference", 1);
+	
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+
+	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
+
+	fs::path configFile = APP_NAME ".conf";
+	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
+		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+	
+	if (vm.count("config") != 0)
+	{
+		configFile = vm["config"].as<std::string>();
+		if (not fs::exists(configFile))
+			throw std::runtime_error("Specified config file does not seem to exist");
+	}
+	
+	if (fs::exists(configFile))
+	{
+		po::options_description config_options ;
+		config_options.add(config).add(hidden);
+
+		std::ifstream cfgFile(configFile);
+		if (cfgFile.is_open())
+			po::store(po::parse_config_file(cfgFile, config_options), vm);
+	}
+	
+	po::notify(vm);
+
+	if (vm.count("version"))
+	{
+		showVersionInfo();
+		exit(0);
+	}
+
+	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0 or vm.count("reference") == 0)
+	{
+		po::options_description visible_options;
+		visible_options.add(visible).add(config);
+
+		std::cerr << visible_options << std::endl;
+		exit(-1);
+	}
+
+	VERBOSE = vm.count("verbose") != 0;
+	if (vm.count("debug"))
+		VERBOSE = vm["debug"].as<int>();
+
+	if (vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
+		vm.count("start") == 0 or vm.count("end") == 0 or
+		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
+	{
+		po::options_description visible_options;
+		visible_options.add(visible).add(config);
+
+		std::cerr << visible_options << std::endl
+				  << R"(
+Mode longest means take the longest transcript for each gene
+
+Mode collapse means, for each gene take the region between the first 
+start and last end.
+
+Start and end should be either 'cds' or 'tx' with an optional offset 
+appended. Optionally you can also specify cdsStart, cdsEnd, txStart
+or txEnd to have the start at the cdsEnd e.g.
+
+Overlap: in case of both, all genes will be added, in case of neither
+the parts with overlap will be left out.
+
+Examples:
+
+    --mode=longest --start=cds-100 --end=cds
+
+        For each gene take the longest transcript. For these we take the 
+        cdsStart minus 100 basepairs as start and cdsEnd as end. This means
+        no  3' UTR and whatever fits in the 100 basepairs of the 5' UTR.
+
+    --mode=collapse --start=tx --end=tx+1000
+
+        For each gene take the minimum txStart of all transcripts as start
+        and the maximum txEnd plus 1000 basepairs as end. This obviously
+        includes both 5' UTR and 3' UTR.
+
+)"				<< std::endl;
+		exit(vm.count("help") ? 0 : 1);
+	}
+
+	// fail early
+	std::ofstream out;
+	if (vm.count("output"))
+	{
+		out.open(vm["output"].as<std::string>());
+		if (not out.is_open())
+			throw std::runtime_error("Could not open output file");
+	}
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+
+	std::string assembly = vm["assembly"].as<std::string>();
+	std::string reference = vm["reference"].as<std::string>();
+
+	unsigned readLength = 0;
+	if (vm.count("read-length"))
+		readLength = vm["read-length"].as<unsigned>();
+	
+	// -----------------------------------------------------------------------
+
+	bool cutOverlap = true;
+	if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
+		cutOverlap = false;
+
+	Mode mode;
+	if (vm["mode"].as<std::string>() == "collapse")
+		mode = Mode::Collapse;
+	else // if (vm["mode"].as<std::string>() == "longest")
+		mode = Mode::Longest;
+
+	auto transcripts = loadTranscripts(vm["reference"].as<std::string>(),
+		mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+
+	// -----------------------------------------------------------------------
+	
+	std::vector<Insertions> lowInsertions, highInsertions;
+
+	data->analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
+
+	long lowSenseCount = 0, lowAntiSenseCount = 0;
+	for (auto& i: lowInsertions)
+	{
+		lowSenseCount += i.sense.size();
+		lowAntiSenseCount += i.antiSense.size();
+	}
+
+	long highSenseCount = 0, highAntiSenseCount = 0;
+	for (auto& i: highInsertions)
+	{
+		highSenseCount += i.sense.size();
+		highAntiSenseCount += i.antiSense.size();
+	}
+
+	// -----------------------------------------------------------------------
+	
+	std::cerr << std::endl
+			  << std::string(get_terminal_width(), '-') << std::endl
+			  << "Low: " << std::endl
+			  << " sense      : " << std::setw(10) << lowSenseCount << std::endl
+			  << " anti sense : " << std::setw(10) << lowAntiSenseCount << std::endl
+			  << "High: " << std::endl
+			  << " sense      : " << std::setw(10) << highSenseCount << std::endl
+			  << " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
+
+	std::vector<double> pvalues(transcripts.size(), 0);
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		long low = lowInsertions[i].sense.size();
+		long high = highInsertions[i].sense.size();
+	
+		long v[2][2] = {
+			{ low, high },
+			{ lowSenseCount - low, highSenseCount - high }
+		};
+
+		pvalues[i] = fisherTest2x2(v);
+	}
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	std::streambuf* sb = nullptr;
+	if (out.is_open())
+		sb = std::cout.rdbuf(out.rdbuf());
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto& t = transcripts[i];
+		auto low = lowInsertions[i].sense.size();
+		auto high = highInsertions[i].sense.size();
+
+		double miL = low, miH = high, miLT = lowSenseCount - low, miHT = highSenseCount - high;
+		if (low == 0)
+		{
+			miL = 1;
+			miLT -= 1;
+		}
+
+		if (high == 0)
+		{
+			miH = 1;
+			miHT -= 1;
+		}
+
+		double mi = ((miH / miHT) / (miL / miLT));
+
+		std::cout << t.geneName << '\t'
+				  << low << '\t'
+				  << high << '\t'
+				  << pvalues[i] << '\t'
+				  << fcpv[i] << '\t'
+				  << std::log2(mi) << std::endl;
+	}
+
+	if (sb)
+		std::cout.rdbuf(sb);
+
+	return result;
 }
 
 // --------------------------------------------------------------------

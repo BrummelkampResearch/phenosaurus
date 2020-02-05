@@ -50,7 +50,39 @@ struct Insertion
 	{
 		return chr == rhs.chr and pos == rhs.pos and strand == rhs.strand;
 	}
+
+	template<size_t N>
+	decltype(auto) get() const
+	{
+		     if constexpr (N == 0) return chr;
+		else if constexpr (N == 1) return strand;
+		else if constexpr (N == 2) return pos;
+	}
+
 };
 
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned readLength);
+
+namespace std
+{
+
+template<> struct tuple_size<::Insertion>
+            : public std::integral_constant<std::size_t, 3> {};
+
+template<> struct tuple_element<0, ::Insertion>
+{
+	using type = decltype(std::declval<::Insertion>().chr);
+};
+
+template<> struct tuple_element<1, ::Insertion>
+{
+	using type = decltype(std::declval<::Insertion>().strand);
+};
+
+template<> struct tuple_element<2, ::Insertion>
+{
+	using type = decltype(std::declval<::Insertion>().pos);
+};
+
+}

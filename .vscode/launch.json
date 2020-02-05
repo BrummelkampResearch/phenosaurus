@@ -30,6 +30,34 @@
 			"preLaunchTask": "make screen-analyzer"
 		},
 		{
+			"name": "screen-analyzer analyze",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/screen-analyzer",
+			"args": [
+				"analyze",
+				"deYtub",
+				"hg19",
+				"--start=tx",
+				"--end=cds",
+				"--mode=collapse",
+				"--reference=ncbi-genes-hg19.txt"
+			],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				}
+			],
+			"preLaunchTask": "make screen-analyzer"
+		},
+		{
 			"name": "adjust",
 			"type": "cppdbg",
 			"request": "launch",
