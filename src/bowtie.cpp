@@ -14,16 +14,19 @@
 #include <iostream>
 #include <iomanip>
 #include <filesystem>
-#include <thread>
+// #include <thread>
 #include <functional>
 
+#include <boost/thread.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/process.hpp>
 
 #include "bowtie.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
+namespace io = boost::iostreams;
 using namespace std::literals;
 
 extern int VERBOSE;
@@ -451,6 +454,34 @@ std::vector<Insertions> assignInsertions(const std::string& bowtie,
 
 // --------------------------------------------------------------------
 
+struct counting_filter
+{
+	counting_filter() = delete;
+	counting_filter(progress& p) : m_progress(p) {}
+	
+	counting_filter(const counting_filter& cf)
+		: m_progress(const_cast<progress&>(cf.m_progress)) {}
+
+	counting_filter& operator=(const counting_filter& cf) = delete;
+
+	typedef char char_type;
+	typedef io::multichar_input_filter_tag category;
+
+	template<typename Source>
+	std::streamsize read(Source& src, char* s, std::streamsize n)
+	{
+		auto r = boost::iostreams::read(src, s, n);
+		if (r > 0)
+			m_progress.consumed(r);
+		
+		return r;
+	}
+
+	progress& m_progress;
+};
+
+// -----------------------------------------------------------------------
+
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned readLength)
 {
@@ -467,7 +498,8 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		"--best",
 		"-p", p.c_str(),
 		bowtieIndex.c_str(),
-		fastq.c_str(),
+		// fastq.c_str(),
+		"-",
 		"--max", m.c_str(),
 		nullptr
 	};
@@ -522,33 +554,51 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	// handle stdin, if any
 	close(ifd[0]);
 
+	boost::thread thread([&fastq, fd = ifd[1]]()
+	{
+		progress p(fastq.string(), fs::file_size(fastq));
+		p.message(fastq.filename().string());
 
+		std::ifstream file(fastq, std::ios::binary);
 
-	// std::thread thread([&stdin, ifd, args]()
-	// {
-	//     char buffer[1024];
+		if (not file.is_open())
+			throw std::runtime_error("Could not open file " + fastq.string());
 
-	//     while (not stdin.eof())
-	//     {
-	//         std::streamsize k = io::read(stdin, buffer, sizeof(buffer));
+		io::filtering_stream<io::input> in;
+		std::string ext = fastq.extension().string();
+		
+		if (fastq.extension() == ".gz")
+		{
+			in.push(io::gzip_decompressor());
+			ext = fastq.stem().extension().string();
+		}
 
-	//         if (k <= -1)
-	//             break;
+		counting_filter cf(p);
+		in.push(cf);
+		
+		in.push(file);
 
-	//         const char* b = buffer;
+		char buffer[1024];
 
-	//         while (k > 0)
-	//         {
-	//             int r = write(ifd[1], b, k);
-	//             if (r > 0)
-	//                 b += r, k -= r;
-	//             else if (r < 0 and errno != EAGAIN)
-	//                 throw std::runtime_error("Error writing to command "s + args.front());
-	//         }
-	//     }
+	    while (not in.eof())
+	    {
+	        std::streamsize k = io::read(in, buffer, sizeof(buffer));
 
-	//     close(ifd[1]);
-	// });
+	        if (k <= -1)
+	            break;
+
+			int r = write(fd, buffer, k);
+			if (r != k)
+			{
+				std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+				break;
+			}
+	    }
+
+		std::cerr << "input done" << std::endl;
+
+	    close(fd);
+	});
 
 	close(ofd[1]);
 	close(efd[1]);
@@ -558,7 +608,7 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 
 	// start a thread to read stderr, can be used for logging
 
-	std::thread err_thread([fd = efd[0]]()
+	boost::thread err_thread([fd = efd[0]]()
 	{
 		char buffer[1024];
 		for (;;)
@@ -645,6 +695,12 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		}
 	}
 
+	// return sorted and unique array of hits
+	std::sort_heap(result.begin(), result.end());
+
+	result.erase(std::unique(result.begin(), result.end()), result.end());
+
+	thread.join();
 	err_thread.join();
 
 	close(ofd[0]);
@@ -660,10 +716,6 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	
 	if (r != 0)
 		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
-
-	// return sorted and unique array of hits
-	std::sort_heap(result.begin(), result.end());
-	result.erase(std::unique(result.begin(), result.end()), result.end());
 
 	return result;
 }
