@@ -1,0 +1,344 @@
+
+.jumbotron {
+	background: white url("../images/screen.png") no-repeat 100% center;
+
+	height: 300px;
+
+	padding: 30px 50px 30px 200px;
+	font-size: large;
+	font-weight: normal;
+	line-height: 2.1428571435;
+	color: inherit;
+	margin: 40px 20px;
+}
+
+footer {
+	/*position: absolute;*/
+	/*left: 0; right: 0; bottom: 0;*/
+	border-top: 1px solid #888;
+	padding: 0.5em;
+	margin-top: 2em;
+	font-size:  small;
+	color: #555;
+	white-space: pre;
+}
+
+/* override list-group-item's padding */
+
+#screenList {
+	width: 100%;
+}
+
+span.error {
+	color: red;
+}
+
+input.error {
+	border-color: red;
+}
+
+/* simple plot page */
+
+#spinner {
+	display: none;
+}
+
+table.heatmap {
+	width: 100%;
+}
+
+.plot {
+	fill: white;
+}
+
+g.tick line {
+	display: none;
+	stroke: lightgrey;
+	opacity: 0.7;
+}
+
+rect.tile {
+	stroke: white;
+}
+
+svg.show-gridlines g.tick line {
+	display: unset;
+}
+
+.grid path {
+	stroke-width: 0;
+}
+
+div.tooltip {
+	position: absolute;
+	white-space: pre;
+	width: 15em;
+	height: auto;
+	padding: 0.3em;
+	font: small sans-serif;
+	color: white;
+	background: #666666;
+	border: 1px solid black;
+	border-radius: 4px;
+	pointer-events: none;
+}
+
+.plot-title {
+	margin-bottom: 1em;
+}
+
+.plot-title span {
+	display: none;
+}
+
+.plot-status-loading .loading, .plot-status-loaded .loaded, .plot-status-failed .failed, .plot-title .screen-name {
+	display: unset;
+}
+
+.spinner {
+	display: none;
+}
+
+td.screen-status {
+	position: relative;
+	width: 30px;
+}
+
+td.screen-status.loading .spinner {
+	display: unset;
+}
+
+td.screen-status .swatch {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1.5rem;
+	height: 0.5rem;
+	margin: auto;
+	margin-right: 6px;
+	margin-left: 6px;
+}
+
+td.loading .swatch {
+	display: none;
+}
+
+.plot-container {
+	position: relative;
+	padding-bottom: 56.25%;
+	font-size: x-small;
+}
+
+.gf-tabel {
+	width: 10.5rem;
+	float: left;
+	clear: none;
+}
+
+.ft-plot-container {
+	width: calc(100% - 30px - 11rem);
+	float: left;
+	padding-bottom: 40%;
+}
+
+/*.ft-plot-container svg {*/
+	/*margin-left: 30px;*/
+/*}*/
+
+table.fishtail .no-fishtail {
+	display: none;
+}
+
+table.heatmap td.screen-status, table.dotplot td.screen-status {
+	display: none;
+}
+
+text.label {
+	display: none;
+	fill: black;
+	pointer-events: none;
+}
+
+text.axis-label {
+	fill: black;
+	font-size: xx-small;
+}
+
+svg.show-labels text.significant {
+	display: unset;
+}
+
+g.highlight	text {
+	display: unset;
+}
+
+/*g.sub-highlight text.sub-dot {*/
+	/*display: unset;*/
+/*}*/
+
+g.dot.link circle {
+	radius: 7;
+	opacity: 0%;
+}
+
+.plot-container > svg {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+
+/*
+    gene finder styles
+ */
+
+ul.option-group {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+ul.option-group li {
+	padding: 0.4em;
+	margin: 0;
+}
+
+/*ul.option-group li + li {*/
+/*border-top: 1px lightgray solid;*/
+/*}*/
+
+.option-group label {
+	margin-bottom: 0;
+}
+
+.option-row {
+	white-space: nowrap;
+}
+
+#controls {
+	padding: 0;
+	margin: 0;
+	width: 30px;
+	list-style: none;
+	float: left;
+	clear: none;
+}
+
+#controls li {
+	list-style: none;
+	width: 1em;
+}
+
+#controls a, a.control-icon {
+	color: black;
+	padding: 4px;
+}
+
+#controls a:hover, a.control-icon:hover {
+	background-color: lightgray;
+}
+
+#plot {
+	width: calc(100% - 30px);
+}
+
+#plot input[type='text'] {
+	border: 1px solid lightgray;
+	font-size: small;
+	width: 10em;
+}
+
+#plot input[type='text'].gene-not-found {
+	border-color: red;
+}
+
+/*#plot input[type='text'].gene-not-found::before {*/
+/*display: inline-block;*/
+/*content: '\f071';*/
+/*font-family: "Font Awesome 5 Free";*/
+/*font-style: normal;*/
+/*font-variant: normal;*/
+/*text-rendering: auto;*/
+/*font-weight: 900;*/
+/*}*/
+
+#plot input[type='text']:focus {
+	background-color: rgba(20, 255, 129, 0.15);
+}
+
+#plot svg {
+	width: calc(100% - 10em - 21px - 1em);
+}
+
+#plot.heatmap svg.dotplot {
+	display: none;
+}
+
+#plot.dotplot svg.heatmap {
+	display: none;
+}
+
+#plot g.dot circle {
+	fill: #aaa;
+}
+
+#plot g.dot.highlight circle {
+	fill: #b3ff3e;
+}
+
+.sort-screens {
+	transform: rotate(-90deg);
+	width: 15px;
+	margin: 0 3px;
+}
+
+text.screen-label {
+	font-size: xx-small;
+}
+
+/*
+	For the gene info tooltip window
+ */
+
+#gene-info-dialog {
+	position: absolute;
+	z-index: 9;
+	/*border: solid 1px black;*/
+	border-radius: .3rem;
+	/*margin: 0.5em;*/
+	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.gene-info-dialog-header {
+	padding: .3rem;
+	cursor: move;
+	z-index: 10;
+	background-color: #fafafa;
+	color: #999;
+	font-size: small;
+}
+
+.gene-info-dialog-table {
+	font-size: small;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+/*
+	admin
+ */
+
+.show-password-btn i {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1rem;
+	height: 1rem;
+	margin: auto;
+}
+
+.group-members-table {
+	max-height: 300px;
+	overflow-y: auto;
+}

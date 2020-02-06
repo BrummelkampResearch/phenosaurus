@@ -1,0 +1,156 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
+<!-- <head z:replace="head :: head(~{::title}, ~{}, ~{::script})">
+
+	<title>Fishtail Plot - Phenosaurus</title>
+
+	<script src="/scripts/screen.js" type="application/ecmascript" z:src="@{/scripts/screen.js}"></script>
+
+</head> -->
+
+<!-- <head z:replace="head :: head"> -->
+<head>
+
+	<meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <link rel="stylesheet" type="text/css" href="/css/styles.css"
+          z:href="@{/css/styles.css}"/>
+
+	<title>Error in Phenosaurus</title>
+    <script src="/scripts/screen.js" z:src="@{/scripts/index.js}"></script>
+</head>
+
+<body>
+<nav z:replace="menu :: menu"></nav>
+<br/>
+
+<input type="hidden" name="selectedScreen" z:value="${selectedScreen}"/>
+<input type="hidden" name="selectedGene" z:value="${selectedGene}"/>
+
+<div class="container-fluid">
+
+	<div class="row">
+		<div class="col-sm-2">
+
+			<div class="container-fluid">
+
+				<select id="screenList" data-placeholder="Choose a Screen...">
+					<option value=""></option>
+					<option z:each="screen: ${screens}" z:attr="data-screen=${screen.id}" z:text="${screen.name}"></option>
+				</select>
+
+				<hr/>
+
+				<ul class="option-group">
+					<li>
+						<form name="graphTypeForm">
+							<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="graphTypeBtns">
+								<label class="btn btn-secondary active">
+									<input type="radio" name="graphType" autocomplete="off"
+										   data-type="regular" checked="checked"/>Regular
+								</label>
+
+								<label class="btn btn-secondary">
+									<input type="radio" name="graphType" data-type="unique"
+										   autocomplete="off"/>Unique
+								</label>
+
+								<label class="btn btn-secondary">
+									<input type="radio" name="graphType" data-type="low" autocomplete="off"/>Low
+								</label>
+
+								<label class="btn btn-secondary">
+									<input type="radio" name="graphType" data-type="high" autocomplete="off"/>High
+								</label>
+							</div>
+						</form>
+					</li>
+
+					<li>
+						<label>
+							<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
+								   placeholder="0.05" align="right"
+								   class="form-control form-control-sm"/> P-Value cut off
+						</label>
+					</li>
+
+					<li>
+						<input type="text" id="highlightGene" size="5"
+							   placeholder="Enter genename..." align="right"
+							   z:value="${selectedGene}"
+							   class="form-control form-control-sm"/>
+						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight gene</button>
+						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear Highlight</button>
+					</li>
+
+					<li>
+						<!-- <div z:replace="~{gene-info :: geneDiv('ip')}"></div> -->
+						<label>
+							<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
+								Dialog</button>
+						</label>
+					</li>
+				</ul>
+			</div>
+
+		</div>
+
+		<div class="col">
+			<div class="plot-title">
+				<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading screen <span class="screen-name"></span>...</span>
+				<span class="loaded">Fishtail plot for <span class="screen-name"></span></span>
+				<span class="failed">Fishtail plot for <span class="screen-name"></span> could not be loaded.</span>
+			</div>
+
+			<div class="plot-container">
+				<svg width="100%" height="100%" id="plot"></svg>
+			</div>
+		</div>
+	</div>
+
+	<br/>
+
+	<div class="row">
+		<div class="col-6">
+			<h5>Negative regulators</h5>
+			<table class="table table-hover table-sm">
+				<thead>
+				<tr>
+					<th>relgene</th>
+					<th>low</th>
+					<th>high</th>
+					<th>fcpv</th>
+					<th>log2(MI)</th>
+				</tr>
+				</thead>
+				<tbody id="negative-regulators">
+				</tbody>
+			</table>
+		</div>
+
+		<div class="col-6">
+			<h5>Positive regulators</h5>
+			<table class="table table-hover table-sm">
+				<thead>
+				<tr>
+					<th>relgene</th>
+					<th>low</th>
+					<th>high</th>
+					<th>fcpv</th>
+					<th>log2(MI)</th>
+				</tr>
+				</thead>
+				<tbody id="positive-regulators">
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<!-- <div z:replace="~{contextMenu :: contextMenuNav(_)}"></div> -->
+
+<footer z:replace="footer :: content"></footer>
+
+</body>
+</html>

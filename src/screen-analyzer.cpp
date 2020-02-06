@@ -14,17 +14,21 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
+#include <zeep/http/daemon.hpp>
+
 #include "refann.hpp"
 #include "fisher.hpp"
 #include "bowtie.hpp"
 #include "utils.hpp"
 #include "screendata.hpp"
+#include "screenserver.hpp"
 
 #include "mrsrc.h"
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
+namespace zh = zeep::http;
 using namespace std::literals;
 
 #define APP_NAME "screen-analyzer"
@@ -545,6 +549,130 @@ Examples:
 
 // --------------------------------------------------------------------
 
+int main_server(int argc, char* const argv[])
+{
+	int result = 0;
+
+	po::options_description visible(APP_NAME " server command [options]"s);
+	visible.add_options()
+		("help,h",											"Display help message")
+		("verbose,v",										"Verbose output")
+		
+		("address",				po::value<std::string>(),	"External address, default is 0.0.0.0")
+		("port",				po::value<uint16_t>(),		"Port to listen to, default is 10336")
+		("no-daemon,F",										"Do not fork into background")
+		("user,u",				po::value<std::string>(),	"User to run the daemon")
+		;
+
+	po::options_description config = get_config_options();
+
+	po::options_description hidden("hidden options");
+	hidden.add_options()
+		("command", po::value<std::string>(),		"Server command")
+		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
+
+	po::options_description cmdline_options;
+	cmdline_options.add(visible).add(config).add(hidden);
+
+	po::positional_options_description p;
+	p.add("command", 1);
+
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+
+	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
+
+	fs::path configFile = APP_NAME ".conf";
+	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
+		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+	
+	if (vm.count("config") != 0)
+	{
+		configFile = vm["config"].as<std::string>();
+		if (not fs::exists(configFile))
+			throw std::runtime_error("Specified config file does not seem to exist");
+	}
+	
+	if (fs::exists(configFile))
+	{
+		po::options_description config_options ;
+		config_options.add(config).add(hidden);
+
+		std::ifstream cfgFile(configFile);
+		if (cfgFile.is_open())
+			po::store(po::parse_config_file(cfgFile, config_options), vm);
+	}
+	
+	po::notify(vm);
+
+	// --------------------------------------------------------------------
+
+	if (vm.count("help") or vm.count("command") == 0)
+	{
+		std::cerr << visible << std::endl
+			 << R"(
+Command should be either:
+
+  start     start a new server
+  stop      start a running server
+  status    get the status of a running server
+  reload    restart a running server with new options
+			 )" << std::endl;
+		exit(vm.count("help") ? 0 : 1);
+	}
+	
+	// char exePath[PATH_MAX + 1];
+	// int r = readlink("/proc/self/exe", exePath, PATH_MAX);
+	// if (r > 0)
+	// {
+	// 	exePath[r] = 0;
+	// 	gExePath = fs::system_complete(exePath);
+	// }
+	
+	// if (not fs::exists(gExePath))
+	// 	gExePath = fs::system_complete(argv[0]);
+
+	zh::daemon server([screenDir=vm["screen-dir"].as<std::string>()]()
+	{
+		return createServer(screenDir);
+	}, "screen-analyzer");
+
+	std::string user = "www-data";
+	if (vm.count("user") != 0)
+		user = vm["user"].as<std::string>();
+	
+	std::string address = "0.0.0.0";
+	if (vm.count("address"))
+		address = vm["address"].as<std::string>();
+
+	uint16_t port = 10336;
+	if (vm.count("port"))
+		port = vm["port"].as<uint16_t>();
+
+	std::string command = vm["command"].as<std::string>();
+
+	if (command == "start")
+	{
+		server.start(vm.count("no-daemon"), address, port, 2, user);
+		// result = daemon::start(vm.count("no-daemon"), port, user);
+	}
+	else if (command == "stop")
+		result = server.stop();
+	else if (command == "status")
+		result = server.status();
+	else if (command == "reload")
+		result = server.reload();
+	else
+	{
+		std::cerr << "Invalid command" << std::endl;
+		result = 1;
+	}
+
+	return result;	
+}
+
+// --------------------------------------------------------------------
+
 int main(int argc, char* const argv[])
 {
 	int result = 0;
@@ -564,6 +692,8 @@ int main(int argc, char* const argv[])
 			result = main_map(argc - 1, argv + 1);
 		else if (command == "analyze")
 			result = main_analyze(argc - 1, argv + 1);
+		else if (command == "server")
+			result = main_server(argc - 1, argv + 1);
 		else if (command == "help")
 			usage();
 		else

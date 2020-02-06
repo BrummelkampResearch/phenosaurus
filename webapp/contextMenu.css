@@ -1,0 +1,12 @@
+/* context menu */
+
+.context-menu {
+	display: none;
+	position: absolute;
+	z-index: 10;
+	background-color: #fff;
+}
+
+.context-menu--active {
+	display: block;
+}

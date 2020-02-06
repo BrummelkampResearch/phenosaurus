@@ -61,7 +61,7 @@ BOOST_LIBS			= date_time iostreams program_options filesystem thread math_c99 ma
 BOOST_LIBS			:= $(BOOST_LIBS:%=boost_%$(BOOST_LIB_SUFFIX))
 BOOST_LIBS			:= $(BOOST_LIBS:%=$(BOOST_LIB_DIR)/lib%.a)
 
-ZEEP_LIBS			?= xml el generic
+ZEEP_LIBS			?= rest webapp http xml el generic
 ZEEP_LIBS			:= $(ZEEP_LIBS:%=-lzeep-%)
 
 LIBS				+= m rt stdc++fs
@@ -137,9 +137,9 @@ src/mrsrc.h:
 	$(MRC) --header > $@
 
 # yarn rules
-# SCRIPTS = script
-# SCRIPT_FILES = $(SCRIPTS:%=docroot/scripts/%.js)
-# WEBAPP_FILES = $(SCRIPT_FILES:docroot/scripts/%=webapp/%)
+SCRIPTS = $(shell find webapp -name '*.js')
+WEBAPP_FILES = $(SCRIPTS)
+SCRIPT_FILES = $(SCRIPTS:webapp/%.js=docroot/scripts/%.js)
 
 ifneq ($(DEBUG),1)
 WEBPACK_OPTIONS = --env.PRODUCTIE
@@ -151,6 +151,8 @@ $(subst .,%,$(SCRIPT_FILES)): $(subst .,%,$(WEBAPP_FILES))
 $(OBJDIR)/refannb_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 	$(MRC) -o $@ $(RSRC)
 
+webappscripts: $(SCRIPT_FILES)
+
 refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
@@ -159,7 +161,8 @@ adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fish
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 
-screen-analyzer: $(OBJDIR)/screen-analyzer.o $(OBJDIR)/screendata.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
+screen-analyzer: $(OBJDIR)/screen-analyzer.o $(OBJDIR)/screendata.o $(OBJDIR)/refannb.o \
+		$(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/screenserver.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 

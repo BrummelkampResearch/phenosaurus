@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+
+<html xmlns:z="http://www.hekkelman.com/libzeep/m2"
+	  lang="en">
+
+<nav z:fragment="menu" class="navbar navbar-expand-sm bg-dark navbar-dark">
+
+	<form name="logoutForm" z:action="@{/logout}" method="post"></form>
+
+	<a href="/" z:href="@{/}" class="navbar-brand">Phenosaurus</a>
+
+	<ul class="navbar-nav">
+		<li class="nav-item dropdown">
+			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
+			   href="#">Intracellular Phenotype</a>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" href="/simpleplot" z:href="@{/simpleplot}">Fishtail Plot</a>
+				<a class="dropdown-item" href="/geneFinder" z:href="@{/geneFinder(screenType='IP')}">Gene Search</a>
+				<a class="dropdown-item" href="/screen-query" z:href="@{/screen-query/}">Find Similar</a>
+				<div class="dropdown-divider"></div>
+				<a class="dropdown-item" href="/comparePlots"
+				   z:href="@{/comparePlots}">Compare Screens I</a>
+				<a class="dropdown-item" href="/comparePlotsII"
+				   z:href="@{/comparePlotsII}">Compare Screens II</a>
+				<a class="dropdown-item" href="/comparePlotsIII"
+				   z:href="@{/comparePlotsIII}">Compare Screens III</a>
+			</div>
+		</li>
+
+		<li class="nav-item dropdown">
+			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
+			   href="#">Synthetic Lethal</a>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" href="/slscreen" z:href="@{/slscreen}">Fishtail Plots</a>
+				<a class="dropdown-item" href="/geneFinder" z:href="@{/geneFinder(screenType='SL')}">Gene Search</a>
+			</div>
+		</li>
+
+		<li class="nav-item">
+			<a class="nav-link" href="/browse" z:href="@{/browse}">Genome Browser</a>
+		</li>
+
+		<li class="nav-item">
+			<a class="nav-link" href="/screens" z:href="@{/screens}">Screens</a>
+		</li>
+
+		<li class="nav-item">
+			<a class="nav-link" href="#" onclick="document.logoutForm.submit()">
+				<span>Log out</span>
+			</a>
+		</li>
+
+	</ul>
+</nav>
+
+</html>
