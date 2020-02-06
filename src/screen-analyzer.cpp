@@ -88,7 +88,7 @@ int main_create(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( create screen-name [options])");
+	po::options_description visible(APP_NAME R"( create screen-name --low low-fastq-file --high high-fastq-file [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")

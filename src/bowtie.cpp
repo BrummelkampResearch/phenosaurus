@@ -454,15 +454,15 @@ std::vector<Insertions> assignInsertions(const std::string& bowtie,
 
 // --------------------------------------------------------------------
 
-struct counting_filter
+struct progress_filter
 {
-	counting_filter() = delete;
-	counting_filter(progress& p) : m_progress(p) {}
+	progress_filter() = delete;
+	progress_filter(progress& p) : m_progress(p) {}
 	
-	counting_filter(const counting_filter& cf)
+	progress_filter(const progress_filter& cf)
 		: m_progress(const_cast<progress&>(cf.m_progress)) {}
 
-	counting_filter& operator=(const counting_filter& cf) = delete;
+	progress_filter& operator=(const progress_filter& cf) = delete;
 
 	typedef char char_type;
 	typedef io::multichar_input_filter_tag category;
@@ -580,8 +580,7 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 			ext = fastq.stem().extension().string();
 		}
 
-		counting_filter cf(p);
-		in.push(cf);
+		in.push(progress_filter(p));
 		
 		in.push(file);
 
