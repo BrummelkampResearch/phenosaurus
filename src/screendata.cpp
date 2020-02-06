@@ -119,9 +119,20 @@ void ScreenData::map(const std::string& assembly, unsigned readLength,
 	}
 }
 
-void ScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
+void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::vector<Transcript>& transcripts,
 	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
 {
+	// reorder transcripts based on chr > end-position, makes code easier and faster
+
+	// reorder transcripts
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.r.end - b.r.end;
+		return d < 0;
+	});
+
 	for (std::string lh: { "low", "high" })
 	{
 		auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
@@ -141,44 +152,74 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, const
 		
 		file.read(reinterpret_cast<char*>(bwt.data()), size);
 	
+		auto ts = transcripts.begin();
+
 		for (auto&& [chr, strand, pos]: bwt)
 		{
+			assert(chr != CHROM::INVALID);
+
 			// we have a valid hit at chr:pos, see if it matches a transcript
 
-			long L = 0, R = transcripts.size() - 1;
-			auto t = transcripts.data();
+			// skip all that are before the current position
+			while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->r.end <= pos)))
+				++ts;
 
-			while (L <= R)
+			auto t = ts;
+			while (t != transcripts.end() and t->chrom == chr and t->r.start <= pos)
 			{
-				auto i = (L + R) / 2;
-				auto ti = t + i;
-				long d = ti->chrom - chr;
-				if (d == 0)
-					d = static_cast<long>(ti->r.start) - pos;
-				if (d >= 0)
-					R = i - 1;
+				assert(t->r.end > pos);
+
+				if (VERBOSE >= 3)
+					std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+				// insertions.push_back({ pos, t, strand == t->strand });
+				if (strand == t->strand)
+					insertions[t - transcripts.begin()].sense.insert(pos);
 				else
-					L = i + 1;
-			}
-
-			auto e = t + transcripts.size();
-			t += L > 0 ? L - 1 : L;
-			while (t < e and t->chrom == chr and t->r.start <= pos)
-			{
-				if (t->r.end > pos)
-				{
-					if (VERBOSE >= 3)
-						std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
-
-					// insertions.push_back({ pos, t, strand == t->strand });
-					if (strand == t->strand)
-						insertions[t - transcripts.data()].sense.insert(pos);
-					else
-						insertions[t - transcripts.data()].antiSense.insert(pos);
-				}
+					insertions[t - transcripts.begin()].antiSense.insert(pos);
 				
 				++t;
 			}
+
+
+		// for (auto&& [chr, strand, pos]: bwt)
+		// {
+		// 	// we have a valid hit at chr:pos, see if it matches a transcript
+
+		// 	long L = 0, R = transcripts.size() - 1;
+		// 	auto t = transcripts.data();
+
+		// 	while (L <= R)
+		// 	{
+		// 		auto i = (L + R) / 2;
+		// 		auto ti = t + i;
+		// 		long d = ti->chrom - chr;
+		// 		if (d == 0)
+		// 			d = static_cast<long>(ti->r.start) - pos;
+		// 		if (d >= 0)
+		// 			R = i - 1;
+		// 		else
+		// 			L = i + 1;
+		// 	}
+
+		// 	auto e = t + transcripts.size();
+		// 	t += L > 0 ? L - 1 : L;
+		// 	while (t < e and t->chrom == chr and t->r.start <= pos)
+		// 	{
+		// 		if (t->r.end > pos)
+		// 		{
+		// 			if (VERBOSE >= 3)
+		// 				std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+		// 			// insertions.push_back({ pos, t, strand == t->strand });
+		// 			if (strand == t->strand)
+		// 				insertions[t - transcripts.data()].sense.insert(pos);
+		// 			else
+		// 				insertions[t - transcripts.data()].antiSense.insert(pos);
+		// 		}
+				
+		// 		++t;
+		// 	}
 		}
 	
 		if (lh == "low")

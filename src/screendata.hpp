@@ -7,22 +7,6 @@
 
 #include "bowtie.hpp"
 
-class ReferenceGenes;
-
-class AnalyzedScreenData
-{
-  public:
-	AnalyzedScreenData();
-	AnalyzedScreenData(const AnalyzedScreenData&) = delete;
-	AnalyzedScreenData& operator=(const AnalyzedScreenData&) = delete;
-
-
-
-  private:
-
-
-};
-
 // --------------------------------------------------------------------
 
 class ScreenData
@@ -40,8 +24,9 @@ class ScreenData
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 		unsigned threads);
 
+	// note: will reorder transcripts!
 	void analyze(const std::string& assembly, unsigned readLength,
-		const std::vector<Transcript>& transcripts,
+		std::vector<Transcript>& transcripts,
 		std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions);
 
   private:
@@ -50,23 +35,3 @@ class ScreenData
 
 	std::filesystem::path	mDataDir;
 };
-
-// --------------------------------------------------------------------
-
-class MappedScreenData
-{
-  public:
-	MappedScreenData(ScreenData& screenData, const std::string& assembly, unsigned readLength);
-
-	MappedScreenData(const MappedScreenData&) = delete;
-	MappedScreenData& operator=(const MappedScreenData&) = delete;
-
-	const std::string& assembly() const		{ return mAssembly; }
-	unsigned readLength() const				{ return mReadLength; }
-
-  private:
-
-	std::string mAssembly;
-	unsigned mReadLength;
-};
-
