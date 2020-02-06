@@ -18,7 +18,7 @@
           z:href="@{/css/styles.css}"/>
 
 	<title>Error in Phenosaurus</title>
-    <script src="/scripts/screen.js" z:src="@{/scripts/index.js}"></script>
+    <script src="/scripts/screen.js" z:src="@{/scripts/screen.js}"></script>
 </head>
 
 <body>
@@ -85,7 +85,8 @@
 					</li>
 
 					<li>
-						<!-- <div z:replace="~{gene-info :: geneDiv('ip')}"></div> -->
+						<div z:replace="gene-info :: geneDiv"></div>
+						<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
 						<label>
 							<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
 								Dialog</button>

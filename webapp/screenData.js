@@ -12,7 +12,7 @@ export default class ScreenData {
 
 	load() {
 		return new Promise((resolve, reject) => {
-			fetch("ajax/screenData?screen=" + this.screenID, {credentials: "include"})
+			fetch(`ajax/screenData/${this.screenID}`, {credentials: "include"})
 				.then(value => {
 					if (value.ok)
 						return value.json();
@@ -35,7 +35,10 @@ export default class ScreenData {
 	process(data) {
 		let minMI = 0, maxMI = 0, maxInsertions = 0;
 		data.forEach(d => {
+
+			d.insertions = d.low + d.high;
 			d.log2mi = Math.log2(d.mi);
+
 			if (minMI > d.log2mi)
 				minMI = d.log2mi;
 			if (maxMI < d.log2mi)
@@ -79,7 +82,7 @@ export default class ScreenData {
 				reject('already loading');
 			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
 
-			fetch("ajax/unique?screen=" + this.screenID + "&pvCutOff=" + pvCutOff, {credentials: "include"})
+			fetch(`ajax/unique/${this.screenID}&pvCutOff=${pvCutOff}`, {credentials: "include"})
 				.then(data => {
 					if (data.ok)
 						return data.json();
