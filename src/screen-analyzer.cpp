@@ -653,8 +653,10 @@ Command should be either:
 
 	if (command == "start")
 	{
-		server.start(vm.count("no-daemon"), address, port, 2, user);
-		// result = daemon::start(vm.count("no-daemon"), port, user);
+		if (vm.count("no-daemon"))
+			result = server.run_foreground(address, port);
+		else
+			result = server.start(address, port, 2, user);
 	}
 	else if (command == "stop")
 		result = server.stop();

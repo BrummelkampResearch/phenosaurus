@@ -31,18 +31,12 @@
 			"preLaunchTask": "make screen-analyzer"
 		},
 		{
-			"name": "screen-analyzer analyze",
+			"name": "screen-analyzer server",
 			"type": "cppdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/screen-analyzer",
 			"args": [
-				"analyze",
-				"deYtub",
-				"hg19",
-				"--start=tx",
-				"--end=cds",
-				"--mode=collapse",
-				"--reference=ncbi-genes-hg19.txt"
+				"server", "start", "--no-daemon", "--port=10338", "--address=localhost"
 			],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",

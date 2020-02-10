@@ -139,7 +139,8 @@ src/mrsrc.h:
 # yarn rules
 SCRIPTS = $(shell find webapp -name '*.js')
 WEBAPP_FILES = $(SCRIPTS)
-SCRIPT_FILES = $(SCRIPTS:webapp/%.js=docroot/scripts/%.js)
+# SCRIPT_FILES = $(SCRIPTS:webapp/%.js=docroot/scripts/%.js)
+SCRIPT_FILES = docroot/scripts/index.js docroot/scripts/screen.js
 
 ifneq ($(DEBUG),1)
 WEBPACK_OPTIONS = --env.PRODUCTIE

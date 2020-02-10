@@ -25,10 +25,12 @@ class ScreenPlotRegular extends ScreenPlot {
 
 		this.graphType = "regular";
 
-		for (let btn of document.graphTypeForm.graphType) {
-			if (btn.checked)
-				this.graphType = btn.dataset.type;
-			btn.onchange = (e) => this.selectColouring(e.target.dataset.type);
+		if (document.graphTypeForm != null) {
+			for (let btn of document.graphTypeForm.graphType) {
+				if (btn.checked)
+					this.graphType = btn.dataset.type;
+				btn.onchange = (e) => this.selectColouring(e.target.dataset.type);
+			}
 		}
 	}
 
@@ -101,7 +103,32 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			const screenData = new ScreenData(screenName, screenID);
 
-			screenData.load()
+			const f = document.geneSelectionForm;
+			const fd = new FormData(f);
+
+			fd.set("read-length", f["read-length"].value + 0);
+
+			const geneStartOffset = document.getElementById('geneStartOffset').value + 0;
+
+			let geneStart = document.getElementById("geneStartType").value;
+			if (geneStartOffset > 0)
+				geneStart += "+" + geneStartOffset;
+			else if (geneStartOffset < 0)
+				geneStart += geneStartOffset;
+
+			fd.append("gene-start", geneStart);
+
+			const geneEndOffset = document.getElementById('geneEndOffset').value + 0;
+
+			let geneEnd = document.getElementById("geneEndType").value;
+			if (geneEndOffset > 0)
+				geneEnd += "+" + geneEndOffset;
+			else if (geneEndOffset < 0)
+				geneEnd += geneEndOffset;
+
+			fd.append("gene-end", geneEnd);
+
+			screenData.load(fd)
 				.then(() => {
 					this.add(screenData, 0);
 					// this.spinnerTD.classList.remove("loading");
@@ -135,6 +162,9 @@ class ScreenPlotRegular extends ScreenPlot {
 				.catch(err => {
 					plotTitle.removeClass("plot-status-loading").addClass("plot-status-failed");
 					console.log(err);
+
+					$("#plot-status-error-text").text(err).show();
+
 					if (err === "invalid-credentials")
 						showLoginDialog(null, () => screenData.load());
 					else reject(err);

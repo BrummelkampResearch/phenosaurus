@@ -42,8 +42,10 @@
 
 				<hr/>
 
+				<h6>options</h6>
 				<ul class="option-group">
-					<li>
+
+					<!-- <li>
 						<form name="graphTypeForm">
 							<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="graphTypeBtns">
 								<label class="btn btn-secondary active">
@@ -65,7 +67,7 @@
 								</label>
 							</div>
 						</form>
-					</li>
+					</li> -->
 
 					<li>
 						<label>
@@ -78,7 +80,7 @@
 					<li>
 						<input type="text" id="highlightGene" size="5"
 							   placeholder="Enter genename..." align="right"
-							   z:value="${selectedGene}"
+							   z:value="${selectedGene?:''}"
 							   class="form-control form-control-sm"/>
 						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight gene</button>
 						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear Highlight</button>
@@ -93,6 +95,92 @@
 						</label>
 					</li>
 				</ul>
+
+				<hr/>
+				<h6>gene selection</h6>
+				<form name="geneSelectionForm">
+				<ul class="option-group">
+					<li>
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" style="min-width: 4em;">Assembly</span>
+							</div>
+
+							<select class="custom-select custom-select-sm" name="assembly">
+								<option value="hg19" selected="selected">HG19</option>
+							</select>
+						</div>
+
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Read length</span>
+							</div>
+
+							<input type="text" class="form-control" name="read-length" placeholder="read length..."/>
+						</div>
+
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Refseq</span>
+							</div>
+
+							<select class="custom-select custom-select-sm" name="reference">
+								<option value="ncbi-genes-hg19.txt" selected="selected">NCBI</option>
+							</select>
+						</div>
+
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text">Mode</span>
+							</div>
+
+							<select class="custom-select custom-select-sm" name="mode">
+								<option value="collapse" selected="selected">Collapse</option>
+								<option value="longest" selected="selected">Longest</option>
+							</select>
+						</div>
+
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" id="startLabel" style="min-width: 4em;">Start</span>
+							</div>
+
+							<select class="custom-select custom-select-sm" id="geneStartType">
+								<option value="txStart" selected="selected">tx-start</option>
+								<option value="txEnd">tx-end</option>
+								<option value="cdsStart">cds-start</option>
+								<option value="cdsEnd">cds-end</option>
+							</select>
+
+							<input type="text" class="form-control" aria-label="Start of gene" aria-describedby="startLabel"
+								id="geneStartOffset" placeholder="offset..."/>
+						</div>
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" id="startLabel" style="min-width: 4em;">End</span>
+							</div>
+
+							<select class="custom-select custom-select-sm" id="geneEndType">
+								<option value="txStart">tx-start</option>
+								<option value="txEnd">tx-end</option>
+								<option value="cdsStart">cds-start</option>
+								<option value="cdsEnd" selected="selected">cds-end</option>
+							</select>
+
+							<input type="text" class="form-control" aria-label="Start of gene" aria-describedby="startLabel"
+								id="geneEndOffset" placeholder="offset..."/>
+						</div>
+
+					</li>
+				</ul>
+				</form>
+
 			</div>
 
 		</div>
@@ -101,7 +189,8 @@
 			<div class="plot-title">
 				<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading screen <span class="screen-name"></span>...</span>
 				<span class="loaded">Fishtail plot for <span class="screen-name"></span></span>
-				<span class="failed">Fishtail plot for <span class="screen-name"></span> could not be loaded.</span>
+				<span class="failed">Fishtail plot for <span class="screen-name"></span> could not be loaded.
+					<span id="plot-status-error-text"></span></span>
 			</div>
 
 			<div class="plot-container">

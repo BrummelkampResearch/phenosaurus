@@ -10,24 +10,35 @@ export default class ScreenData {
 		this.geneColours = null;
 	}
 
-	load() {
+	load(options) {
 		return new Promise((resolve, reject) => {
-			fetch(`ajax/screenData/${this.screenID}`, {credentials: "include"})
+			fetch(`ajax/screenData/${this.screenID}`, {
+				method: "post",
+				credentials: "include",
+				body: options
+			})
 				.then(value => {
-					if (value.ok)
-						return value.json();
-					if (value.status === 403)
-						throw "invalid-credentials";
+					// if (value.ok)
+					// 	return value.json();
+					// if (value.status === 403)
+					// 	throw "invalid-credentials";
+					
+					return value.json();
 				})
 				.then(data => {
+					if (data.error != null)
+						throw data.error;
+
 					this.process(data);
 					resolve(this);
 				})
 				.catch(err => {
-					console.log(err);
-					if (err === "invalid-credentials")
-						showLoginDialog(null, () => this.loadScreen(this.screenName, this.screenID));
-					else reject(err);
+					console.log("Error fetching screendata: " + err);
+
+					// if (err === "invalid-credentials")
+					// 	showLoginDialog(null, () => this.loadScreen(this.screenName, this.screenID));
+					// else
+					reject(err);
 				});
 		});
 	}

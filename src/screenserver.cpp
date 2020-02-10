@@ -35,6 +35,28 @@ struct DataPoint
 	}	
 };
 
+// -----------------------------------------------------------------------
+
+void to_element(zeep::el::element& e, Mode mode)
+{
+	switch (mode)
+	{
+		case Mode::Collapse:	e = "collapse"; break;
+		case Mode::Longest:		e = "longest"; break;
+		case Mode::Start:		e = "start"; break;
+		case Mode::End:			e = "end"; break;
+	}
+}
+
+void from_element(const zeep::el::element& e, Mode& mode)
+{
+	if (e == "collapse")		mode = Mode::Collapse;
+	else if (e == "longest")	mode = Mode::Longest;
+	else if (e == "start")		mode = Mode::Start;
+	else if (e == "end")		mode = Mode::End;
+	else throw std::runtime_error("Invalid mode");
+}
+
 // --------------------------------------------------------------------
 
 class ScreenRestController : public zh::rest_controller
@@ -45,14 +67,18 @@ class ScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
+		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx, "id", "assembly", "read-length", "reference", "mode", "gene-start", "gene-end");
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
+	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength, const std::string& reference,
+		Mode mode, const std::string& geneStart, const std::string& geneEnd);
 
 	fs::path mScreenDir;
 };
 
-std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
+std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength,
+	const std::string& reference, Mode mode, const std::string& geneStart, const std::string& geneEnd)
 {
 	fs::path screenDir = mScreenDir / screen;
 
@@ -60,13 +86,6 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 		throw std::runtime_error("No such screen: " + screen);
 
 	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
-
-	std::string assembly = "hg19";	//vm["assembly"].as<std::string>();
-	std::string reference = "ncbi-genes-hg19.txt"; //vm["reference"].as<std::string>();
-
-	unsigned readLength = 0;
-	// if (vm.count("read-length"))
-	// 	readLength = vm["read-length"].as<unsigned>();
 	
 	// -----------------------------------------------------------------------
 
@@ -74,16 +93,7 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 	// if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
 	// 	cutOverlap = false;
 
-	Mode mode;
-	// if (vm["mode"].as<std::string>() == "collapse")
-		mode = Mode::Collapse;
-	// else // if (vm["mode"].as<std::string>() == "longest")
-	// 	mode = Mode::Longest;
-
-	std::string start = "tx";
-	std::string end = "cds";
-
-	auto transcripts = loadTranscripts(reference, mode, start, end, cutOverlap);
+	auto transcripts = loadTranscripts(reference, mode, geneStart, geneEnd, cutOverlap);
 
 	// -----------------------------------------------------------------------
 	
@@ -155,6 +165,11 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 	}
 	
 	return result;
+}
+
+std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
+{
+	return screenDataEx(screen, "hg19", 0, "ncbi-genes-hg19.txt", Mode::Collapse, "tx", "cds");
 }
 
 // --------------------------------------------------------------------
