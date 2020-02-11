@@ -104,7 +104,15 @@ VPATH += $(SRC_VPATH)
 
 PROGRAMS = screen-analyzer
 
-OBJECTS = $(OBJDIR)/refannb.o
+OBJECTS = \
+	$(OBJDIR)/adjust.o \
+	$(OBJDIR)/bowtie.o \
+	$(OBJDIR)/fisher.o \
+	$(OBJDIR)/refannb.o \
+	$(OBJDIR)/screen-analyzer.o \
+	$(OBJDIR)/screendata.o \
+	$(OBJDIR)/screenserver.o \
+	$(OBJDIR)/utils.o
 
 $(OBJDIR)/%.o: %.cpp | $(OBJDIR)
 	@ echo ">>" $<

@@ -35,6 +35,15 @@ struct DataPoint
 	}	
 };
 
+// // --------------------------------------------------------------------
+
+// struct ScreenInfo
+// {
+// 	std::string					name;
+// 	std::vector<std::string>	assemblies;
+// 	std::vector<unsigned>		readLengths;
+// };
+
 // -----------------------------------------------------------------------
 
 void to_element(zeep::el::element& e, Mode mode)
@@ -67,18 +76,19 @@ class ScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
-		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx, "id", "assembly", "read-length", "reference", "mode", "gene-start", "gene-end");
+		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
+			"id", "assembly", "read-length", "reference", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
 	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength, const std::string& reference,
-		Mode mode, const std::string& geneStart, const std::string& geneEnd);
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	fs::path mScreenDir;
 };
 
 std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength,
-	const std::string& reference, Mode mode, const std::string& geneStart, const std::string& geneEnd)
+	const std::string& reference, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
 	fs::path screenDir = mScreenDir / screen;
 
@@ -88,10 +98,6 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
 	
 	// -----------------------------------------------------------------------
-
-	bool cutOverlap = true;
-	// if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
-	// 	cutOverlap = false;
 
 	auto transcripts = loadTranscripts(reference, mode, geneStart, geneEnd, cutOverlap);
 
@@ -169,7 +175,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 
 std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
 {
-	return screenDataEx(screen, "hg19", 0, "ncbi-genes-hg19.txt", Mode::Collapse, "tx", "cds");
+	return screenDataEx(screen, "hg19", 0, "ncbi-genes-hg19.txt", Mode::Collapse, true, "tx", "cds");
 }
 
 // --------------------------------------------------------------------

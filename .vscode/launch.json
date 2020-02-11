@@ -4,7 +4,17 @@
 	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
 	"version": "0.2.0",
 	"configurations": [
-		
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Launch met lldb",
+			"program": "${workspaceFolder}/screen-analyzer",
+			"args": [
+				"server", "start", "--no-daemon", "--port=10338", "--address=localhost"
+			],
+			"cwd": "${workspaceFolder}",
+			"preLaunchTask": "make screen-analyzer"
+		},
 		{
 			"name": "screen-analyzer",
 			"type": "cppdbg",
@@ -52,6 +62,9 @@
 			],
 			"preLaunchTask": "make screen-analyzer"
 		},
+
+
+
 		{
 			"name": "adjust",
 			"type": "cppdbg",

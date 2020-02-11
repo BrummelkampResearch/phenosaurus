@@ -92,7 +92,7 @@ ScreenData::ScreenData(std::filesystem::path dir, std::filesystem::path low, std
 		else
 			to = dir / p.first;
 		
-		fs::create_hard_link(p.second, to);
+		fs::create_symlink(p.second, to);
 	}
 }
 

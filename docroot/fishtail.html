@@ -35,10 +35,17 @@
 
 			<div class="container-fluid">
 
-				<select id="screenList" data-placeholder="Choose a Screen...">
-					<option value=""></option>
-					<option z:each="screen: ${screens}" z:attr="data-screen=${screen.id}" z:text="${screen.name}"></option>
-				</select>
+				<h6>screen</h6>
+
+				<ul class="option-group">
+					<li>
+						<select id="screenList" data-placeholder="Choose a Screen...">
+							<option value=""></option>
+							<option z:each="screen: ${screens}" z:attr="data-screen=${screen.id}" z:text="${screen.name}"></option>
+						</select>
+
+					</li>	
+				</ul>	
 
 				<hr/>
 
@@ -70,30 +77,19 @@
 					</li> -->
 
 					<li>
-						<label>
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text">p-value</span>
+							</div>
+
 							<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
 								   placeholder="0.05" align="right"
-								   class="form-control form-control-sm"/> P-Value cut off
-						</label>
+								   class="form-control form-control-sm"/>
+						</div>
 					</li>
 
-					<li>
-						<input type="text" id="highlightGene" size="5"
-							   placeholder="Enter genename..." align="right"
-							   z:value="${selectedGene?:''}"
-							   class="form-control form-control-sm"/>
-						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight gene</button>
-						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear Highlight</button>
-					</li>
-
-					<li>
-						<div z:replace="gene-info :: geneDiv"></div>
-						<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
-						<label>
-							<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
-								Dialog</button>
-						</label>
-					</li>
+			
 				</ul>
 
 				<hr/>
@@ -144,6 +140,14 @@
 							</select>
 						</div>
 
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text">
+									<input type="checkbox" class="form-control form-control-sm" name="cut-overlap" checked="checked" />
+								</span>
+							</div>
+							<input type="text" class="form-control form-control-sm" value="Remove overlapped regions" />
+						</div>
 
 						<div class="input-group input-group-sm mb-3">
 							<div class="input-group-prepend">
@@ -180,6 +184,44 @@
 					</li>
 				</ul>
 				</form>
+
+
+				<hr/>
+				<h6>highlight</h6>
+				<ul class="option-group">
+					<li>
+						<!-- <input type="text" id="highlightGene" size="5"
+							   placeholder="Enter genename..." align="right"
+							   z:value="${selectedGene?:''}"
+							   class="form-control form-control-sm"/>
+						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight gene</button>
+						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear Highlight</button> -->
+
+						<div class="input-group input-group-sm mb-3">
+							<div class="input-group-prepend">
+								<span class="input-group-text" id="startLabel" style="min-width: 4em;">Gene</span>
+							</div>
+
+							<input type="text" id="highlightGene" size="5"
+							   placeholder="Enter genename..." align="right"
+							   z:value="${selectedGene?:''}"
+							   class="form-control form-control-sm"/>
+						</div>
+
+						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight</button>
+						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear</button>
+
+					</li>
+
+					<li>
+						<div z:replace="gene-info :: geneDiv"></div>
+						<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
+						<label>
+							<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
+								Dialog</button>
+						</label>
+					</li>					
+				</ul>
 
 			</div>
 
