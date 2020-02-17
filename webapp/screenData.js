@@ -1,6 +1,6 @@
-import {showLoginDialog} from "./index";
+import { showLoginDialog } from "./index";
 import * as d3 from "d3";
-import {pvCutOff} from "./screenPlot";
+import { pvCutOff } from "./screenPlot";
 
 export default class ScreenData {
 
@@ -22,7 +22,7 @@ export default class ScreenData {
 					// 	return value.json();
 					// if (value.status === 403)
 					// 	throw "invalid-credentials";
-					
+
 					return value.json();
 				})
 				.then(data => {
@@ -65,7 +65,7 @@ export default class ScreenData {
 		maxInsertions = Math.ceil(Math.pow(10, Math.log10(maxInsertions) + 0.1));
 
 		this.xRange = [1, maxInsertions];
-		this.yRange = [	Math.floor(minMI), Math.ceil(maxMI) ];
+		this.yRange = [Math.floor(minMI), Math.ceil(maxMI)];
 
 		// create dot data
 		this.dotData = d3.nest()
@@ -81,8 +81,7 @@ export default class ScreenData {
 
 	loadUnique() {
 		return new Promise((resolve, reject) => {
-			if (this.geneColours != null)
-			{
+			if (this.geneColours != null) {
 				resolve(null);
 				return;
 			}
@@ -93,7 +92,7 @@ export default class ScreenData {
 				reject('already loading');
 			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
 
-			fetch(`ajax/unique/${this.screenID}&pvCutOff=${pvCutOff}`, {credentials: "include"})
+			fetch(`ajax/unique/${this.screenID}&pvCutOff=${pvCutOff}`, { credentials: "include" })
 				.then(data => {
 					if (data.ok)
 						return data.json();

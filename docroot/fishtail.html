@@ -105,6 +105,7 @@
 
 							<select class="custom-select custom-select-sm" name="assembly">
 								<option value="hg19" selected="selected">HG19</option>
+								<option value="hg38" selected="selected">HG38</option>
 							</select>
 						</div>
 
@@ -124,7 +125,9 @@
 							</div>
 
 							<select class="custom-select custom-select-sm" name="reference">
-								<option value="ncbi-genes-hg19.txt" selected="selected">NCBI</option>
+								<option value="ncbi" selected="selected">NCBI</option>
+								<!-- <option value="ucsc" selected="selected">UCSC</option> -->
+								<option value="gencode">Gencode v32</option>
 							</select>
 						</div>
 
@@ -180,11 +183,11 @@
 							<input type="text" class="form-control" aria-label="Start of gene" aria-describedby="startLabel"
 								id="geneEndOffset" placeholder="offset..."/>
 						</div>
-
 					</li>
 				</ul>
 				</form>
 
+				<button class="btn" id="reload-btn">Reload</button>
 
 				<hr/>
 				<h6>highlight</h6>

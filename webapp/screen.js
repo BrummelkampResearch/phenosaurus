@@ -192,6 +192,21 @@ $(function () {
 		}
 	});
 
+	$("#reload-btn").on("click", (e) => {
+		if (e && e.preventDefault)
+			e.preventDefault();
+
+		const selected = screenList.selectedOptions;
+		if (selected.length === 1) {
+			const screenID = selected.item(0).dataset.screen;
+			const screenName = selected.item(0).textContent;
+
+			plot.loadScreen(screenID, screenName);
+		}
+
+		return false;
+	});
+
 	if (selectedName !== "" && selectedID !== "")
 		plot.loadScreen(selectedID, selectedName)
 			.then(() => plot.highlightGene());

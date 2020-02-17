@@ -61,7 +61,8 @@ po::options_description get_config_options()
 	config.add_options()
 		("bowtie", po::value<std::string>(),	"Bowtie executable")
 		("assembly", po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
-		("reference", po::value<std::string>(),	"Path to the refseq file containing reference genes")
+		("reference-hg19", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG19")
+		("reference-hg38", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG38")
 		("read-length", po::value<unsigned>(),	"Read length to use, if specified reads will be trimmed to this size")
 		("threads", po::value<unsigned>(),		"Nr of threads to use")
 		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
@@ -336,7 +337,7 @@ int main_analyze(int argc, char* const argv[])
 	po::positional_options_description p;
 	p.add("screen-name", 1);
 	p.add("assembly", 1);
-	p.add("reference", 1);
+	// p.add("reference", 1);
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
@@ -372,7 +373,7 @@ int main_analyze(int argc, char* const argv[])
 		exit(0);
 	}
 
-	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0 or vm.count("reference") == 0)
+	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0 /*or vm.count("reference") == 0*/)
 	{
 		po::options_description visible_options;
 		visible_options.add(visible).add(config);
@@ -439,7 +440,8 @@ Examples:
 	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
 
 	std::string assembly = vm["assembly"].as<std::string>();
-	std::string reference = vm["reference"].as<std::string>();
+	// std::string reference = vm["reference"].as<std::string>();
+	std::string reference = vm["reference-"+assembly].as<std::string>();
 
 	unsigned readLength = 0;
 	if (vm.count("read-length"))
@@ -457,8 +459,7 @@ Examples:
 	else // if (vm["mode"].as<std::string>() == "longest")
 		mode = Mode::Longest;
 
-	auto transcripts = loadTranscripts(vm["reference"].as<std::string>(),
-		mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+	auto transcripts = loadTranscripts(reference, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 
 	// -----------------------------------------------------------------------
 	

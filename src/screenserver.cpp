@@ -35,14 +35,22 @@ struct DataPoint
 	}	
 };
 
-// // --------------------------------------------------------------------
+// --------------------------------------------------------------------
 
-// struct ScreenInfo
-// {
-// 	std::string					name;
-// 	std::vector<std::string>	assemblies;
-// 	std::vector<unsigned>		readLengths;
-// };
+struct ScreenInfo
+{
+	std::string					name;
+	std::vector<std::string>	assemblies;
+	std::vector<unsigned>		readLengths;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("name", name)
+		   & zeep::make_nvp("assembly", assemblies)
+		   & zeep::make_nvp("readlength", readLengths);
+	}	
+};
 
 // -----------------------------------------------------------------------
 
@@ -99,7 +107,9 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	
 	// -----------------------------------------------------------------------
 
-	auto transcripts = loadTranscripts(reference, mode, geneStart, geneEnd, cutOverlap);
+	const std::string reference_file = reference + "-genes-" + assembly + ".txt";
+
+	auto transcripts = loadTranscripts(reference_file, mode, geneStart, geneEnd, cutOverlap);
 
 	// -----------------------------------------------------------------------
 	
@@ -224,6 +234,15 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 			{ "id", i->path().filename().string() },
 			{ "name", i->path().filename().string() }
 		};
+
+
+		for (auto a = fs::directory_iterator(i->path()); a != fs::directory_iterator(); ++a)
+		{
+			if (not a->is_directory())
+				continue;
+			
+			screen["assembly"].push_back(a->path().filename().string());
+		}
 
 		screens.push_back(screen);
 	}

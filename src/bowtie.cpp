@@ -14,10 +14,11 @@
 #include <iostream>
 #include <iomanip>
 #include <filesystem>
-// #include <thread>
 #include <functional>
 
+// #include <thread>		// Don't use GNU's version, it crashes...
 #include <boost/thread.hpp>
+
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/process.hpp>
@@ -229,231 +230,6 @@ std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<T
 
 // --------------------------------------------------------------------
 
-std::vector<Insertions> assignInsertions(const std::string& bowtie,
-	const std::string& index, const std::string& fastq,
-	const std::vector<Transcript>& transcripts,
-	size_t nrOfThreads)
-{
-	auto p = std::to_string(nrOfThreads); 
-
-	std::vector<const char*> args = {
-		bowtie.c_str(),
-		"-p", p.c_str(),
-		index.c_str(),
-		fastq.c_str(),
-		"--max", "/tmp/max.fastq",
-		"-m", "1",
-		"-v", "1",
-		nullptr
-	};
-
-	if (not fs::exists(args.front()))
-		throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
-
-	// ready to roll
-	double startTime = system_time();
-
-	int ifd[2], ofd[2], efd[2], err;
-
-	err = pipe(ifd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe(ofd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe(efd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-
-	int pid = fork();
-
-	if (pid == 0)    // the child
-	{
-		setpgid(0, 0);        // detach from the process group, create new
-
-		signal(SIGCHLD, SIG_IGN);    // block child died signals
-
-		dup2(ifd[0], STDIN_FILENO);
-		close(ifd[0]);
-		close(ifd[1]);
-
-		dup2(ofd[1], STDOUT_FILENO);
-		close(ofd[0]);
-		close(ofd[1]);
-
-		dup2(efd[1], STDERR_FILENO);
-		close(efd[0]);
-		close(efd[1]);
-
-		const char* env[] = { nullptr };
-		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
-		exit(-1);
-	}
-
-	if (pid == -1)
-	{
-		close(ifd[0]);
-		close(ifd[1]);
-		close(ofd[0]);
-		close(ofd[1]);
-		close(efd[0]);
-		close(efd[1]);
-
-		throw std::runtime_error("fork failed: "s + strerror(errno));
-	}
-
-	// handle stdin, if any
-	close(ifd[0]);
-
-
-
-	// std::thread thread([&stdin, ifd, args]()
-	// {
-	//     char buffer[1024];
-
-	//     while (not stdin.eof())
-	//     {
-	//         std::streamsize k = io::read(stdin, buffer, sizeof(buffer));
-
-	//         if (k <= -1)
-	//             break;
-
-	//         const char* b = buffer;
-
-	//         while (k > 0)
-	//         {
-	//             int r = write(ifd[1], b, k);
-	//             if (r > 0)
-	//                 b += r, k -= r;
-	//             else if (r < 0 and errno != EAGAIN)
-	//                 throw std::runtime_error("Error writing to command "s + args.front());
-	//         }
-	//     }
-
-	//     close(ifd[1]);
-	// });
-
-	// make stdout and stderr non-blocking
-	int flags;
-
-	close(ofd[1]);
-	flags = fcntl(ofd[0], F_GETFL, 0);
-	fcntl(ofd[0], F_SETFL, flags | O_NONBLOCK);
-
-	close(efd[1]);
-	flags = fcntl(efd[0], F_GETFL, 0);
-	fcntl(efd[0], F_SETFL, flags | O_NONBLOCK);
-
-	// OK, so now the executable is started and the pipes are set up
-	// read from the pipes until done.
-
-	bool errDone = false, outDone = false, killed = false;
-	double maxRunTime = 0;
-
-	const size_t kBufferSize = 4096;
-	char buffer[kBufferSize + 1] = {};
-	int remaining = 0;
-
-	std::vector<Insertions> insertions(transcripts.size());
-
-	while (not errDone and not outDone and not killed)
-	{
-		while (not outDone)
-		{
-			int r = read(ofd[0], buffer + remaining, kBufferSize - remaining);
-			if (r >= 0 and r < kBufferSize)
-				buffer[r + remaining] = 0;
-
-			if (r > 0)
-			{
-				auto s = buffer;
-				auto e = buffer + remaining + r;
-				while (s < e)
-				{
-					auto l = strchr(s, '\n');
-					assert(l < e);
-
-					if (l == nullptr)
-					{
-						remaining = e - s;
-						memmove(buffer, s, remaining);
-						buffer[remaining] = 0;
-						break;
-					}
-
-					assignInsertions(s, transcripts, insertions);
-					s = l + 1;
-				}
-			}
-			else if (r == 0 or errno != EAGAIN)
-			{
-				if (remaining > 0)
-					assignInsertions(buffer, transcripts, insertions);
-				outDone = true;
-			}
-			else
-				break;
-		}
-
-		while (not errDone)
-		{
-			char errBuffer[1024];
-			int r = read(efd[0], errBuffer, sizeof(errBuffer));
-
-			if (r > 0)
-				std::cerr.write(errBuffer, r);
-				// stderr.write(buffer, r);
-			else if (r == 0 and errno != EAGAIN)
-				errDone = true;
-			else
-				break;
-		}
-
-		if (not errDone and not outDone)
-		{
-			if (not killed and maxRunTime > 0 and startTime + maxRunTime < system_time())
-			{
-				kill(pid, SIGKILL);
-				killed = true;
-
-				std::cerr << std::endl
-						  << "maximum run time exceeded" << std::endl;
-			}
-			else
-				sleep(1);
-		}
-	}
-
-	// thread.join();
-
-	close(ofd[0]);
-	close(efd[0]);
-
-	// no zombies please, removed the WNOHANG. the forked application should really stop here.
-	int status = 0;
-	waitpid(pid, &status, 0);
-
-	int result = -1;
-	if (WIFEXITED(status))
-		result = WEXITSTATUS(status);
-
-	// return result;
-
-	return insertions;
-
-	// std::vector<Insertion> result;
-
-
-
-	// // int out, err;
-	// // int r = ForkExec(args, 0, -1, out, err);
-
-
-	// if (r != 0)
-	// {
-	// 	std::cerr << "Error running bowtie" << std::endl
-	// 			  << err.str() << std::endl;
-	// }
-
-	// return result;
-}
-
-// --------------------------------------------------------------------
-
 struct progress_filter
 {
 	progress_filter() = delete;
@@ -482,9 +258,9 @@ struct progress_filter
 
 // -----------------------------------------------------------------------
 
-std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
+std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned readLength,
-	int maxmismatch, std::filesystem::path mismatchfile)
+	int maxmismatch = 0, std::filesystem::path mismatchfile = {})
 {
 	if (readLength)
 		throw std::runtime_error("Sorry, not implemented yet");
@@ -601,8 +377,6 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 			}
 	    }
 
-		std::cerr << "input done" << std::endl;
-
 	    close(fd);
 	});
 
@@ -620,19 +394,10 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 		for (;;)
 		{
 			int r = read(fd, buffer, sizeof(buffer));
-			if (r == 0)
+			if (r <= 0)
 				break;
-			
-			if (r > 0)
-			{
-				std::cerr.write(buffer, r);
-				continue;
-			}
 
-			if (errno == EAGAIN)
-				continue;
-			
-			break;
+			std::cerr.write(buffer, r);
 		}
 	});
 
@@ -644,15 +409,8 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	{
 		int r = read(ofd[0], buffer, sizeof(buffer));
 
-		if (r == 0)
+		if (r <= 0)	// keep it simple
 			break;
-		
-		if (r < 0)
-		{
-			if (errno == EAGAIN)
-				continue;
-			break;
-		}
 
 		for (char* s = buffer; s < buffer + r; ++s)
 		{
@@ -733,13 +491,13 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 {
 	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + ".fastq");
 
-	auto result = runBowtie(bowtie, bowtieIndex, fastq, threads, readLength, 1, m);
+	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, threads, readLength, 1, m);
 
 	if (fs::exists(m))
 	{
 		if (fs::file_size(m) > 0)
 		{
-			auto ins_2 = runBowtie(bowtie, bowtieIndex, m, threads, readLength, 0, m);
+			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, readLength);
 
 			std::vector<Insertion> merged;
 			merged.reserve(result.size() + ins_2.size());
