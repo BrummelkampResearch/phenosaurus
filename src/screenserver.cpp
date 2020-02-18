@@ -231,19 +231,13 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 	using json = zeep::el::element;
 	json screens, screenInfo;
 
+	std::vector<std::string> screenNames;
 	for (auto i = fs::directory_iterator(mScreenDir); i != fs::directory_iterator(); ++i)
 	{
 		if (not i->is_directory())
 			continue;
 		
-		auto name = i->path().filename().string();
-
-		json screen{
-			{ "id", name },
-			{ "name", name }
-		};
-
-		screens.push_back(screen);
+		screenNames.push_back(i->path().filename().string());
 
 		json info;
 
@@ -255,7 +249,32 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 			info["assembly"].push_back(a->path().filename().string());
 		}
 
-		screenInfo[name] = info;
+		screenInfo[screenNames.back()] = info;
+	}
+
+	std::sort(screenNames.begin(), screenNames.end(), [](auto& a, auto& b) -> bool
+	{
+		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+		bool result;
+		if (r.first == a.end() and r.second == b.end())
+			result = false;
+		else if (r.first == a.end())
+			result = true;
+		else if (r.second == b.end())
+			result = false;
+		else
+			result = std::tolower(*r.first) < std::tolower(*r.second);
+		return result;
+	});
+
+	for (auto& name: screenNames)
+	{
+		json screen{
+			{ "id", name },
+			{ "name", name }
+		};
+
+		screens.push_back(screen);
 	}
 
 	sub.put("screens", screens);
