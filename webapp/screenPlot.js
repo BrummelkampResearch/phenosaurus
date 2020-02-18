@@ -409,23 +409,26 @@ export default class ScreenPlot {
 			evt.preventDefault();
 		}
 
-		this.plotData.attr('transform', d3.event.transform);
-
-		const k = d3.event.transform.k;
-
-		const x = this.x;
-		const y = this.y;
-
-		[...this.screens.keys()].forEach(sn => {
-			const screenPlotData = this.plotData.select(`#plot-${sn}`);
-
-			screenPlotData.selectAll("g.dot")
-				// .select("circle")
-				.attr('transform', d => `translate(${x(d.insertions)},${y(d.log2mi)}) scale(${1/k})`);
-		});
-
-		this.gX.call(this.xAxis.scale(d3.event.transform.rescaleX(this.x)));
-		this.gY.call(this.yAxis.scale(d3.event.transform.rescaleY(this.y)));
+		if (this.xAxis != null && this.yAxis != null)
+		{
+			this.plotData.attr('transform', d3.event.transform);
+	
+			const k = d3.event.transform.k;
+	
+			const x = this.x;
+			const y = this.y;
+	
+			[...this.screens.keys()].forEach(sn => {
+				const screenPlotData = this.plotData.select(`#plot-${sn}`);
+	
+				screenPlotData.selectAll("g.dot")
+					// .select("circle")
+					.attr('transform', d => `translate(${x(d.insertions)},${y(d.log2mi)}) scale(${1/k})`);
+			});
+	
+			this.gX.call(this.xAxis.scale(d3.event.transform.rescaleX(this.x)));
+			this.gY.call(this.yAxis.scale(d3.event.transform.rescaleY(this.y)));
+		}
 	};
 
 	getColor(screenNr) {

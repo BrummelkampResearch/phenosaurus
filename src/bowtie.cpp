@@ -293,9 +293,9 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 	// ready to roll
 	int ifd[2], ofd[2], efd[2], err;
 
-	err = pipe(ifd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe(ofd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe(efd); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(ifd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(ofd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(efd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
 
 	int pid = fork();
 
@@ -334,7 +334,6 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		throw std::runtime_error("fork failed: "s + strerror(errno));
 	}
 
-	// handle stdin, if any
 	close(ifd[0]);
 
 	boost::thread thread([&fastq, fd = ifd[1]]()
@@ -432,8 +431,10 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 			}
 			catch(const std::exception& e)
 			{
-				std::cerr << e.what() << std::endl
-							<< line << std::endl;
+				std::cerr << std::endl
+						  << "Exception parsing " << fastq << e.what() << std::endl
+						  << line << std::endl
+						  << std::endl;
 			}
 
 			line.clear();

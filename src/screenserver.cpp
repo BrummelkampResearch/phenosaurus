@@ -89,14 +89,14 @@ class ScreenRestController : public zh::rest_controller
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
-	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength, const std::string& reference,
+	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength, std::string reference,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	fs::path mScreenDir;
 };
 
 std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength,
-	const std::string& reference, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+	std::string reference, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
 	fs::path screenDir = mScreenDir / screen;
 
@@ -107,6 +107,9 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	
 	// -----------------------------------------------------------------------
 
+	if (reference.empty())
+		reference = "ncbi";
+
 	const std::string reference_file = reference + "-genes-" + assembly + ".txt";
 
 	auto transcripts = loadTranscripts(reference_file, mode, geneStart, geneEnd, cutOverlap);
@@ -116,6 +119,9 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	std::vector<Insertions> lowInsertions, highInsertions;
 
 	data->analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
+	
+	if (lowInsertions.size() != transcripts.size() or highInsertions.size() != transcripts.size())
+		throw std::runtime_error("Failed to calculate analysis");
 
 	long lowSenseCount = 0, lowAntiSenseCount = 0;
 	for (auto& i: lowInsertions)
@@ -223,31 +229,37 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 	sub.put("page", "fishtail");
 
 	using json = zeep::el::element;
-	json screens;
+	json screens, screenInfo;
 
 	for (auto i = fs::directory_iterator(mScreenDir); i != fs::directory_iterator(); ++i)
 	{
 		if (not i->is_directory())
 			continue;
 		
+		auto name = i->path().filename().string();
+
 		json screen{
-			{ "id", i->path().filename().string() },
-			{ "name", i->path().filename().string() }
+			{ "id", name },
+			{ "name", name }
 		};
 
+		screens.push_back(screen);
+
+		json info;
 
 		for (auto a = fs::directory_iterator(i->path()); a != fs::directory_iterator(); ++a)
 		{
 			if (not a->is_directory())
 				continue;
 			
-			screen["assembly"].push_back(a->path().filename().string());
+			info["assembly"].push_back(a->path().filename().string());
 		}
 
-		screens.push_back(screen);
+		screenInfo[name] = info;
 	}
 
 	sub.put("screens", screens);
+	sub.put("screenInfo", screenInfo);
 
 	create_reply_from_template("fishtail.html", sub, reply);
 }

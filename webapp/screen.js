@@ -106,7 +106,8 @@ class ScreenPlotRegular extends ScreenPlot {
 			const f = document.geneSelectionForm;
 			const fd = new FormData(f);
 
-			fd.set("read-length", f["read-length"].value + 0);
+			if (f["read-length"])
+				fd.set("read-length", f["read-length"].value + 0);
 
 			const geneStartOffset = document.getElementById('geneStartOffset').value + 0;
 

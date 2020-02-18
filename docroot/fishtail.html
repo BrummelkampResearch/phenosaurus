@@ -28,6 +28,10 @@
 <input type="hidden" name="selectedScreen" z:value="${selectedScreen}"/>
 <input type="hidden" name="selectedGene" z:value="${selectedGene}"/>
 
+<script z:inline="javascript">
+	const screenInfo = /*[[${screenInfo}]]*/ null;
+</script>
+
 <div class="container-fluid">
 
 	<div class="row">
@@ -110,26 +114,25 @@
 						</div>
 
 
-						<div class="input-group input-group-sm mb-3">
+						<!-- <div class="input-group input-group-sm mb-3">
 							<div class="input-group-prepend">
 								<span class="input-group-text">Read length</span>
 							</div>
 
 							<input type="text" class="form-control" name="read-length" placeholder="read length..."/>
-						</div>
+						</div> -->
 
 
-						<div class="input-group input-group-sm mb-3">
+						<!-- <div class="input-group input-group-sm mb-3">
 							<div class="input-group-prepend">
 								<span class="input-group-text">Refseq</span>
 							</div>
 
 							<select class="custom-select custom-select-sm" name="reference">
 								<option value="ncbi" selected="selected">NCBI</option>
-								<!-- <option value="ucsc" selected="selected">UCSC</option> -->
 								<option value="gencode">Gencode v32</option>
 							</select>
-						</div>
+						</div> -->
 
 
 						<div class="input-group input-group-sm mb-3">
