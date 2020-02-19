@@ -523,7 +523,7 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 	}
 	
 	if (m[3].matched)
-		startOffset = std::stol(m[2]);
+		startOffset = std::stol(m[3]);
 	
 	if (not regex_match(endPos, m, kPosRx))
 		throw std::runtime_error("Invalid end specification");
@@ -545,7 +545,7 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 	}
 	
 	if (m[3].matched)
-		endOffset = std::stol(m[2]);
+		endOffset = std::stol(m[3]);
 
 	for (auto& t: transcripts)
 	{
@@ -561,10 +561,10 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 
 			switch (end)
 			{
-				case POS::TX_START:		t.r.end = t.tx.start + startOffset; break;
-				case POS::CDS_START:	t.r.end = t.cds.start + startOffset; break;
-				case POS::CDS_END:		t.r.end = t.cds.end + startOffset; break;
-				case POS::TX_END:		t.r.end = t.tx.end + startOffset; break;
+				case POS::TX_START:		t.r.end = t.tx.start + endOffset; break;
+				case POS::CDS_START:	t.r.end = t.cds.start + endOffset; break;
+				case POS::CDS_END:		t.r.end = t.cds.end + endOffset; break;
+				case POS::TX_END:		t.r.end = t.tx.end + endOffset; break;
 			}
 		}
 		else
@@ -579,10 +579,10 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 
 			switch (end)
 			{
-				case POS::TX_START:		t.r.start = t.tx.end - startOffset; break;
-				case POS::CDS_START:	t.r.start = t.cds.end - startOffset; break;
-				case POS::CDS_END:		t.r.start = t.cds.start - startOffset; break;
-				case POS::TX_END:		t.r.start = t.tx.start - startOffset; break;
+				case POS::TX_START:		t.r.start = t.tx.end - endOffset; break;
+				case POS::CDS_START:	t.r.start = t.cds.end - endOffset; break;
+				case POS::CDS_END:		t.r.start = t.cds.start - endOffset; break;
+				case POS::TX_END:		t.r.start = t.tx.start - endOffset; break;
 			}
 		}
 	}

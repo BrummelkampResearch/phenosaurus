@@ -63,7 +63,7 @@ po::options_description get_config_options()
 		("assembly", po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
 		("reference-hg19", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG19")
 		("reference-hg38", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG38")
-		("read-length", po::value<unsigned>(),	"Read length to use, if specified reads will be trimmed to this size")
+		("trim-length", po::value<unsigned>(),	"Trim reads to this length, if specified")
 		("threads", po::value<unsigned>(),		"Nr of threads to use")
 		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
 		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
@@ -196,8 +196,6 @@ int main_map(int argc, char* const argv[])
 		("bowtie-index", po::value<std::string>(),
 												"Bowtie index filename stem for the assembly")
 
-		("read-length", po::value<unsigned>(),	"Read length to use, if specified reads will be trimmed to this size")
-
 		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
 		("force",								"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping.")
 
@@ -286,15 +284,15 @@ int main_map(int argc, char* const argv[])
 		bowtieIndex = vm["bowtie-index-" + assembly].as<std::string>();
 	}
 
-	unsigned readLength = 0;
-	if (vm.count("read-length"))
-		readLength = vm["read-length"].as<unsigned>();
+	unsigned trimLength = 0;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
 	
 	unsigned threads = 1;
 	if (vm.count("threads"))
 		threads = vm["threads"].as<unsigned>();
 
-	data->map(assembly, readLength, bowtie, bowtieIndex, threads);
+	data->map(assembly, trimLength, bowtie, bowtieIndex, threads);
 
 	return result;
 }
@@ -443,9 +441,9 @@ Examples:
 	// std::string reference = vm["reference"].as<std::string>();
 	std::string reference = vm["reference-"+assembly].as<std::string>();
 
-	unsigned readLength = 0;
-	if (vm.count("read-length"))
-		readLength = vm["read-length"].as<unsigned>();
+	unsigned trimLength = 0;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
 	
 	// -----------------------------------------------------------------------
 
@@ -465,7 +463,7 @@ Examples:
 	
 	std::vector<Insertions> lowInsertions, highInsertions;
 
-	data->analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
+	data->analyze(assembly, trimLength, transcripts, lowInsertions, highInsertions);
 
 	long lowSenseCount = 0, lowAntiSenseCount = 0;
 	for (auto& i: lowInsertions)

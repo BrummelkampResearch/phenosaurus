@@ -259,12 +259,9 @@ struct progress_filter
 // -----------------------------------------------------------------------
 
 std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned readLength,
+	std::filesystem::path fastq, unsigned threads, unsigned trimLength,
 	int maxmismatch = 0, std::filesystem::path mismatchfile = {})
 {
-	if (readLength)
-		throw std::runtime_error("Sorry, not implemented yet");
-
 	auto p = std::to_string(threads);
 	auto v = std::to_string(maxmismatch);
 
@@ -275,7 +272,6 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		"--best",
 		"-p", p.c_str(),
 		bowtieIndex.c_str(),
-		// fastq.c_str(),
 		"-"
 	};
 
@@ -336,7 +332,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 	close(ifd[0]);
 
-	boost::thread thread([&fastq, fd = ifd[1]]()
+	boost::thread thread([trimLength,&fastq, fd = ifd[1]]()
 	{
 		progress p(fastq.string(), fs::file_size(fastq));
 		p.message(fastq.filename().string());
@@ -361,20 +357,66 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 		char buffer[1024];
 
-	    while (not in.eof())
-	    {
-	        std::streamsize k = io::read(in, buffer, sizeof(buffer));
-
-	        if (k <= -1)
-	            break;
-
-			int r = write(fd, buffer, k);
-			if (r != k)
+		if (trimLength)
+		{
+			while (not in.eof())
 			{
-				std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
-				break;
+				// read four lines
+
+				std::string line[4];
+				if (not std::getline(in, line[0]) or 
+					not std::getline(in, line[1]) or 
+					not std::getline(in, line[2]) or 
+					not std::getline(in, line[3]))
+				{
+					break;
+					// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
+				}
+
+				if (line[0].length() < 2 or line[0][0] != '@')
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
+
+				if (line[2].empty() or line[2][0] != '+')
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
+
+				if (line[1].length() != line[3].length() or line[1].empty())
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+
+				if (line[1].length() <= trimLength)
+					throw std::runtime_error("Invalid read length in FastQ file " + fastq.string() + ", the trim-length should be less than the read-length");
+
+				line[1].erase(trimLength);
+				line[3].erase(trimLength);
+
+				for (auto& l: line)
+				{
+					l += '\n';
+					int r = write(fd, l.data(), l.length());
+					if (r != l.length())
+					{
+						std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+						break;
+					}
+				}
 			}
-	    }
+		}
+		else
+		{
+			while (not in.eof())
+			{
+				std::streamsize k = io::read(in, buffer, sizeof(buffer));
+
+				if (k <= -1)
+					break;
+
+				int r = write(fd, buffer, k);
+				if (r != k)
+				{
+					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+					break;
+				}
+			}
+		}
 
 	    close(fd);
 	});
@@ -488,17 +530,17 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 // -----------------------------------------------------------------------
 
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned readLength)
+	std::filesystem::path fastq, unsigned threads, unsigned trimLength)
 {
 	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + ".fastq");
 
-	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, threads, readLength, 1, m);
+	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, threads, trimLength, 1, m);
 
 	if (fs::exists(m))
 	{
 		if (fs::file_size(m) > 0)
 		{
-			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, readLength);
+			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, 0);
 
 			std::vector<Insertion> merged;
 			merged.reserve(result.size() + ins_2.size());

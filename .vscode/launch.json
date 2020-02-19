@@ -17,27 +17,18 @@
 		},
 		{
 			"name": "screen-analyzer",
-			"type": "cppdbg",
+			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/screen-analyzer",
 			"args": [
-				"map",
-				"deYtub-10000",
-				"hg19",
-				"--verbose"
+				"analyze", "PDL1_INFg",
+				"hg19", "--reference-hg19=cd274-hg19.txt",
+				"--verbose",
+				"--mode=collapse",
+				"--start=txStart",
+				"--end=cdsEnd"
 			],
-			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"externalConsole": false,
-			"MIMode": "gdb",
-			"setupCommands": [
-				{
-					"description": "Enable pretty-printing for gdb",
-					"text": "-enable-pretty-printing",
-					"ignoreFailures": true
-				}
-			],
 			"preLaunchTask": "make screen-analyzer"
 		},
 		{

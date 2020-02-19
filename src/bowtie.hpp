@@ -62,7 +62,7 @@ struct Insertion
 };
 
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned readLength);
+	std::filesystem::path fastq, unsigned threads, unsigned trimLength);
 
 namespace std
 {

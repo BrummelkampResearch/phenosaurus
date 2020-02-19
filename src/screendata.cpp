@@ -182,7 +182,7 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 						assert(t->r.end > pos);
 
 						if (VERBOSE >= 3)
-							std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+							std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
 
 						// insertions.push_back({ pos, t, strand == t->strand });
 						if (strand == t->strand)

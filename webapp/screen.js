@@ -109,7 +109,7 @@ class ScreenPlotRegular extends ScreenPlot {
 			if (f["read-length"])
 				fd.set("read-length", f["read-length"].value + 0);
 
-			const geneStartOffset = document.getElementById('geneStartOffset').value + 0;
+			const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
 
 			let geneStart = document.getElementById("geneStartType").value;
 			if (geneStartOffset > 0)
@@ -119,7 +119,7 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			fd.append("gene-start", geneStart);
 
-			const geneEndOffset = document.getElementById('geneEndOffset').value + 0;
+			const geneEndOffset = parseInt(document.getElementById('geneEndOffset').value);
 
 			let geneEnd = document.getElementById("geneEndType").value;
 			if (geneEndOffset > 0)

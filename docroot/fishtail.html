@@ -109,7 +109,7 @@
 
 							<select class="custom-select custom-select-sm" name="assembly">
 								<option value="hg19" selected="selected">HG19</option>
-								<option value="hg38" selected="selected">HG38</option>
+								<option value="hg38">HG38</option>
 							</select>
 						</div>
 
@@ -142,7 +142,7 @@
 
 							<select class="custom-select custom-select-sm" name="mode">
 								<option value="collapse" selected="selected">Collapse</option>
-								<option value="longest" selected="selected">Longest</option>
+								<option value="longest">Longest</option>
 							</select>
 						</div>
 
@@ -155,37 +155,23 @@
 							<input type="text" class="form-control form-control-sm" value="Remove overlapped regions" />
 						</div>
 
-						<div class="input-group input-group-sm mb-3">
+
+						<div class="input-group input-group-sm mb-3" z:each="se: ${{'Start', 'End'}}">
 							<div class="input-group-prepend">
-								<span class="input-group-text" id="startLabel" style="min-width: 4em;">Start</span>
+								<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;" z:text="${se}"></span>
 							</div>
 
-							<select class="custom-select custom-select-sm" id="geneStartType">
-								<option value="txStart" selected="selected">tx-start</option>
+							<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
+								<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
 								<option value="txEnd">tx-end</option>
 								<option value="cdsStart">cds-start</option>
-								<option value="cdsEnd">cds-end</option>
+								<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
 							</select>
 
-							<input type="text" class="form-control" aria-label="Start of gene" aria-describedby="startLabel"
-								id="geneStartOffset" placeholder="offset..."/>
+							<input type="text" class="form-control" z:aria-label="|${se} of gene|" z:aria-describedby="|${se}Label|"
+								z:id="|gene${se}Offset|" placeholder="offset..."/>
 						</div>
-
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text" id="startLabel" style="min-width: 4em;">End</span>
-							</div>
-
-							<select class="custom-select custom-select-sm" id="geneEndType">
-								<option value="txStart">tx-start</option>
-								<option value="txEnd">tx-end</option>
-								<option value="cdsStart">cds-start</option>
-								<option value="cdsEnd" selected="selected">cds-end</option>
-							</select>
-
-							<input type="text" class="form-control" aria-label="Start of gene" aria-describedby="startLabel"
-								id="geneEndOffset" placeholder="offset..."/>
-						</div>
+						
 					</li>
 				</ul>
 				</form>
