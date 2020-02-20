@@ -124,7 +124,7 @@ std::vector<Transcript> loadGenes(const std::string& file, bool completeOnly)
 	std::ifstream in(file);
 
 	if (not in.is_open())
-		throw std::runtime_error("Could not open gene file");
+		throw std::runtime_error("Could not open gene file " + file);
 	
 	std::string line;
 	if (not std::getline(in, line) or line.empty())
@@ -289,6 +289,11 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 {
 	using std::vector;
 
+	// Start by removing transcripts for which r.end < r.start, yes, that's possible...
+	transcripts.erase(
+		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.r.end <= t.r.start; }),
+		transcripts.end());
+
 	// build an index based on gene name and position
 
 	vector<size_t> index(transcripts.size());
@@ -398,14 +403,10 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 				auto& a = transcripts[ix_a];
 				a.longest = true;
 
-				assert(a.r.end > a.r.start);
-
 				for (size_t j = i + 1; j < transcripts.size(); ++j)
 				{
 					auto ix_b = index[j];
 					auto& b = transcripts[ix_b];
-
-					assert(b.r.end > b.r.start);
 
 					if (b.chrom != a.chrom)
 						break;
@@ -492,11 +493,8 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 
 	auto transcripts = loadGenes(refGenesFile, true);
 
-	// Find longest transcripts
-	selectTranscripts(transcripts, 0, mode);
-
 	if (VERBOSE)
-		std::cerr << "Loaded " << transcripts.size() << " genes" << std::endl;
+		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
 
 	// reassign start and end
 
@@ -586,6 +584,9 @@ std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mo
 			}
 		}
 	}
+
+	// Find longest or collapsed transcripts
+	selectTranscripts(transcripts, 0, mode);
 
 	auto cmp = [](auto& a, auto& b)
 	{

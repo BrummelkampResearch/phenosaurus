@@ -16,6 +16,17 @@
 			"preLaunchTask": "make screen-analyzer"
 		},
 		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "refseq",
+			"program": "${workspaceFolder}/screen-analyzer",
+			"args": [
+				"refseq", "ncbi-genes-hg19-van-stallman.txt", "--mode=collapse"
+			],
+			"cwd": "${workspaceFolder}",
+			"preLaunchTask": "make screen-analyzer"
+		},
+		{
 			"name": "screen-analyzer",
 			"type": "lldb",
 			"request": "launch",

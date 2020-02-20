@@ -110,7 +110,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	if (reference.empty())
 		reference = "ncbi";
 
-	const std::string reference_file = reference + "-genes-" + assembly + ".txt";
+	auto reference_file = mScreenDir / (reference + "-genes-" + assembly + ".txt");
 
 	auto transcripts = loadTranscripts(reference_file, mode, geneStart, geneEnd, cutOverlap);
 
@@ -199,8 +199,8 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 class ScreenServer : public zh::webapp
 {
   public:
-	ScreenServer(const fs::path& screenDir)
-		: zh::webapp(fs::current_path() / "docroot")
+	ScreenServer(const fs::path& docroot, const fs::path& screenDir)
+		: zh::webapp(docroot)
 		, mRestController(new ScreenRestController(screenDir))
 		, mScreenDir(screenDir)
 	{
@@ -285,7 +285,7 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 
 // --------------------------------------------------------------------
 
-zh::server* createServer(const fs::path& screenDir)
+zh::server* createServer(const fs::path& docroot, const fs::path& screenDir)
 {
-	return new ScreenServer(screenDir);
+	return new ScreenServer(docroot, screenDir);
 }

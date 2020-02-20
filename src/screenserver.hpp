@@ -6,4 +6,4 @@
 
 #include <zeep/http/server.hpp>
 
-zeep::http::server* createServer(const std::filesystem::path& screenDir);
+zeep::http::server* createServer(const std::filesystem::path& docroot, const std::filesystem::path& screenDir);

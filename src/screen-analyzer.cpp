@@ -80,9 +80,11 @@ int usage()
 			  << std::endl
 			  << "Where command is one of" << std::endl
 			  << std::endl
-			  << "  create" << std::endl
-			  << "  map" << std::endl
-			  << "  analyze" << std::endl
+			  << "  create  -- create new screen" << std::endl
+			  << "  map     -- map read in a screen to an assembly" << std::endl
+			  << "  analyze -- analyze mapped reads" << std::endl
+			  << "  refseq  -- create reference gene table" << std::endl
+			  << "  server  -- start/stop server process" << std::endl
 			  << std::endl;
 	return 1;
 }
@@ -219,8 +221,6 @@ int main_map(int argc, char* const argv[])
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
 
-	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
-
 	fs::path configFile = APP_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
 		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
@@ -339,8 +339,6 @@ int main_analyze(int argc, char* const argv[])
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-
-	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
 
 	fs::path configFile = APP_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
@@ -548,6 +546,163 @@ Examples:
 
 // --------------------------------------------------------------------
 
+int main_refseq(int argc, char* const argv[])
+{
+	int result = 0;
+
+	po::options_description visible(APP_NAME R"( refseq reference-genes-file [options])");
+	visible.add_options()
+		("help,h",								"Display help message")
+		("version",								"Print version")
+
+		("reference", po::value<std::string>(),	"Gene file, from ucsc hgTables")
+
+		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
+
+		("start", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+		("end", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
+
+		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
+
+		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+
+		("output", po::value<std::string>(),	"Output file")
+
+		("verbose,v",							"Verbose output")
+		;
+
+	po::options_description config = get_config_options();
+
+	po::options_description hidden("hidden options");
+	hidden.add_options()
+		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
+
+	po::options_description cmdline_options;
+	cmdline_options.add(visible).add(config).add(hidden);
+
+	po::positional_options_description p;
+	p.add("reference", 1);
+	
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+
+	fs::path configFile = APP_NAME ".conf";
+	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
+		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+	
+	if (vm.count("config") != 0)
+	{
+		configFile = vm["config"].as<std::string>();
+		if (not fs::exists(configFile))
+			throw std::runtime_error("Specified config file does not seem to exist");
+	}
+	
+	if (fs::exists(configFile))
+	{
+		po::options_description config_options ;
+		config_options.add(config).add(hidden);
+
+		std::ifstream cfgFile(configFile);
+		if (cfgFile.is_open())
+			po::store(po::parse_config_file(cfgFile, config_options), vm);
+	}
+	
+	po::notify(vm);
+
+	if (vm.count("version"))
+	{
+		showVersionInfo();
+		exit(0);
+	}
+
+	if (vm.count("reference") == 0)
+	{
+		po::options_description visible_options;
+		visible_options.add(visible).add(config);
+
+		std::cerr << visible_options << std::endl;
+		exit(-1);
+	}
+
+	VERBOSE = vm.count("verbose") != 0;
+	if (vm.count("debug"))
+		VERBOSE = vm["debug"].as<int>();
+
+	if (vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
+		vm.count("start") == 0 or vm.count("end") == 0 or
+		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
+	{
+		po::options_description visible_options;
+		visible_options.add(visible).add(config);
+
+		std::cerr << visible_options << std::endl
+				  << R"(
+Mode longest means take the longest transcript for each gene
+
+Mode collapse means, for each gene take the region between the first 
+start and last end.
+
+Overlap: in case of both, all genes will be added, in case of neither
+the parts with overlap will be left out.
+)"				<< std::endl;
+		exit(vm.count("help") ? 0 : 1);
+	}
+
+	// fail early
+	std::ofstream out;
+	if (vm.count("output"))
+	{
+		out.open(vm["output"].as<std::string>());
+		if (not out.is_open())
+			throw std::runtime_error("Could not open output file");
+	}
+
+	std::string reference = vm["reference"].as<std::string>();
+	
+	bool cutOverlap = true;
+	if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
+		cutOverlap = false;
+
+	Mode mode;
+	if (vm["mode"].as<std::string>() == "collapse")
+		mode = Mode::Collapse;
+	else // if (vm["mode"].as<std::string>() == "longest")
+		mode = Mode::Longest;
+
+	auto transcripts = loadTranscripts(reference, mode,
+		vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+
+	std::streambuf* sb = nullptr;
+	if (out.is_open())
+		sb = std::cout.rdbuf(out.rdbuf());
+
+	std::cout
+		<< "gene" << '\t'
+		<< "chr" << '\t'
+		<< "start" << '\t'
+		<< "end" << '\t'
+		<< "strand" << std::endl;
+				
+	for (auto& transcript: transcripts)
+	{
+		std::cout
+			<< transcript.geneName << '\t'
+			<< transcript.chrom << '\t'
+			<< transcript.r.start << '\t'
+			<< transcript.r.end << '\t'
+			<< transcript.strand << std::endl;
+	}
+
+	if (sb)
+		std::cout.rdbuf(sb);
+
+	return result;
+
+	return 0;
+}
+
+// --------------------------------------------------------------------
+
 int main_server(int argc, char* const argv[])
 {
 	int result = 0;
@@ -620,20 +775,22 @@ Command should be either:
 		exit(vm.count("help") ? 0 : 1);
 	}
 	
-	// char exePath[PATH_MAX + 1];
-	// int r = readlink("/proc/self/exe", exePath, PATH_MAX);
-	// if (r > 0)
-	// {
-	// 	exePath[r] = 0;
-	// 	gExePath = fs::system_complete(exePath);
-	// }
-	
-	// if (not fs::exists(gExePath))
-	// 	gExePath = fs::system_complete(argv[0]);
+	fs::path docroot;
 
-	zh::daemon server([screenDir=vm["screen-dir"].as<std::string>()]()
+	char exePath[PATH_MAX + 1];
+	int r = readlink("/proc/self/exe", exePath, PATH_MAX);
+	if (r > 0)
 	{
-		return createServer(screenDir);
+		exePath[r] = 0;
+		docroot = fs::weakly_canonical(exePath).parent_path() / "docroot";
+	}
+	
+	if (not fs::exists(docroot))
+		throw std::runtime_error("Could not locate docroot directory");
+
+	zh::daemon server([docroot,screenDir=vm["screen-dir"].as<std::string>()]()
+	{
+		return createServer(docroot, screenDir);
 	}, "screen-analyzer");
 
 	std::string user = "www-data";
@@ -693,6 +850,8 @@ int main(int argc, char* const argv[])
 			result = main_map(argc - 1, argv + 1);
 		else if (command == "analyze")
 			result = main_analyze(argc - 1, argv + 1);
+		else if (command == "refseq")
+			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
 		else if (command == "help")

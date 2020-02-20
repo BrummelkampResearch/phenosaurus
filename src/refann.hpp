@@ -64,5 +64,7 @@ struct Transcript
 
 // --------------------------------------------------------------------
 
+std::vector<Transcript> loadGenes(const std::string& file, bool completeOnly = true);
+void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode);
 std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap);
