@@ -16,7 +16,7 @@
 
 #include <zeep/http/daemon.hpp>
 
-#include "refann.hpp"
+#include "refseq.hpp"
 #include "fisher.hpp"
 #include "bowtie.hpp"
 #include "utils.hpp"

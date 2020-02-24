@@ -154,7 +154,7 @@ void assignInsertions(const char* line, const std::vector<Transcript>& transcrip
 
 // --------------------------------------------------------------------
 
-Insertion parseLine(const char* line)
+Insertion parseLine(const char* line, unsigned readLength)
 {
 	// result
 	Insertion result = { INVALID, 0, '+' };
@@ -207,6 +207,10 @@ Insertion parseLine(const char* line)
 	if (result.chr != INVALID and *s++ == '\t' and *s != '\t')
 	{
 		result.pos = strtoul(s, const_cast<char**>(&s), 10);
+
+		if (result.strand == '-')
+			result.pos += readLength;
+
 		if (*s != '\t')
 			throw std::runtime_error("Invalid input file");
 	}
@@ -332,7 +336,9 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 	close(ifd[0]);
 
-	boost::thread thread([trimLength,&fastq, fd = ifd[1]]()
+	unsigned readLength = 0;
+
+	boost::thread thread([&trimLength,&readLength,&fastq, fd = ifd[1]]()
 	{
 		progress p(fastq.string(), fs::file_size(fastq));
 		p.message(fastq.filename().string());
@@ -356,53 +362,11 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		in.push(file);
 
 		char buffer[1024];
+		char nl[1] = { '\n' };
 
-		if (trimLength)
+		while (not in.eof())
 		{
-			while (not in.eof())
-			{
-				// read four lines
-
-				std::string line[4];
-				if (not std::getline(in, line[0]) or 
-					not std::getline(in, line[1]) or 
-					not std::getline(in, line[2]) or 
-					not std::getline(in, line[3]))
-				{
-					break;
-					// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
-				}
-
-				if (line[0].length() < 2 or line[0][0] != '@')
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
-
-				if (line[2].empty() or line[2][0] != '+')
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
-
-				if (line[1].length() != line[3].length() or line[1].empty())
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
-
-				if (line[1].length() <= trimLength)
-					throw std::runtime_error("Invalid read length in FastQ file " + fastq.string() + ", the trim-length should be less than the read-length");
-
-				line[1].erase(trimLength);
-				line[3].erase(trimLength);
-
-				for (auto& l: line)
-				{
-					l += '\n';
-					int r = write(fd, l.data(), l.length());
-					if (r != l.length())
-					{
-						std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
-						break;
-					}
-				}
-			}
-		}
-		else
-		{
-			while (not in.eof())
+			if (readLength != 0 and readLength == trimLength)
 			{
 				std::streamsize k = io::read(in, buffer, sizeof(buffer));
 
@@ -415,6 +379,55 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
 					break;
 				}
+
+				continue;
+			}
+
+			// readLength != trimLength
+
+			// read four lines
+
+			std::string line[4];
+			if (not std::getline(in, line[0]) or 
+				not std::getline(in, line[1]) or 
+				not std::getline(in, line[2]) or 
+				not std::getline(in, line[3]))
+			{
+				break;
+				// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
+			}
+
+			if (line[0].length() < 2 or line[0][0] != '@')
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
+
+			if (line[2].empty() or line[2][0] != '+')
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
+
+			if (line[1].length() != line[3].length() or line[1].empty())
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+
+			if (readLength == 0)
+				readLength = line[1].length();
+			
+			if (trimLength == 0)
+				trimLength = readLength;
+
+			iovec v[8] = {
+				{ line[0].data(), line[0].length() },
+				{ nl, 1 },
+				{ line[1].data(), trimLength },
+				{ nl, 1 },
+				{ line[2].data(), line[2].length() },
+				{ nl, 1 },
+				{ line[3].data(), trimLength },
+				{ nl, 1 },
+			};
+
+			int r = writev(fd, v, 8);
+			if (r < 0)
+			{
+				std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+				break;
 			}
 		}
 
@@ -453,6 +466,11 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		if (r <= 0)	// keep it simple
 			break;
 
+		// if trimLength was zero, it should be set to the readLength
+		// which should now be available.
+		if (trimLength == 0)
+			trimLength = readLength;
+
 		for (char* s = buffer; s < buffer + r; ++s)
 		{
 			char ch = *s;
@@ -464,7 +482,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 			
 			try
 			{
-				auto ins = parseLine(line.c_str());
+				auto ins = parseLine(line.c_str(), trimLength);
 				if (ins.chr != INVALID)
 				{
 					result.push_back(ins);
@@ -488,7 +506,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 	{
 		try
 		{
-			auto ins = parseLine(line.c_str());
+			auto ins = parseLine(line.c_str(), trimLength);
 			if (ins.chr != INVALID)
 			{
 				result.push_back(ins);

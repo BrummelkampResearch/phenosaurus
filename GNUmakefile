@@ -1,4 +1,4 @@
-# makefile for refannb
+# makefile for screen-analyzer
 
 .PHONY: firstTarget
 firstTarget: all
@@ -108,7 +108,7 @@ OBJECTS = \
 	$(OBJDIR)/adjust.o \
 	$(OBJDIR)/bowtie.o \
 	$(OBJDIR)/fisher.o \
-	$(OBJDIR)/refannb.o \
+	$(OBJDIR)/refseq.o \
 	$(OBJDIR)/screen-analyzer.o \
 	$(OBJDIR)/screendata.o \
 	$(OBJDIR)/screenserver.o \
@@ -157,21 +157,13 @@ endif
 $(subst .,%,$(SCRIPT_FILES)): $(subst .,%,$(WEBAPP_FILES))
 	yarn webpack $(WEBPACK_OPTIONS)
 
-$(OBJDIR)/refannb_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
+$(OBJDIR)/sa_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 	$(MRC) -o $@ $(RSRC)
 
 webappscripts: $(SCRIPT_FILES)
 
-refannb: $(OBJDIR)/refannb.o $(OBJDIR)/refannb_rsrc.o
-	@ echo '->' $@
-	@ $(CXX) -o $@ $^ $(LDFLAGS)
-
-adjust: $(OBJDIR)/adjust.o $(OBJDIR)/refannb.o $(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
-	@ echo '->' $@
-	@ $(CXX) -o $@ $^ $(LDFLAGS)
-
-screen-analyzer: $(OBJDIR)/screen-analyzer.o $(OBJDIR)/screendata.o $(OBJDIR)/refannb.o \
-		$(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/screenserver.o $(OBJDIR)/utils.o $(OBJDIR)/refannb_rsrc.o
+screen-analyzer: $(OBJDIR)/screen-analyzer.o $(OBJDIR)/screendata.o $(OBJDIR)/refseq.o \
+		$(OBJDIR)/bowtie.o $(OBJDIR)/fisher.o $(OBJDIR)/screenserver.o $(OBJDIR)/utils.o $(OBJDIR)/sa_rsrc.o
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS)
 

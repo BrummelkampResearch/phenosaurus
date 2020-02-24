@@ -27,7 +27,20 @@
 			"preLaunchTask": "make screen-analyzer"
 		},
 		{
-			"name": "screen-analyzer",
+			"name": "screen-analyzer map",
+			"type": "lldb",
+			"request": "launch",
+			"program": "${workspaceFolder}/screen-analyzer",
+			"args": [
+				"map", "deYtub-10000",
+				"hg19",
+				"--verbose"
+			],
+			"cwd": "${workspaceFolder}",
+			"preLaunchTask": "make screen-analyzer"
+		},
+		{
+			"name": "screen-analyzer analyze",
 			"type": "lldb",
 			"request": "launch",
 			"program": "${workspaceFolder}/screen-analyzer",
@@ -52,57 +65,7 @@
 			],
 			"cwd": "${workspaceFolder}",
 			"preLaunchTask": "make screen-analyzer"
-		},
-
-		{
-			"name": "adjust",
-			"type": "cppdbg",
-			"request": "launch",
-			"program": "${workspaceFolder}/adjust",
-			"args": [
-				"--start=tx",
-				"--end=cds",
-				"--mode=collapse",
-				"--reference=ncbi-genes-hg19.txt",
-				// "--bowtie=/usr/bin/bowtie",
-				// "--bowtie-index=/srv/data/Homo_sapiens/NCBI/GRCh38/Sequence/BowtieIndex/genome",
-				// "--low=/srv/data/raw-screen-data/deYtub/deYtub-LO.fastq.gz",
-				"--low=low.bwt.gz",
-				"--verbose"
-			],
-			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"externalConsole": false,
-			"MIMode": "gdb",
-			"setupCommands": [
-				{
-					"description": "Enable pretty-printing for gdb",
-					"text": "-enable-pretty-printing",
-					"ignoreFailures": true
-				}
-			],
-			"preLaunchTask": "make adjust debug"
-		},
-		{
-			"name": "clang++ build and debug active file",
-			"type": "cppdbg",
-			"request": "launch",
-			"program": "${fileDirname}/${fileBasenameNoExtension}",
-			"args": [],
-			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}",
-			"environment": [],
-			"externalConsole": false,
-			"MIMode": "gdb",
-			"setupCommands": [
-				{
-					"description": "Enable pretty-printing for gdb",
-					"text": "-enable-pretty-printing",
-					"ignoreFailures": true
-				}
-			],
-			"preLaunchTask": "clang++ build active file"
 		}
+
 	]
 }
