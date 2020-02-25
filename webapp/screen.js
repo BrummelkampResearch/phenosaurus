@@ -8,6 +8,7 @@ import 'bootstrap4c-chosen/dist/css/component-chosen.min.css';
 import * as d3 from 'd3';
 
 import ScreenData from "./screenData";
+import GenomeViewer from "./genome-viewer";
 import {pvCutOff, highlightedGenes, DotContextMenu} from "./screenPlot";
 import ScreenPlot from "./screenPlot";
 import {showLoginDialog} from "./index";
@@ -106,8 +107,9 @@ class ScreenPlotRegular extends ScreenPlot {
 			const f = document.geneSelectionForm;
 			const fd = new FormData(f);
 
-			if (f["read-length"])
-				fd.set("read-length", f["read-length"].value + 0);
+			// if (f["read-length"])
+			// 	fd.set("read-length", f["read-length"].value + 0);
+			// fd.set("read-length", 50);
 
 			const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
 
@@ -173,12 +175,31 @@ class ScreenPlotRegular extends ScreenPlot {
 		});
 
 	}
+
+	clickGenes(d, screenNr) {
+		if (d.multiDot === undefined && d.values.length === 1) {
+
+			// default is to highlight clicked genes
+			const geneName = d.values[0].geneName;
+			const plot = this.svg.node();
+			
+			const e = new Event("clicked-gene");
+			e.geneID = geneName;
+
+			plot.dispatchEvent(e);
+		}
+
+		return super.clickGenes(d, screenNr);
+	}
+
 }
 
 $(function () {
 	const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 
-	const svg = d3.select("svg");
+	new GenomeViewer(d3.select(document.getElementById("genome-viewer")));
+
+	const svg = d3.select(document.getElementById("plot"));
 	const plot = new ScreenPlotRegular(svg);
 
 	const screenList = document.getElementById("screenList");
@@ -215,5 +236,6 @@ $(function () {
 	const svgExportBtn = document.getElementById('btn-export-svg');
 	if (svgExportBtn != null)
 		svgExportBtn.addEventListener('click', () => plot.exportSVG());
+	
 });
 

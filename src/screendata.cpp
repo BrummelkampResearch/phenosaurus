@@ -212,6 +212,69 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 		std::rethrow_exception(eptr);
 }
 
+// --------------------------------------------------------------------
+
+std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
+ScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
+{
+	const unsigned readLength = 50;
+
+	std::vector<uint32_t> lowP, lowM, highP, highM;
+
+	boost::thread_group t;
+	std::exception_ptr eptr;
+
+	for (std::string s: { "low", "high" })
+	{
+		t.create_thread([&, lh = s]()
+		{
+			try
+			{
+				auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
+				if (not fs::exists(infile))
+					throw std::runtime_error("Missing " + lh + " file, did you run map already?");
+
+				std::vector<uint32_t>& insP = lh == "low" ? lowP : highP;
+				std::vector<uint32_t>& insM = lh == "low" ? lowM : highM;
+
+				auto size = fs::file_size(infile);
+				auto N = size / sizeof(Insertion);
+
+				std::vector<Insertion> bwt(N);
+
+				std::ifstream file(infile, std::ios::binary);
+				if (not file.is_open())
+					throw std::runtime_error("Could not open " + lh + " file, did you run map already?");
+				
+				file.read(reinterpret_cast<char*>(bwt.data()), size);
+			
+				for (auto&& [chr, strand, pos]: bwt)
+				{
+					assert(chr != CHROM::INVALID);
+
+					if (chr == chrom and pos >= start and pos < end)
+					{
+						if (strand == '+')
+							insP.push_back(pos);
+						else
+							insM.push_back(pos);
+					}
+				}
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+			}
+		});
+	}
+
+	t.join_all();
+
+	return std::make_tuple(std::move(highP), std::move(highM), std::move(lowP), std::move(lowM));
+}
+
+// --------------------------------------------------------------------
+
 ScreenData* ScreenData::create(fs::path dir, fs::path lowFastQ, fs::path highFastQ)
 {
 	return new ScreenData(dir, lowFastQ, highFastQ);

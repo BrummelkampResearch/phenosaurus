@@ -494,18 +494,28 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
-	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
-
-	const std::regex kPosRx(R"((cds|tx)(Start|End)?((?:\+|-)[0-9]+)?)");
-
 	auto transcripts = loadGenes(assembly, true);
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
 
+	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
+
+	return transcripts;
+}
+
+// --------------------------------------------------------------------
+
+void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
+	const std::string& startPos, const std::string& endPos, bool cutOverlap)
+{
+	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
+
 	// reassign start and end
 
 	int64_t startOffset = 0, endOffset = 0;
+
+	const std::regex kPosRx(R"((cds|tx)(Start|End)?((?:\+|-)[0-9]+)?)");
 
 	std::smatch m;
 	if (not regex_match(startPos, m, kPosRx))
@@ -640,7 +650,47 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(),
 		[](auto& ts) { return ts.r.end <= ts.r.start; }),
 		transcripts.end());
-
-	return transcripts;
 }
 
+// --------------------------------------------------------------------
+
+std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene, int window)
+{
+	auto transcripts = loadGenes(assembly);
+
+	std::vector<Transcript> result;
+	int minOffset = std::numeric_limits<int>::max();
+	int maxOffset = 0;
+
+	for (auto& t: transcripts)
+	{
+		if (t.geneName != gene)
+			continue;
+		
+		result.push_back(t);
+
+		if (minOffset > t.tx.start)
+			minOffset = t.tx.start;
+		
+		if (maxOffset < t.tx.end)
+			maxOffset = t.tx.end;
+	}
+
+	if (result.empty())
+		throw std::runtime_error("Gene not found: " + gene);
+	
+	minOffset -= window;
+	maxOffset += window;
+
+	auto chrom = result.front().chrom;
+
+	for (auto& t: transcripts)
+	{
+		if (t.chrom != chrom or t.tx.start >= maxOffset or t.tx.end < minOffset)
+			continue;
+		
+		result.push_back(t);
+	}
+
+	return result;
+}

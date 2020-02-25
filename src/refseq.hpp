@@ -65,6 +65,15 @@ struct Transcript
 // --------------------------------------------------------------------
 
 std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly = true);
+
 void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode);
+
 std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap);
+
+void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
+	const std::string& startPos, const std::string& endPos, bool cutOverlap);
+
+// second form of loadTranscripts loads the transcripts in a window around a specified gene
+std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene,
+	int window = 500);

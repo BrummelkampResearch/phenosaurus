@@ -38,6 +38,65 @@ struct DataPoint
 	}	
 };
 
+// --------------------------------------------------------------------
+
+struct GeneExon
+{
+	uint32_t start, end;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("start", start)
+		   & zeep::make_nvp("end", end);
+	}	
+};
+
+struct Gene
+{
+	std::string geneName;
+	std::string strand;
+	uint32_t txStart, txEnd, cdsStart, cdsEnd;
+	std::vector<GeneExon> exons;
+	
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("name", geneName)
+		   & zeep::make_nvp("strand", strand)
+		   & zeep::make_nvp("txStart", txStart)
+		   & zeep::make_nvp("txEnd", txEnd)
+		   & zeep::make_nvp("cdsStart", cdsStart)
+		   & zeep::make_nvp("cdsEnd", cdsEnd)
+		   & zeep::make_nvp("exons", exons);
+	}	
+};
+
+struct Region
+{
+	CHROM chrom;
+	int start, end;
+	std::string geneStrand;
+	std::vector<GeneExon> area;
+	std::vector<Gene> genes;
+	std::vector<uint32_t> lowPlus, lowMinus, highPlus, highMinus;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("chrom", chrom)
+		   & zeep::make_nvp("start", start)
+		   & zeep::make_nvp("end", end)
+		   & zeep::make_nvp("geneStrand", geneStrand)
+		   & zeep::make_nvp("genes", genes)
+		   & zeep::make_nvp("area", area)
+		   & zeep::make_nvp("lowPlus", lowPlus)
+		   & zeep::make_nvp("lowMinus", lowMinus)
+		   & zeep::make_nvp("highPlus", highPlus)
+		   & zeep::make_nvp("highMinus", highMinus);
+	}	
+};
+
 // -----------------------------------------------------------------------
 
 void to_element(zeep::el::element& e, Mode mode)
@@ -71,19 +130,25 @@ class ScreenRestController : public zh::rest_controller
 	{
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
 		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
-			"id", "assembly", "read-length", "mode", "cut-overlap", "gene-start", "gene-end");
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
+		map_post_request("gene-info/{id}", &ScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
-	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength,
+	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
+	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	fs::path mScreenDir;
 };
 
-std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly, unsigned readLength,
+std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
+	const unsigned readLength = 50;
+
 	fs::path screenDir = mScreenDir / screen;
 
 	if (not fs::is_directory(screenDir))
@@ -157,6 +222,9 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 		auto low = lowInsertions[i].sense.size();
 		auto high = highInsertions[i].sense.size();
 
+		if (low == 0 and high == 0)
+			continue;
+
 		float miL = low, miH = high, miLT = lowSenseCount - low, miHT = highSenseCount - high;
 		if (low == 0)
 		{
@@ -185,7 +253,61 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 
 std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
 {
-	return screenDataEx(screen, "hg19", 0, Mode::Collapse, true, "tx", "cds");
+	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds");
+}
+
+Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+{
+	const int kWindowSize = 500;
+
+	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
+
+	Region result = {};
+
+	result.chrom = transcripts.front().chrom;
+	result.start = std::numeric_limits<int>::max();
+
+	for (auto& t: transcripts)
+	{
+		auto& gene = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		for (auto& e: t.exons)
+			gene.exons.emplace_back(GeneExon{e.start, e.end});
+		
+		if (result.start > t.tx.start)
+			result.start = t.tx.start;
+		if (result.end < t.tx.end)
+			result.end = t.tx.end;
+	}
+
+	result.start -= kWindowSize;
+	result.end += kWindowSize;
+
+	// screen data
+
+	fs::path screenDir = mScreenDir / screen;
+
+	if (not fs::is_directory(screenDir))
+		throw std::runtime_error("No such screen: " + screen);
+
+	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+	
+	std::tie(result.highPlus, result.highMinus, result.lowPlus, result.lowMinus) = 
+		data->insertions(assembly, result.chrom, result.start, result.end);
+
+	// filter
+	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
+
+	for (auto& t: transcripts)
+	{
+		if (t.geneName != gene)
+			continue;
+		
+		result.geneStrand = { t.strand };
+		result.area.emplace_back(GeneExon{t.r.start, t.r.end});
+	}
+
+	return result;
 }
 
 // --------------------------------------------------------------------

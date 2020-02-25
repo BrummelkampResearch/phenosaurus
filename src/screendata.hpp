@@ -29,6 +29,9 @@ class ScreenData
 		std::vector<Transcript>& transcripts,
 		std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions);
 
+	std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
+		insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
+
   private:
 
 	ScreenData(std::filesystem::path dir, std::filesystem::path low, std::filesystem::path high);
