@@ -2,17 +2,13 @@
 #include <sstream>
 #include <regex>
 #include <numeric>
-// #include <filesystem>
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem/operations.hpp>
 
 #include "mrsrc.h"
-#include "refann.hpp"
+#include "refseq.hpp"
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
 
 extern int VERBOSE;
 
@@ -119,12 +115,19 @@ struct splitted_range
 	char m_d;
 };
 
-std::vector<Transcript> loadGenes(const std::string& file, bool completeOnly)
+std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly)
 {
-	std::ifstream in(file);
+	mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
-	if (not in.is_open())
-		throw std::runtime_error("Could not open gene file " + file);
+	if (not refseq)
+		throw std::runtime_error("Invalid assembly specified, could not find genes");
+
+	struct membuf : public std::streambuf
+	{
+		membuf(char* data, size_t length)		{ this->setg(data, data, data + length); }
+	} buffer(const_cast<char*>(refseq.data()), refseq.size());
+	
+	std::istream in(&buffer);
 	
 	std::string line;
 	if (not std::getline(in, line) or line.empty())
@@ -484,14 +487,14 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 // --------------------------------------------------------------------
 
-std::vector<Transcript> loadTranscripts(const std::string& refGenesFile, Mode mode,
+std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
 	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
 
 	const std::regex kPosRx(R"((cds|tx)(Start|End)?((?:\+|-)[0-9]+)?)");
 
-	auto transcripts = loadGenes(refGenesFile, true);
+	auto transcripts = loadGenes(assembly, true);
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;

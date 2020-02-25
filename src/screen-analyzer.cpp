@@ -61,8 +61,6 @@ po::options_description get_config_options()
 	config.add_options()
 		("bowtie", po::value<std::string>(),	"Bowtie executable")
 		("assembly", po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
-		("reference-hg19", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG19")
-		("reference-hg38", po::value<std::string>(),	"Path to the refseq file containing reference genes for HG38")
 		("trim-length", po::value<unsigned>(),	"Trim reads to this length, if specified")
 		("threads", po::value<unsigned>(),		"Nr of threads to use")
 		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
@@ -303,7 +301,7 @@ int main_analyze(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( analyze screen-name assembly reference [options])");
+	po::options_description visible(APP_NAME R"( analyze screen-name assembly [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
@@ -335,7 +333,6 @@ int main_analyze(int argc, char* const argv[])
 	po::positional_options_description p;
 	p.add("screen-name", 1);
 	p.add("assembly", 1);
-	// p.add("reference", 1);
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
@@ -369,7 +366,7 @@ int main_analyze(int argc, char* const argv[])
 		exit(0);
 	}
 
-	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0 /*or vm.count("reference") == 0*/)
+	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0)
 	{
 		po::options_description visible_options;
 		visible_options.add(visible).add(config);
@@ -382,7 +379,8 @@ int main_analyze(int argc, char* const argv[])
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
 
-	if (vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
+	if (vm.count("assembly") == 0 or
+		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
@@ -436,8 +434,6 @@ Examples:
 	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
 
 	std::string assembly = vm["assembly"].as<std::string>();
-	// std::string reference = vm["reference"].as<std::string>();
-	std::string reference = vm["reference-"+assembly].as<std::string>();
 
 	unsigned trimLength = 0;
 	if (vm.count("trim-length"))
@@ -455,7 +451,7 @@ Examples:
 	else // if (vm["mode"].as<std::string>() == "longest")
 		mode = Mode::Longest;
 
-	auto transcripts = loadTranscripts(reference, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 
 	// -----------------------------------------------------------------------
 	
@@ -550,12 +546,10 @@ int main_refseq(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( refseq reference-genes-file [options])");
+	po::options_description visible(APP_NAME R"( refseq [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
-
-		("reference", po::value<std::string>(),	"Gene file, from ucsc hgTables")
 
 		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
 
@@ -580,11 +574,8 @@ int main_refseq(int argc, char* const argv[])
 	po::options_description cmdline_options;
 	cmdline_options.add(visible).add(config).add(hidden);
 
-	po::positional_options_description p;
-	p.add("reference", 1);
-	
 	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
+	po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
 
 	fs::path configFile = APP_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
@@ -615,20 +606,12 @@ int main_refseq(int argc, char* const argv[])
 		exit(0);
 	}
 
-	if (vm.count("reference") == 0)
-	{
-		po::options_description visible_options;
-		visible_options.add(visible).add(config);
-
-		std::cerr << visible_options << std::endl;
-		exit(-1);
-	}
-
 	VERBOSE = vm.count("verbose") != 0;
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
 
-	if (vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
+	if (vm.count("assembly") == 0 or
+		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
@@ -657,11 +640,11 @@ the parts with overlap will be left out.
 			throw std::runtime_error("Could not open output file");
 	}
 
-	std::string reference = vm["reference"].as<std::string>();
-	
 	bool cutOverlap = true;
 	if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
 		cutOverlap = false;
+
+	std::string assembly = vm["assembly"].as<std::string>();
 
 	Mode mode;
 	if (vm["mode"].as<std::string>() == "collapse")
@@ -669,8 +652,7 @@ the parts with overlap will be left out.
 	else // if (vm["mode"].as<std::string>() == "longest")
 		mode = Mode::Longest;
 
-	auto transcripts = loadTranscripts(reference, mode,
-		vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 
 	std::streambuf* sb = nullptr;
 	if (out.is_open())

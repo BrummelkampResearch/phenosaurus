@@ -136,7 +136,7 @@ $(REVISION_FILE):
 rsrc/version.txt: $(REVISION_FILE)
 	cp $? $@
 
-RSRC = rsrc/version.txt
+RSRC = rsrc/version.txt rsrc/ncbi-genes-hg19.txt rsrc/ncbi-genes-hg38.txt
 ifneq ($(DEBUG),1)
 RSRC += docroot/
 endif
