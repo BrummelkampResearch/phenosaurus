@@ -45,115 +45,6 @@ double system_time()
 
 // --------------------------------------------------------------------
 
-void assignInsertions(const char* line, const std::vector<Transcript>& transcripts,
-	std::vector<Insertions>& insertions)
-{
-	if (VERBOSE >= 2)
-	{
-		static size_t n = 0;
-		if (++n % 100000 == 0)
-		{
-			std::cout << '.';
-			std::cout.flush();
-
-			if (n % 6000000 == 0)
-				std::cout << ' ' << std::setw(8) << n << std::endl;
-		}
-	}
-
-	const char* s = line;
-
-	// skip first field
-	s = strchr(s, '\t');
-	if (s == nullptr)
-		throw std::runtime_error("Invalid input file");
-
-	// this should be strand
-	char strand = *++s;
-	s = strchr(s + 1, '\t');
-	if ((strand != '+' and strand != '-') or s == nullptr)
-		throw std::runtime_error("Invalid input file");
-	
-	// next is chromosome
-	CHROM chr = INVALID;
-	if (*++s == 'c' and s[1] == 'h' and s[2] == 'r')
-	{
-		s += 3;
-		switch (*s++)
-		{
-			case '1':
-				if (*s >= '0' and *s <= '9')
-					chr = static_cast<CHROM>(10 + *s++ - '0');
-				else
-					chr = CHR_1;
-				break;
-
-			case '2':
-				if (*s >= '0' and *s <= '3')
-					chr = static_cast<CHROM>(20 + *s++ - '0');
-				else
-					chr = CHR_2;
-				break;
-			
-			case '3':	chr = CHR_3;	break;
-			case '4':	chr = CHR_4;	break;
-			case '5':	chr = CHR_5;	break;
-			case '6':	chr = CHR_6;	break;
-			case '7':	chr = CHR_7;	break;
-			case '8':	chr = CHR_8;	break;
-			case '9':	chr = CHR_9;	break;
-			case 'X':	chr = CHR_X;	break;
-			case 'Y':	chr = CHR_Y;	break;
-		}
-	}
-
-	if (chr != INVALID and *s++ == '\t' and *s != '\t')
-	{
-		long pos = strtoul(s, const_cast<char**>(&s), 10);
-		if (*s != '\t')
-			throw std::runtime_error("Invalid input file");
-		
-		// we have a valid hit at chr:pos, see if it matches a transcript
-
-		long L = 0, R = transcripts.size() - 1;
-		auto t = transcripts.data();
-
-		while (L <= R)
-		{
-			auto i = (L + R) / 2;
-			auto ti = t + i;
-			long d = ti->chrom - chr;
-			if (d == 0)
-				d = ti->r.start - pos;
-			if (d >= 0)
-				R = i - 1;
-			else
-				L = i + 1;
-		}
-
-		auto e = t + transcripts.size();
-		t += L > 0 ? L - 1 : L;
-		while (t < e and t->chrom == chr and t->r.start <= pos)
-		{
-			if (t->r.end > pos)
-			{
-				if (VERBOSE >= 3)
-					std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
-
-				// insertions.push_back({ pos, t, strand == t->strand });
-				if (strand == t->strand)
-					insertions[t - transcripts.data()].sense.insert(pos);
-				else
-					insertions[t - transcripts.data()].antiSense.insert(pos);
-			}
-			
-			++t;
-		}
-	}
-}
-
-// --------------------------------------------------------------------
-
 Insertion parseLine(const char* line, unsigned readLength)
 {
 	// result
@@ -204,9 +95,10 @@ Insertion parseLine(const char* line, unsigned readLength)
 		}
 	}
 
-	if (result.chr != INVALID and *s++ == '\t' and *s != '\t')
+	if (result.chr != INVALID and *s++ == '\t')
 	{
-		result.pos = strtoul(s, const_cast<char**>(&s), 10);
+		while (*s >= '0' and *s <= '9')
+			result.pos = result.pos * 10 + (*s++ - '0');
 
 		if (result.strand == '-')
 			result.pos += readLength;
@@ -214,20 +106,6 @@ Insertion parseLine(const char* line, unsigned readLength)
 		if (*s != '\t')
 			throw std::runtime_error("Invalid input file");
 	}
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
-std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts)
-{
-	std::vector<Insertions> result(transcripts.size());
-
-	std::string line;
-
-	while (std::getline(data, line))
-		assignInsertions(line.c_str(), transcripts, result);
 
 	return result;
 }

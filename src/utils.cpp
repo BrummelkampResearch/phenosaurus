@@ -14,6 +14,29 @@
 #include "utils.hpp"
 #include "mrsrc.h"
 
+// --------------------------------------------------------------------
+
+void parallel_for(size_t N, std::function<void(size_t)>&& f)
+{
+	std::atomic<size_t> i = 0;
+
+	boost::thread_group t;
+	for (size_t n = 0; n < boost::thread::hardware_concurrency(); ++n)
+		t.create_thread([N, &i, &f]()
+		{
+			for (;;)
+			{
+				auto next = i++;
+				if (next >= N)
+					break;
+				
+				f(next);
+			}
+		});
+
+	t.join_all();
+}
+
 // -----------------------------------------------------------------------
 
 int get_terminal_width()

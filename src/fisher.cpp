@@ -7,11 +7,13 @@
 
 #include "fisher.hpp"
 
+const double kLn2PI = log(2 * M_PI);
+
 /*
 	Bereken  x * log(x / np) + np - x;  
 
 	Probleem is dat als x / np dicht bij 1 ligt de uitkomst
-	niet stabiel is. Gebruik im dat geval eem oplossing
+	niet stabiel is. Gebruik daarom een oplossing
 	gebaseerd op de Taylor reeks voor log((1 + y) / (1 - y))
 	met y = (x - np) / (x + np)
 
@@ -23,7 +25,33 @@
 
 	y - y^2/2 + y^3/3 - y^4/4 + y^5/5 - O(y^6) + y + y^2/2 + y^3/3 + y^4/4 + y^5/5 + O(y^6)) ==
 
-	2y + 2y^3 / 3 + 2y^5/5 
+	2y + 2y^3 / 3 + 2y^5/5
+
+	En dan... het blijkt dat de taylor benadering vele malen
+	sneller is dan de code met een log. Dus maak dit maar de default.
+
+	Dit was de oorspronkelijke code:
+
+	if (not std::isfinite(x) or not std::isfinite(np) or np == 0)
+		result = nan("1");
+	else if (std::abs(x - np) < 0.1 * (x + np))
+	{
+		for (int n = 1; n < 1000; ++n)
+		{
+			y *= y2;
+			double t = 2 * y / (2 * n + 1);
+			double s1 = s + t;
+			if (s1 == s)
+				break;
+			s = s1;
+		}
+
+		result = x * s + np - x;
+	}
+	else
+		result = x * std::log(x / np) + np - x;
+	
+	return result;
 */
 
 double bd0(double x, double np)
@@ -80,11 +108,11 @@ double stirling_error(long n)
 		auto n2 = n * n;
 
 		result = 0;
-		if (n <= 35)	result = (1 / 1188.0) / n2;
+		if (n <= 35)	result = (1 / 1188.0         ) / n2;
 		if (n <= 80)	result = (1 / 1680.0 - result) / n2;
 		if (n <= 500)	result = (1 / 1260.0 - result) / n2;
-						result = (1 / 360.0 - result) / n2;
-						result = (1 / 12.0 - result) / n2;
+						result = (1 /  360.0 - result) / n2;
+						result = (1 /   12.0 - result) / n2;
 
 		result *= n;
 	}
@@ -94,8 +122,6 @@ double stirling_error(long n)
 
 double binomial_coefficient(long x, long n, double p)
 {
-	static const double kLn2PI = log(2 * M_PI);
-
 	double result = 0;
 
     if (x >= 0 and std::isfinite(x))

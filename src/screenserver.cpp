@@ -5,9 +5,12 @@
 #include <zeep/http/webapp.hpp>
 #include <zeep/rest/controller.hpp>
 
+#include <tbb/parallel_for.h>
+
 #include "screenserver.hpp"
 #include "screendata.hpp"
 #include "fisher.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -117,7 +120,20 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 
 	std::vector<double> pvalues(transcripts.size(), 0);
 
-	for (size_t i = 0; i < transcripts.size(); ++i)
+	// for (size_t i = 0; i < transcripts.size(); ++i)
+	// {
+	// 	long low = lowInsertions[i].sense.size();
+	// 	long high = highInsertions[i].sense.size();
+	
+	// 	long v[2][2] = {
+	// 		{ low, high },
+	// 		{ lowSenseCount - low, highSenseCount - high }
+	// 	};
+
+	// 	pvalues[i] = fisherTest2x2(v);
+	// }
+
+	parallel_for(transcripts.size(), [&](size_t i)
 	{
 		long low = lowInsertions[i].sense.size();
 		long high = highInsertions[i].sense.size();
@@ -128,7 +144,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 		};
 
 		pvalues[i] = fisherTest2x2(v);
-	}
+	});
 
 	auto fcpv = adjustFDR_BH(pvalues);
 

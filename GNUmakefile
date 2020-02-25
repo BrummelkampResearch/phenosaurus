@@ -40,7 +40,7 @@ endif
 
 BOOST_LIB_DIR		?= $(SYSLIBDIR)
 
-PACKAGES			= 
+PACKAGES			= tbb
 WARNINGS			= all no-multichar no-unknown-pragmas no-deprecated-declarations
 
 RANLIB				?= ranlib
@@ -55,7 +55,7 @@ endif
 CFLAGS				+= -std=c++17 -pthread
 CFLAGS				+= -ffunction-sections -fdata-sections
 CFLAGS				+= $(addprefix -I, $(INCLUDE_DIR))
-LDFLAGS				+= -Wl,--gc-sections -static-libstdc++ -pthread # -static-libgcc 
+LDFLAGS				+= -Wl,--gc-sections -pthread # -static-libstdc++ -static-libgcc 
 
 BOOST_LIBS			= date_time iostreams program_options filesystem thread math_c99 math_c99f timer chrono system regex random
 BOOST_LIBS			:= $(BOOST_LIBS:%=boost_%$(BOOST_LIB_SUFFIX))
@@ -72,6 +72,7 @@ LIBS				+= $(ZEEP_LIBS) $(BOOST_LIBS) -lz -lbz2 -lpthread
 
 CFLAGS				+= $(addprefix -W, $(WARNINGS))
 CFLAGS				+= $(addprefix -D, $(DEFINES))
+CFLAGS				+= -g
 
 #LDFLAGS				+= $(LIBRARY_DIR:%=-L %) $(LIBS:%=-l%) -g
 LDFLAGS				+= $(LIBRARY_DIR:%=-L %) $(LIBS) -g
@@ -81,9 +82,8 @@ OBJDIR				= obj
 
 ifneq ($(DEBUG),1)
 CFLAGS				+= -O3 -ffunction-sections -fdata-sections -DNDEBUG -g
-LDFLAGS				+= -static
 else
-CFLAGS				+= -g -DDEBUG 
+CFLAGS				+= -DDEBUG 
 OBJDIR				:= $(OBJDIR).dbg
 endif
 

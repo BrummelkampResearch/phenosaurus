@@ -136,6 +136,10 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 	std::vector<int> index;
 
 	std::vector<Transcript> transcripts;
+	if (assembly == "hg19")
+		transcripts.reserve(70000);
+	else if (assembly == "hg38")
+		transcripts.reserve(170000);
 
 	for (auto f: splitted_range(line, '\t'))
 	{

@@ -9,23 +9,10 @@
 
 #include "refseq.hpp"
 
-// struct Insertion
-// {
-// 	long pos;
-// 	const Transcript* transcript;
-// 	bool sense;
-// };
-
 struct Insertions
 {
 	std::set<long> sense, antiSense;
 };
-
-std::vector<Insertions> assignInsertions(std::istream& data, const std::vector<Transcript>& transcripts);
-
-std::vector<Insertions> assignInsertions(const std::string& bowtie,
-	const std::string& index, const std::string& fastq,
-	const std::vector<Transcript>& transcripts, size_t nrOfThreads);
 
 // --------------------------------------------------------------------
 
@@ -33,7 +20,6 @@ struct Insertion
 {
 	CHROM		chr;
 	char		strand;
-	uint16_t	filler = 0;
 	int32_t		pos;
 
 	bool operator<(const Insertion& rhs) const
@@ -61,28 +47,15 @@ struct Insertion
 
 };
 
+static_assert(sizeof(Insertion) == 8);
+
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned trimLength);
 
 namespace std
 {
-
-template<> struct tuple_size<::Insertion>
-            : public std::integral_constant<std::size_t, 3> {};
-
-template<> struct tuple_element<0, ::Insertion>
-{
-	using type = decltype(std::declval<::Insertion>().chr);
+template<std::size_t N>
+struct tuple_element<N, Insertion> {
+	using type = decltype(std::declval<Insertion>().get<N>());
 };
-
-template<> struct tuple_element<1, ::Insertion>
-{
-	using type = decltype(std::declval<::Insertion>().strand);
-};
-
-template<> struct tuple_element<2, ::Insertion>
-{
-	using type = decltype(std::declval<::Insertion>().pos);
-};
-
 }
