@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+	<div th:fragment="contextMenuNav(extra)" id="plot-context-menu" class="context-menu shadow p-1 mb-3 rounded dropdown-menu">
+		<th:block th:replace="${extra}"></th:block>
+		<a href="#" class="dropdown-item context-menu__link gene-finder-action" data-action="gene-finder">Show in Gene Finder</a>
+		<a href="#" class="dropdown-item context-menu__link gene-cards-action" data-action="gene-cards">Show in Gene Cards</a>
+		<div class="dropdown-divider"></div>
+		<a href="#" class="dropdown-item context-menu__link show-gridlines-action" data-action="show-gridlines">Show Grid Lines</a>
+		<a href="#" class="dropdown-item context-menu__link show-labels-action" data-action="show-labels">Show Labels</a>
+		<a href="#" class="dropdown-item context-menu__link" data-action="export-svg">Export Graphic as SVG</a>
+	</div>
+</body>
+</html>

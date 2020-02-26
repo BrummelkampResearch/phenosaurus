@@ -442,7 +442,7 @@ Examples:
 	// -----------------------------------------------------------------------
 
 	bool cutOverlap = true;
-	if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
+	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 		cutOverlap = false;
 
 	Mode mode;
@@ -654,7 +654,7 @@ the parts with overlap will be left out.
 	}
 
 	bool cutOverlap = true;
-	if (vm.count("overlapped") and vm["overlapped"].as<std::string>() == "both")
+	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 		cutOverlap = false;
 
 	std::string assembly = vm["assembly"].as<std::string>();
@@ -680,12 +680,15 @@ the parts with overlap will be left out.
 				
 	for (auto& transcript: transcripts)
 	{
-		std::cout
-			<< transcript.geneName << '\t'
-			<< transcript.chrom << '\t'
-			<< transcript.r.start << '\t'
-			<< transcript.r.end << '\t'
-			<< transcript.strand << std::endl;
+		for (auto& range: transcript.ranges)
+		{
+			std::cout
+				<< transcript.geneName << '\t'
+				<< transcript.chrom << '\t'
+				<< range.start << '\t'
+				<< range.end << '\t'
+				<< transcript.strand << std::endl;
+		}
 	}
 
 	if (sb)
@@ -706,7 +709,9 @@ int main_server(int argc, char* const argv[])
 	visible.add_options()
 		("help,h",											"Display help message")
 		("verbose,v",										"Verbose output")
-		
+
+		("config",				po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+
 		("address",				po::value<std::string>(),	"External address, default is 0.0.0.0")
 		("port",				po::value<uint16_t>(),		"Port to listen to, default is 10336")
 		("no-daemon,F",										"Do not fork into background")

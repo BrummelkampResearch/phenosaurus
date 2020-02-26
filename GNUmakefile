@@ -40,7 +40,7 @@ endif
 
 BOOST_LIB_DIR		?= $(SYSLIBDIR)
 
-PACKAGES			= tbb
+PACKAGES			=
 WARNINGS			= all no-multichar no-unknown-pragmas no-deprecated-declarations
 
 RANLIB				?= ranlib
@@ -82,6 +82,7 @@ OBJDIR				= obj
 
 ifneq ($(DEBUG),1)
 CFLAGS				+= -O3 -ffunction-sections -fdata-sections -DNDEBUG -g
+LDFLAGS				+= -static
 else
 CFLAGS				+= -DDEBUG 
 OBJDIR				:= $(OBJDIR).dbg

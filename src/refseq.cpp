@@ -297,12 +297,125 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 			continue;
 
 		// initially we take the whole transcription region
-		ts.r = ts.tx;
+		ts.ranges.push_back(ts.tx);
 
 		transcripts.push_back(std::move(ts));
 	}
 
 	return transcripts;
+}
+
+// --------------------------------------------------------------------
+
+bool Transcript::hasOverlap(const Transcript& t) const
+{
+	bool result = false;
+
+	auto bi = ranges.begin();
+	auto tbi = t.ranges.begin();
+	
+	while (bi != ranges.end() and tbi != t.ranges.end())
+	{
+		if (bi->end <= tbi->start)
+		{
+			++bi;
+			continue;
+		}
+
+		if (tbi->end <= bi->start)
+		{
+			++tbi;
+			continue;
+		}
+
+		if ((bi->start < tbi->start and bi->end >= tbi->start) or
+			(tbi->start < bi->start and tbi->end >= bi->start))
+		{
+			result = true;
+			break;
+		}
+
+		if (bi->start < tbi->start)
+			++bi;
+		else
+			++tbi;
+	}
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+// cut out overlapping regions from both this and t
+
+void cutOverlap(Transcript& a, Transcript& b)
+{
+	if (a.empty() or b.empty())
+		return;
+
+	std::vector<Range> ra, rb;
+
+	auto ai = a.ranges.begin(), bi = b.ranges.begin();
+	auto as = ai->start, ae = ai->end, bs = bi->start, be = bi->end;
+
+	while (ai != a.ranges.end() and bi != b.ranges.end())
+	{
+		if (as == ae and ai != a.ranges.end())
+		{
+			if (++ai != a.ranges.end())
+			{
+				as = ai->start;
+				ae = ai->end;
+			}
+		}
+
+		if (bs == be and bi != b.ranges.end())
+		{
+			if (++bi != b.ranges.end())
+			{
+				bs = bi->start;
+				be = bi->end;
+			}
+		}
+
+		if (as < bs)
+		{
+			auto e = bs;
+			if (e > ae)
+				e = ae;
+
+			ra.push_back(Range{ as, e });
+			as = e;
+			continue;
+		}
+
+		if (bs < as)
+		{
+			auto e = as;
+			if (e > be)
+				e = be;
+
+			rb.push_back(Range{ bs, e });
+			bs = e;
+			continue;
+		}
+
+		// as == bs
+		assert(as == bs);
+		auto e = ae;
+		if (e > be)
+			e = be;
+		
+		as = bs = e;
+	}
+
+	if (ae > as)
+		ra.emplace_back(Range{as, ae});
+	
+	if (be > bs)
+		rb.emplace_back(Range{bs, be});
+	
+	std::swap(a.ranges, ra);
+	std::swap(b.ranges, rb);
 }
 
 // --------------------------------------------------------------------
@@ -313,8 +426,12 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 	// Start by removing transcripts for which r.end < r.start, yes, that's possible...
 	transcripts.erase(
-		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.r.end <= t.r.start; }),
+		std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return t.empty(); }),
 		transcripts.end());
+
+	// shortcut
+	if (transcripts.size() <= 1)
+		return;
 
 	// build an index based on gene name and position
 
@@ -330,7 +447,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 		if (d == 0)
 			d = a.chrom - b.chrom;
 		if (d == 0)
-			d = a.r.start - b.r.start;
+			d = a.start() - b.start();
 		
 		return d < 0;
 	});
@@ -386,23 +503,19 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 				auto l = ix_a;
 
-				assert(a.r.end > a.r.start);
-
-				auto len_a = a.r.end - a.r.start;
+				auto len_a = a.end() - a.start();
 
 				for (size_t j = i + 1; j < transcripts.size(); ++j)
 				{
 					auto ix_b = index[j];
 					auto& b = transcripts[ix_b];
 
-					assert(b.r.end > b.r.start);
-
 					if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
 						break;
 
 					++i;
 
-					auto len_b = b.r.end - b.r.start;
+					auto len_b = b.end() - b.start();
 					if (len_b > len_a)
 						l = ix_b;
 				}
@@ -438,11 +551,11 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 					++i;
 
-					if (a.r.start > b.r.start)
-						a.r.start = b.r.start;
+					if (a.start() > b.start())
+						a.start(b.start());
 					
-					if (a.r.end < b.r.end)
-						a.r.end = b.r.end;
+					if (a.end() < b.end())
+						a.end(b.end());
 				}
 			}
 
@@ -454,53 +567,6 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 		default:
 			break;
-	}
-
-	// reorder index, now only on position
-	index.resize(transcripts.size());
-	std::iota(index.begin(), index.end(), 0);
-
-	std::sort(index.begin(), index.end(), [&transcripts](size_t ix_a, size_t ix_b)
-	{
-		auto& a = transcripts[ix_a];
-		auto& b = transcripts[ix_b];
-
-		int d = a.chrom - b.chrom;
-		if (d == 0)
-			d = a.r.start - b.r.start;
-		
-		return d < 0;
-	});
-
-	// designate overlapping genes
-
-	for (size_t i = 0; i + 1 < transcripts.size(); ++i)
-	{
-		auto ix_a = index[i];
-		auto& a = transcripts[ix_a];
-
-		for (size_t j = i + 1; j < transcripts.size(); ++j)
-		{
-			auto ix_b = index[j];
-			auto& b = transcripts[ix_b];
-
-			if (b.chrom != a.chrom or b.r.start > a.r.end)
-				break;
-
-			if (a.r.start <= b.r.start and a.r.end >= b.r.end)
-			{
-				if (VERBOSE)
-					std::cerr << "Gene " << a.geneName << " overlaps " << b.geneName << std::endl;
-				b.overlapped = true;
-			}
-			else if (b.r.start <= a.r.start and b.r.end >= a.r.end)
-			{
-				if (VERBOSE)
-					std::cerr << "Gene " << b.geneName << " overlaps " << a.geneName << std::endl;
-
-				a.overlapped = true;
-			}
-		}
 	}
 }
 
@@ -522,7 +588,7 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 // --------------------------------------------------------------------
 
 void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
-	const std::string& startPos, const std::string& endPos, bool cutOverlap)
+	const std::string& startPos, const std::string& endPos, bool cutOverlappingRegions)
 {
 	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
 
@@ -583,36 +649,36 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 		{
 			switch (start)
 			{
-				case POS::TX_START:		t.r.start = t.tx.start + startOffset; break;
-				case POS::CDS_START:	t.r.start = t.cds.start + startOffset; break;
-				case POS::CDS_END:		t.r.start = t.cds.end + startOffset; break;
-				case POS::TX_END:		t.r.start = t.tx.end + startOffset; break;
+				case POS::TX_START:		t.start(t.tx.start + startOffset); break;
+				case POS::CDS_START:	t.start(t.cds.start + startOffset); break;
+				case POS::CDS_END:		t.start(t.cds.end + startOffset); break;
+				case POS::TX_END:		t.start(t.tx.end + startOffset); break;
 			}
 
 			switch (end)
 			{
-				case POS::TX_START:		t.r.end = t.tx.start + endOffset; break;
-				case POS::CDS_START:	t.r.end = t.cds.start + endOffset; break;
-				case POS::CDS_END:		t.r.end = t.cds.end + endOffset; break;
-				case POS::TX_END:		t.r.end = t.tx.end + endOffset; break;
+				case POS::TX_START:		t.end(t.tx.start + endOffset); break;
+				case POS::CDS_START:	t.end(t.cds.start + endOffset); break;
+				case POS::CDS_END:		t.end(t.cds.end + endOffset); break;
+				case POS::TX_END:		t.end(t.tx.end + endOffset); break;
 			}
 		}
 		else
 		{
 			switch (start)
 			{
-				case POS::TX_START:		t.r.end = t.tx.end - startOffset; break;
-				case POS::CDS_START:	t.r.end = t.cds.end - startOffset; break;
-				case POS::CDS_END:		t.r.end = t.cds.start - startOffset; break;
-				case POS::TX_END:		t.r.end = t.tx.start - startOffset; break;
+				case POS::TX_START:		t.end(t.tx.end - startOffset); break;
+				case POS::CDS_START:	t.end(t.cds.end - startOffset); break;
+				case POS::CDS_END:		t.end(t.cds.start - startOffset); break;
+				case POS::TX_END:		t.end(t.tx.start - startOffset); break;
 			}
 
 			switch (end)
 			{
-				case POS::TX_START:		t.r.start = t.tx.end - endOffset; break;
-				case POS::CDS_START:	t.r.start = t.cds.end - endOffset; break;
-				case POS::CDS_END:		t.r.start = t.cds.start - endOffset; break;
-				case POS::TX_END:		t.r.start = t.tx.start - endOffset; break;
+				case POS::TX_START:		t.start(t.tx.end - endOffset); break;
+				case POS::CDS_START:	t.start(t.cds.end - endOffset); break;
+				case POS::CDS_END:		t.start(t.cds.start - endOffset); break;
+				case POS::TX_END:		t.start(t.tx.start - endOffset); break;
 			}
 		}
 	}
@@ -624,7 +690,7 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 	{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
-			d = a.r.start - b.r.start;
+			d = a.start() - b.start();
 		return d < 0;
 	};
 
@@ -632,7 +698,7 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 	std::sort(transcripts.begin(), transcripts.end(), cmp);
 
 	// cut out overlapping regions, if requested
-	if (cutOverlap)
+	if (cutOverlappingRegions)
 	{
 		for (size_t i = 0; i + 1 < transcripts.size(); ++i)
 		{
@@ -641,29 +707,16 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 			if (transcripts[i].chrom != transcripts[j].chrom)
 				continue;
 			
-			if (transcripts[i].r.end <= transcripts[j].r.start)
+			if (transcripts[i].end() <= transcripts[j].start())
 				continue;
 			
-			auto e = transcripts[i].r.end;
-			transcripts[i].r.end = transcripts[j].r.start;
-
-			// check to see if first overlaps second completely with extra
-			if (e > transcripts[j].r.end)
-			{
-				// need to insert copy
-
-				auto t = transcripts[i];
-				t.r.start = transcripts[j].r.end;
-				t.r.end = e;
-
-				auto k = std::upper_bound(transcripts.begin() + i, transcripts.end(), t, cmp);
-				transcripts.insert(k, t);
-			}
+			if (transcripts[i].hasOverlap(transcripts[j]))
+				cutOverlap(transcripts[i], transcripts[j]);
 		}
 	}
 
 	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(),
-		[](auto& ts) { return ts.r.end <= ts.r.start; }),
+		[](auto& ts) { return ts.empty(); }),
 		transcripts.end());
 }
 

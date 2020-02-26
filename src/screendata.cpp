@@ -134,7 +134,7 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 	{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
-			d = a.r.end - b.r.end;
+			d = a.start() - b.start();
 		return d < 0;
 	});
 
@@ -143,8 +143,12 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 
 	for (std::string s: { "low", "high" })
 	{
+#ifndef DEBUG
 		t.create_thread([&, lh = s]()
 		{
+#else
+		auto lh = s;
+#endif
 			try
 			{
 				auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
@@ -173,23 +177,27 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 					// we have a valid hit at chr:pos, see if it matches a transcript
 
 					// skip all that are before the current position
-					while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->r.end <= pos)))
+					while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
 						++ts;
 
 					auto t = ts;
-					while (t != transcripts.end() and t->chrom == chr and t->r.start <= pos)
+					while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 					{
-						assert(t->r.end > pos);
-
 						if (VERBOSE >= 3)
 							std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
 
-						// insertions.push_back({ pos, t, strand == t->strand });
-						if (strand == t->strand)
-							insertions[t - transcripts.begin()].sense.insert(pos);
-						else
-							insertions[t - transcripts.begin()].antiSense.insert(pos);
-						
+						for (auto& r: t->ranges)
+						{
+							if (pos >= r.start and pos < r.end)
+							{
+								// insertions.push_back({ pos, t, strand == t->strand });
+								if (strand == t->strand)
+									insertions[t - transcripts.begin()].sense.insert(pos);
+								else
+									insertions[t - transcripts.begin()].antiSense.insert(pos);
+							}
+						}
+
 						++t;
 					}
 				}
@@ -203,7 +211,9 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 			{
 				eptr = std::current_exception();
 			}
+#ifndef DEBUG
 		});
+#endif
 	}
 
 	t.join_all();

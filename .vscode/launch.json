@@ -21,7 +21,7 @@
 			"name": "refseq",
 			"program": "${workspaceFolder}/screen-analyzer",
 			"args": [
-				"refseq", "ncbi-genes-hg19-van-stallman.txt", "--mode=collapse"
+				"refseq", "--mode=collapse", "--overlap=both", "--start=txStart", "--end=cdsEnd"
 			],
 			"cwd": "${workspaceFolder}",
 			"preLaunchTask": "make screen-analyzer"
@@ -45,10 +45,11 @@
 			"request": "launch",
 			"program": "${workspaceFolder}/screen-analyzer",
 			"args": [
-				"analyze", "PDL1_INFg",
-				"hg19", "--reference-hg19=cd274-hg19.txt",
+				"analyze",
+				"acetyltub",
 				"--verbose",
 				"--mode=collapse",
+				"--overlap=both",
 				"--start=txStart",
 				"--end=cdsEnd"
 			],

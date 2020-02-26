@@ -17,6 +17,8 @@ enum class Mode
 struct Range
 {
 	uint32_t start, end;
+
+	bool empty() const { return end <= start; }
 };
 
 enum class CDSStat : uint8_t
@@ -58,9 +60,46 @@ struct Transcript
 	bool longest = false;
 	bool overlapped = false;
 
-	// The final range as calculated
-	Range r;
+	// The final ranges as calculated
+	// Range r;
+	std::vector<Range> ranges;
+
+	bool empty() const
+	{
+		return ranges.empty() or
+			std::find_if(ranges.begin(), ranges.end(), [](auto& r) { return not r.empty(); }) == ranges.end();
+	}
+
+	bool hasOverlap(const Transcript& b) const;
+
+	uint32_t start() const
+	{
+		return ranges.empty() ? 0 : ranges.front().start;
+	}
+
+	void start(uint32_t v)
+	{
+		if (ranges.empty())
+			ranges.push_back({v, 0});
+		else
+			ranges.front().start = v;
+	}
+
+	uint32_t end() const
+	{
+		return ranges.empty() ? 0 : ranges.back().end;
+	}
+
+	void end(uint32_t v)
+	{
+		if (ranges.empty())
+			ranges.push_back({0, v});
+		else
+			ranges.back().end = v;
+	}
 };
+
+void cutOverlap(Transcript& a, Transcript& b);
 
 // --------------------------------------------------------------------
 

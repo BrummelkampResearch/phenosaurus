@@ -349,7 +349,9 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 			continue;
 		
 		result.geneStrand = { t.strand };
-		result.area.emplace_back(GeneExon{t.r.start, t.r.end});
+
+		for (auto& r: t.ranges)
+			result.area.emplace_back(GeneExon{r.start, r.end});
 	}
 
 	return result;

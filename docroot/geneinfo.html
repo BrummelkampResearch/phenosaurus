@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+
+<div th:fragment="geneDiv(type)" id="gene-info-dialog" class="modal-sm" style="display: none">
+	<div class="modal-content gene-info-dialog-content">
+		<div class="modal-header gene-info-dialog-header">
+			<h6 class="modal-title gene-info-dialog-title">Gene Info</h6>
+			<button id="close-info-dialog-button" type="button" class="close">&times;</button>
+		</div>
+		<div class="modal-body gene-info-dialog-body">
+			<table class="table table-sm gene-info-dialog-table">
+				<thead th:switch="${type}">
+					<tr th:case="'ip'">
+						<th>Gene</th>
+						<th>p-value</th>
+						<th>high</th>
+						<th>low</th>
+					</tr>
+					<tr th:case="'sl'">
+						<th>Gene</th>
+						<th>binom_fdr</th>
+						<th>sense</th>
+						<th>antisense</th>
+					</tr>
+				</thead>
+				<tbody/>
+			</table>
+		</div>
+	</div>
+</div>
+
+</html>
