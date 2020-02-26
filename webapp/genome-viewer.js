@@ -1,5 +1,10 @@
 import * as d3 from "d3";
 import ContextMenu from './contextMenu';
+import Tooltip from "./tooltip";
+
+// --------------------------------------------------------------------
+
+const tooltip = new Tooltip();
 
 // --------------------------------------------------------------------
 
@@ -18,7 +23,37 @@ export class GenomeViewerContextMenu extends ContextMenu {
 export default class GenomveViewer {
 
 	constructor(svg) {
-		this.svg = svg;
+
+		const plot = document.getElementById("plot");
+		if (plot != null) {
+			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.geneID));
+		}
+
+		// create the context menu
+		const contextMenuDiv = document.getElementById("genome-viewer-context-menu");
+		if (contextMenuDiv)
+			this.contextMenu = new GenomeViewerContextMenu(this, "genome-viewer-context-menu");
+	}
+
+	createSVG(nrOfGenes) {
+		if (this.svg)
+			this.svg.remove();
+		
+		const container = document.getElementById('genome-viewer-container');
+
+		const boxWidth = container.clientWidth;
+		const boxHeight = 60 + nrOfGenes * 7;
+
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+		svg.setAttributeNS(null, "viewBox", "0 0 " + boxWidth + " " + boxHeight);
+		svg.setAttributeNS(null, "width", boxWidth);
+		svg.setAttributeNS(null, "height", boxHeight);
+		svg.style.display = "block";
+
+		container.appendChild(svg);
+
+		this.svg = d3.select(svg);
 
 		this.svg.node().addEventListener('wheel', (evt) => {
 			evt.stopPropagation();
@@ -26,16 +61,12 @@ export default class GenomveViewer {
 			return false;
 		}, false);
 
-		const plot = document.getElementById("plot");
-		if (plot != null) {
-			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.geneID));
-		}
 
 		const viewerContainer = $(this.svg.node());
 		const bBoxWidth = viewerContainer.width();
 		const bBoxHeight = viewerContainer.height();
 
-		this.margin = {top: 0, right: 50, bottom: 25, left: 50};
+		this.margin = {top: 0, right: 50, bottom: 30, left: 50};
 		this.width = bBoxWidth - this.margin.left - this.margin.right;
 		this.height = bBoxHeight - this.margin.top - this.margin.bottom;
 
@@ -88,7 +119,11 @@ export default class GenomveViewer {
 
 		this.insertionsData = this.plotData.append('g')
 			.attr("width", this.width)
-			.attr("height", 20);
+			.attr("height", 25);
+		
+		this.genesData = this.plotData.append('g')
+			.attr("width", this.width)
+			.attr("height", nrOfGenes * 7);
 
 		// const zoom = d3.zoom()
 		// 	.scaleExtent([1, 40])
@@ -97,13 +132,15 @@ export default class GenomveViewer {
 
 		// this.svg.call(zoom);
 
-		// create the context menu
-		const contextMenuDiv = document.getElementById("genome-viewer-context-menu");
-		if (contextMenuDiv)
-			this.contextMenu = new GenomeViewerContextMenu(this, "genome-viewer-context-menu");
 	}
 
 	selectedGene(geneID) {
+		if (this.svg)
+		{
+			this.svg.remove();
+			this.svg = null;
+		}
+
 		const f = document.geneSelectionForm;
 		const fd = new FormData(f);
 
@@ -169,21 +206,26 @@ export default class GenomveViewer {
 	setGene(data) {
 		console.log(data);
 
+		this.createSVG(data.genes.length);
+
 		this.region = data;
+
+		this.svg.select("text.x.axis-label")
+			.text(`position at chromosome ${data.chrom}`);
 
 		const x = this.adjustAxis();
 
 		[
 			{ low: false, y: 0, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
-			{ low: false, y: 5, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
-			{ low: true, y: 10, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
-			{ low: true, y: 15, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
+			{ low: false, y: 7, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
+			{ low: true, y: 14, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
+			{ low: true, y: 21, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
 		].forEach(ii => {
 			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
 				.data(ii.i, d => d);
 		
 			r.exit().remove();
-			let l = r.enter()
+			const l = r.enter()
 				.append("rect")
 				.attr("class", `ins ${ii.n}`)
 				.attr("y", ii.y)
@@ -204,8 +246,68 @@ export default class GenomveViewer {
 
 			l.merge(r)
 				.attr("x", d => x(d + 1));			
-		})
+		});
 
+		// number the genes to get an id
+		let nr = 0;
+		data.genes.forEach(g => g.nr = nr++);
+
+		const g = this.genesData.selectAll("g.gene")
+			.data(data.genes, g => g.nr);
+		
+		g.exit().remove();
+		const gl = g.enter()
+			.append("g")
+			.attr("class", "gene")
+			.attr("transform", g => `translate(0, ${30 + g.nr * 7})`)
+			.on("mouseover", g => tooltip.show(g.name, d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseout", () => tooltip.hide());
+		
+		gl.append("line")
+			.attr("class", "direction")
+			.style("stroke", "#777")
+			.style("stroke-width", 1)
+			.attr("shape-rendering", "crispEdges")
+			.attr("y1", 3)
+			.attr("y2", 3)
+			.attr("marker-end", g => `url(#gene-head-${g.nr})`);
+		
+		gl.append("marker")
+			.attr("id", g => `gene-head-${g.nr}`)
+			.attr("orient", "auto")
+			.attr("markerWidth", 3)
+			.attr("markerHeight", 6)
+			.attr("refX", 3)
+			.attr("refY", 3)
+			.append("path")
+			.attr("d", "M0,0 V6 L3,3 Z")
+			.style("fill", "#777");
+		
+		gl.merge(g)
+			.select("line")
+			.attr("x1", gene => gene.strand == '+' ? x(gene.txStart + 1) : x(gene.txEnd + 1))
+			.attr("x2", gene => gene.strand == '-' ? x(gene.txStart + 1) - 8 : x(gene.txEnd + 1) + 8);
+
+		[
+			{ f: "exons", cl: "exon", c: "#daa520", y: 1, h: 5 },
+			{ f: "utr3", cl: "utr-3", c: "#13728c", y: 2, h: 3 },
+			{ f: "utr5", cl: "utr-5", c: "#13728c", y: 2, h: 3 },
+		].forEach(ii => {
+			const r = gl.merge(g)
+				.selectAll(`rect.${ii.cl}`)
+				.data(gene => gene[ii.f]);
+
+			r.exit().remove();
+			r.enter()
+				.append("rect")
+				.attr("class", ii.cl)
+				.attr("x", e => x(e.start))
+				.attr("y", ii.y)
+				.attr("width", e => x(e.end) - x(e.start))
+				.attr("height", ii.h)
+				.attr("shape-rendering", "crispEdges")
+				.style("fill", ii.c);
+		});
 
 	}
 

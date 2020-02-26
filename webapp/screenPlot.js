@@ -332,7 +332,7 @@ export default class ScreenPlot {
 			.attr("height", this.height);
 
 		const zoom = d3.zoom()
-			.scaleExtent([1, 40])
+			.scaleExtent([1, 8])
 			.translateExtent([[0, 0], [this.width + 90, this.height + 90]])
 			.on("zoom", () => this.zoomed());
 
@@ -403,12 +403,6 @@ export default class ScreenPlot {
 	}
 
 	zoomed() {
-		const evt = d3.event.sourceEvent;
-		if (evt != null) {
-			evt.stopPropagation();
-			evt.preventDefault();
-		}
-
 		if (this.xAxis != null && this.yAxis != null)
 		{
 			this.plotData.attr('transform', d3.event.transform);

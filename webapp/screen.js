@@ -191,13 +191,12 @@ class ScreenPlotRegular extends ScreenPlot {
 
 		return super.clickGenes(d, screenNr);
 	}
-
 }
 
 $(function () {
 	const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 
-	new GenomeViewer(d3.select(document.getElementById("genome-viewer")));
+	new GenomeViewer();
 
 	const svg = d3.select(document.getElementById("plot"));
 	const plot = new ScreenPlotRegular(svg);

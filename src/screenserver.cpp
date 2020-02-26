@@ -57,7 +57,7 @@ struct Gene
 	std::string geneName;
 	std::string strand;
 	uint32_t txStart, txEnd, cdsStart, cdsEnd;
-	std::vector<GeneExon> exons;
+	std::vector<GeneExon> utr3, exons, utr5;
 	
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -68,7 +68,9 @@ struct Gene
 		   & zeep::make_nvp("txEnd", txEnd)
 		   & zeep::make_nvp("cdsStart", cdsStart)
 		   & zeep::make_nvp("cdsEnd", cdsEnd)
-		   & zeep::make_nvp("exons", exons);
+		   & zeep::make_nvp("utr3", utr3)
+		   & zeep::make_nvp("exons", exons)
+		   & zeep::make_nvp("utr5", utr5);
 	}	
 };
 
@@ -259,7 +261,7 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
-	const int kWindowSize = 500;
+	const int kWindowSize = 2000;
 
 	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
 
@@ -270,10 +272,53 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 
 	for (auto& t: transcripts)
 	{
-		auto& gene = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
-		for (auto& e: t.exons)
-			gene.exons.emplace_back(GeneExon{e.start, e.end});
+		auto& tn = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		for (auto e: t.exons)
+		{
+			if (e.start >= t.cds.start and e.end <= t.cds.end)
+			{
+				tn.exons.emplace_back(GeneExon{e.start, e.end});
+				continue;
+			}
+
+			if (e.start < t.cds.start)
+			{
+				auto u = e;
+				if (u.end > t.cds.start)
+					u.end = t.cds.start;
+				
+				if (t.strand == '+')
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+				else
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+				
+				e.start = t.cds.start;
+				if (e.start >= e.end)
+					continue;
+			}
+
+			if (e.end > t.cds.end)
+			{
+				auto u = e;
+				if (u.start < t.cds.end)
+					u.start = t.cds.end;
+				
+				if (t.strand == '+')
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+				else
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+				
+				e.end = t.cds.end;
+				if (e.start >= e.end)
+					continue;
+			}
+
+			tn.exons.emplace_back(GeneExon{ e.start, e.end });
+		}
 		
+		if (t.geneName != gene)
+			continue;
+
 		if (result.start > t.tx.start)
 			result.start = t.tx.start;
 		if (result.end < t.tx.end)

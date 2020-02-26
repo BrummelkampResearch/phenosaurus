@@ -9,54 +9,53 @@
 </head> -->
 
 <!-- <head z:replace="head :: head"> -->
+
 <head>
 
-	<meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" type="text/css" href="/css/styles.css"
-          z:href="@{/css/styles.css}"/>
+	<link rel="stylesheet" type="text/css" href="/css/styles.css" z:href="@{/css/styles.css}" />
 
 	<title>Error in Phenosaurus</title>
-    <script src="/scripts/screen.js" z:src="@{/scripts/screen.js}"></script>
+	<script src="/scripts/screen.js" z:src="@{/scripts/screen.js}"></script>
 </head>
 
 <body>
-<nav z:replace="menu :: menu"></nav>
-<br/>
+	<nav z:replace="menu :: menu"></nav>
 
-<input type="hidden" name="selectedScreen" z:value="${selectedScreen}"/>
-<input type="hidden" name="selectedGene" z:value="${selectedGene}"/>
+	<input type="hidden" name="selectedScreen" z:value="${selectedScreen}" />
+	<input type="hidden" name="selectedGene" z:value="${selectedGene}" />
 
-<script z:inline="javascript">
-	const screenInfo = /*[[${screenInfo}]]*/ null;
-</script>
+	<script z:inline="javascript">
+		const screenInfo = /*[[${screenInfo}]]*/ null;
+	</script>
 
-<div class="container-fluid">
+	<div class="container-fluid">
 
-	<div class="row">
-		<div class="col-sm-2">
+		<div class="row">
+			<div class="col-sm-2">
 
-			<div class="container-fluid">
+				<div class="container-fluid">
+					<h6 class="mt-3">screen</h6>
 
-				<h6>screen</h6>
+					<ul class="option-group">
+						<li>
+							<select id="screenList" data-placeholder="Choose a Screen...">
+								<option value=""></option>
+								<option z:each="screen: ${screens}" z:attr="data-screen=${screen.id}"
+									z:text="${screen.name}"></option>
+							</select>
 
-				<ul class="option-group">
-					<li>
-						<select id="screenList" data-placeholder="Choose a Screen...">
-							<option value=""></option>
-							<option z:each="screen: ${screens}" z:attr="data-screen=${screen.id}" z:text="${screen.name}"></option>
-						</select>
+						</li>
+					</ul>
 
-					</li>	
-				</ul>	
+					<hr />
 
-				<hr/>
+					<h6>options</h6>
+					<ul class="option-group">
 
-				<h6>options</h6>
-				<ul class="option-group">
-
-					<!-- <li>
+						<!-- <li>
 						<form name="graphTypeForm">
 							<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="graphTypeBtns">
 								<label class="btn btn-secondary active">
@@ -80,176 +79,180 @@
 						</form>
 					</li> -->
 
-					<li>
+						<li>
 
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text">p-value</span>
+							<div class="input-group input-group-sm mb-3">
+								<div class="input-group-prepend">
+									<span class="input-group-text">p-value</span>
+								</div>
+
+								<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
+									placeholder="0.05" align="right" class="form-control form-control-sm" />
+							</div>
+						</li>
+
+
+					</ul>
+
+					<hr />
+					<h6>gene selection</h6>
+					<form name="geneSelectionForm">
+						<ul class="option-group">
+							<li>
+
+								<div class="input-group input-group-sm mb-3">
+									<div class="input-group-prepend">
+										<span class="input-group-text" style="min-width: 4em;">Assembly</span>
+									</div>
+
+									<select class="custom-select custom-select-sm" name="assembly">
+										<option value="hg19" selected="selected">HG19</option>
+										<option value="hg38">HG38</option>
+									</select>
+								</div>
+
+								<div class="input-group input-group-sm mb-3">
+									<div class="input-group-prepend">
+										<span class="input-group-text">Mode</span>
+									</div>
+
+									<select class="custom-select custom-select-sm" name="mode">
+										<option value="collapse" selected="selected">Collapse</option>
+										<option value="longest">Longest</option>
+									</select>
+								</div>
+
+								<div class="input-group input-group-sm mb-3">
+									<div class="input-group-prepend">
+										<span class="input-group-text">
+											<input type="checkbox" class="form-control form-control-sm"
+												name="cut-overlap" checked="checked" />
+										</span>
+									</div>
+									<input type="text" class="form-control form-control-sm"
+										value="Remove overlapped regions" />
+								</div>
+
+
+								<div class="input-group input-group-sm mb-3" z:each="se: ${{'Start', 'End'}}">
+									<div class="input-group-prepend">
+										<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;"
+											z:text="${se}"></span>
+									</div>
+
+									<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
+										<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
+										<option value="txEnd">tx-end</option>
+										<option value="cdsStart">cds-start</option>
+										<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
+									</select>
+
+									<input type="text" class="form-control" z:aria-label="|${se} of gene|"
+										z:aria-describedby="|${se}Label|" z:id="|gene${se}Offset|"
+										placeholder="offset..." />
+								</div>
+
+							</li>
+						</ul>
+					</form>
+
+					<button class="btn" id="reload-btn">Reload</button>
+
+					<hr />
+					<h6>highlight</h6>
+					<ul class="option-group">
+						<li>
+							<div class="input-group input-group-sm mb-3">
+								<div class="input-group-prepend">
+									<span class="input-group-text" id="startLabel" style="min-width: 4em;">Gene</span>
+								</div>
+
+								<input type="text" id="highlightGene" size="5" placeholder="Enter genename..."
+									align="right" z:value="${selectedGene?:''}" class="form-control form-control-sm" />
 							</div>
 
-							<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
-								   placeholder="0.05" align="right"
-								   class="form-control form-control-sm"/>
-						</div>
-					</li>
+							<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight</button>
+							<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear</button>
 
-			
-				</ul>
+						</li>
 
-				<hr/>
-				<h6>gene selection</h6>
-				<form name="geneSelectionForm">
-				<ul class="option-group">
-					<li>
+						<li>
+							<div z:replace="gene-info :: geneDiv"></div>
+							<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
+							<label>
+								<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
+									Dialog</button>
+							</label>
+						</li>
+					</ul>
 
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text" style="min-width: 4em;">Assembly</span>
-							</div>
-
-							<select class="custom-select custom-select-sm" name="assembly">
-								<option value="hg19" selected="selected">HG19</option>
-								<option value="hg38">HG38</option>
-							</select>
-						</div>
-
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text">Mode</span>
-							</div>
-
-							<select class="custom-select custom-select-sm" name="mode">
-								<option value="collapse" selected="selected">Collapse</option>
-								<option value="longest">Longest</option>
-							</select>
-						</div>
-
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text">
-									<input type="checkbox" class="form-control form-control-sm" name="cut-overlap" checked="checked" />
-								</span>
-							</div>
-							<input type="text" class="form-control form-control-sm" value="Remove overlapped regions" />
-						</div>
-
-
-						<div class="input-group input-group-sm mb-3" z:each="se: ${{'Start', 'End'}}">
-							<div class="input-group-prepend">
-								<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;" z:text="${se}"></span>
-							</div>
-
-							<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
-								<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
-								<option value="txEnd">tx-end</option>
-								<option value="cdsStart">cds-start</option>
-								<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
-							</select>
-
-							<input type="text" class="form-control" z:aria-label="|${se} of gene|" z:aria-describedby="|${se}Label|"
-								z:id="|gene${se}Offset|" placeholder="offset..."/>
-						</div>
-						
-					</li>
-				</ul>
-				</form>
-
-				<button class="btn" id="reload-btn">Reload</button>
-
-				<hr/>
-				<h6>highlight</h6>
-				<ul class="option-group">
-					<li>
-						<div class="input-group input-group-sm mb-3">
-							<div class="input-group-prepend">
-								<span class="input-group-text" id="startLabel" style="min-width: 4em;">Gene</span>
-							</div>
-
-							<input type="text" id="highlightGene" size="5"
-							   placeholder="Enter genename..." align="right"
-							   z:value="${selectedGene?:''}"
-							   class="form-control form-control-sm"/>
-						</div>
-
-						<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight</button>
-						<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear</button>
-
-					</li>
-
-					<li>
-						<div z:replace="gene-info :: geneDiv"></div>
-						<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
-						<label>
-							<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
-								Dialog</button>
-						</label>
-					</li>					
-				</ul>
+				</div>
 
 			</div>
 
+			<div class="col">
+				<div class="plot-title mt-3">
+					<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading
+						screen <span class="screen-name"></span>...</span>
+					<span class="loaded">Fishtail plot for <span class="screen-name"></span></span>
+					<span class="failed">Fishtail plot for <span class="screen-name"></span> could not be loaded.
+						<span id="plot-status-error-text"></span></span>
+				</div>
+
+				<div class="plot-container">
+					<svg width="100%" height="90%" id="plot"></svg>
+				</div>
+
+				<div id="genome-viewer-container">
+					<!-- <svg width="100%" height="60" id="genome-viewer"></svg> -->
+				</div>
+
+			</div>
 		</div>
 
-		<div class="col">
-			<div class="plot-title">
-				<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading screen <span class="screen-name"></span>...</span>
-				<span class="loaded">Fishtail plot for <span class="screen-name"></span></span>
-				<span class="failed">Fishtail plot for <span class="screen-name"></span> could not be loaded.
-					<span id="plot-status-error-text"></span></span>
+		<br />
+
+		<div class="row">
+			<div class="col-6">
+				<h5>Negative regulators</h5>
+				<table class="table table-hover table-sm">
+					<thead>
+						<tr>
+							<th>relgene</th>
+							<th>low</th>
+							<th>high</th>
+							<th>fcpv</th>
+							<th>log2(MI)</th>
+						</tr>
+					</thead>
+					<tbody id="negative-regulators">
+					</tbody>
+				</table>
 			</div>
 
-			<div class="genome-viewer-container">
-				<svg width="100%" height="60" id="genome-viewer"></svg>
-			</div>
-
-			<div class="plot-container">
-				<svg width="100%" height="100%" id="plot"></svg>
+			<div class="col-6">
+				<h5>Positive regulators</h5>
+				<table class="table table-hover table-sm">
+					<thead>
+						<tr>
+							<th>relgene</th>
+							<th>low</th>
+							<th>high</th>
+							<th>fcpv</th>
+							<th>log2(MI)</th>
+						</tr>
+					</thead>
+					<tbody id="positive-regulators">
+					</tbody>
+				</table>
 			</div>
 		</div>
 	</div>
 
-	<br/>
+	<!-- <div z:replace="~{contextMenu :: contextMenuNav(_)}"></div> -->
 
-	<div class="row">
-		<div class="col-6">
-			<h5>Negative regulators</h5>
-			<table class="table table-hover table-sm">
-				<thead>
-				<tr>
-					<th>relgene</th>
-					<th>low</th>
-					<th>high</th>
-					<th>fcpv</th>
-					<th>log2(MI)</th>
-				</tr>
-				</thead>
-				<tbody id="negative-regulators">
-				</tbody>
-			</table>
-		</div>
-
-		<div class="col-6">
-			<h5>Positive regulators</h5>
-			<table class="table table-hover table-sm">
-				<thead>
-				<tr>
-					<th>relgene</th>
-					<th>low</th>
-					<th>high</th>
-					<th>fcpv</th>
-					<th>log2(MI)</th>
-				</tr>
-				</thead>
-				<tbody id="positive-regulators">
-				</tbody>
-			</table>
-		</div>
-	</div>
-</div>
-
-<!-- <div z:replace="~{contextMenu :: contextMenuNav(_)}"></div> -->
-
-<footer z:replace="footer :: content"></footer>
+	<footer z:replace="footer :: content"></footer>
 
 </body>
+
 </html>

@@ -210,27 +210,42 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 						ts.cds.end = stoul(f);
 						break;
 					case 8:	// exonCount
-						ts.exons.reserve(stoi(f));
+						ts.exons = std::vector<Exon>(stoi(f));
 						break;
 					case 9:	// exonStarts
 					case 10:// exonEnds
 					case 15:// exonFrames
 					{
-						size_t ei = 0;
-						for (std::string::size_type e = 0, ee = line.find(',', e + 1); e != std::string::npos; e = ee, ee = line.find('\t', e + 1), ++ei)
+						const char* s = f.c_str();
+						for (auto& exon: ts.exons)
 						{
-							if (ts.exons.size() < ei + 1)
-								ts.exons.push_back({});
+							long l = 0;
+							bool negate = false;
+
+							if (*s == '-')
+							{
+								negate = true;
+								++s;
+							}
+
+							while (*s >= '0' and *s <= '9')
+								l = l * 10 + (*s++ - '0');
+							if (negate)
+								l = -l;
+							
+							if (*s == ',')
+								++s;
+							
 							switch (index[ix])
 							{
 								case 9:	// exonStarts
-									ts.exons[ei].start = stoul(f);
+									exon.start = l;
 									break;
 								case 10:// exonEnds
-									ts.exons[ei].end = stoul(f);
+									exon.end = l;
 									break;
 								case 15:// exonFrames
-									ts.exons[ei].frame = stoi(f);
+									exon.frame = l;
 									break;
 							}
 						}
@@ -662,12 +677,14 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 	int minOffset = std::numeric_limits<int>::max();
 	int maxOffset = 0;
 
+	CHROM chrom;
+
 	for (auto& t: transcripts)
 	{
 		if (t.geneName != gene)
 			continue;
 		
-		result.push_back(t);
+		chrom = t.chrom;
 
 		if (minOffset > t.tx.start)
 			minOffset = t.tx.start;
@@ -676,13 +693,11 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 			maxOffset = t.tx.end;
 	}
 
-	if (result.empty())
+	if (chrom == INVALID)
 		throw std::runtime_error("Gene not found: " + gene);
 	
 	minOffset -= window;
 	maxOffset += window;
-
-	auto chrom = result.front().chrom;
 
 	for (auto& t: transcripts)
 	{

@@ -24,6 +24,7 @@ export default class Tooltip {
 	hide() {
 		if (this.div != null) {
 			this.div.transition()
+				.delay(1000)
 				.duration(500)
 				.style("opacity", 0);
 		}
