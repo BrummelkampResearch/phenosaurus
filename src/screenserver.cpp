@@ -261,7 +261,7 @@ std::vector<DataPoint> ScreenRestController::screenData(const std::string& scree
 Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
-	const int kWindowSize = 2000;
+	const int kWindowSize = 4000;
 
 	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
 

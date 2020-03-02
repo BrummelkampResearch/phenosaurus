@@ -27,7 +27,7 @@ $(warning "Please consider installing it to enable built-in data files.")
 $(warning "See https://github.com/mhekkel/mrc")
 $(warning "")
 else
-	DEFINES			+= USE_RSRC
+	DEFINES			+= USE_RSRC WEBAPP_USES_RESOURCES
 endif
 
 CPU			= $(shell uname -m)
@@ -137,10 +137,7 @@ $(REVISION_FILE):
 rsrc/version.txt: $(REVISION_FILE)
 	cp $? $@
 
-RSRC = rsrc/version.txt rsrc/ncbi-genes-hg19.txt rsrc/ncbi-genes-hg38.txt
-ifneq ($(DEBUG),1)
-RSRC += docroot/
-endif
+RSRC = rsrc/version.txt rsrc/ncbi-genes-hg19.txt rsrc/ncbi-genes-hg38.txt docroot/
 
 src/mrsrc.h:
 	$(MRC) --header > $@
