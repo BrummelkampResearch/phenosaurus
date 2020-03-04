@@ -230,7 +230,7 @@ export default class GenomveViewer {
 				.attr("class", `ins ${ii.n}`)
 				.attr("y", ii.y)
 				.attr("height", 5)
-				.attr("width", 1)
+				.attr("width", 2)
 				// .attr("stroke", "#fbc")
 				.attr("fill", d => {
 					let color = "#888";

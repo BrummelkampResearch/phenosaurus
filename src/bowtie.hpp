@@ -18,6 +18,7 @@ struct Insertions
 
 struct Insertion
 {
+  public:
 	CHROM		chr;
 	char		strand;
 	int32_t		pos;

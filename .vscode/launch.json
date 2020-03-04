@@ -32,7 +32,7 @@
 			"request": "launch",
 			"program": "${workspaceFolder}/screen-analyzer",
 			"args": [
-				"map", "deYtub-10000",
+				"map", "deytub-a",
 				"hg19",
 				"--verbose"
 			],
