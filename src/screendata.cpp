@@ -84,6 +84,17 @@ ScreenData::ScreenData(std::filesystem::path dir)
 ScreenData::ScreenData(std::filesystem::path dir, std::filesystem::path low, std::filesystem::path high)
 	: mDataDir(dir)
 {
+	// follow links until we end up at the final destination
+	while (fs::is_symlink(low))
+		low = fs::read_symlink(low);
+	
+	while (fs::is_symlink(high))
+		low = fs::read_symlink(high);
+	
+	// And then make these canonical/system_complete
+	low = fs::weakly_canonical(low);
+	high = fs::weakly_canonical(high);
+
 	checkIsFastQ(low);
 	checkIsFastQ(high);
 
