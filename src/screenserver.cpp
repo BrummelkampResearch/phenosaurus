@@ -359,11 +359,17 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 
 // --------------------------------------------------------------------
 
-class ScreenServer : public zh::webapp
+#if DEBUG
+using webapp_base = zh::file_based_webapp;
+#else
+using webapp_base = zh::rsrc_based_webapp;
+#endif
+
+class ScreenServer : public webapp_base
 {
   public:
 	ScreenServer(const fs::path& docroot, const fs::path& screenDir)
-		: zh::webapp(docroot)
+		: webapp_base(docroot)
 		, mRestController(new ScreenRestController(screenDir))
 		, mScreenDir(screenDir)
 	{

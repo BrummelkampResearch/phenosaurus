@@ -59,6 +59,7 @@ struct Transcript
 	// used by algorithms
 	bool longest = false;
 	bool overlapped = false;
+	bool unique = true;
 
 	// The final ranges as calculated
 	// Range r;

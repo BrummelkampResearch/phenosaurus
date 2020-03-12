@@ -468,8 +468,15 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 			if (b.geneName != a.geneName)
 				break;
-
+			
 			rename = rename or a.chrom != b.chrom or a.strand != b.strand;
+
+			if (not rename)
+			{
+				a.unique = false;
+				b.unique = false;
+			}
+
 			++j;
 		}
 		
@@ -560,7 +567,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 			}
 
 			transcripts.erase(
-				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not (t.longest or t.unique); }),
 				transcripts.end()
 			);			
 			break;

@@ -9,7 +9,7 @@ import * as d3 from 'd3';
 
 import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
-import {pvCutOff, highlightedGenes, DotContextMenu} from "./screenPlot";
+import {pvCutOff, highlightedGenes} from "./screenPlot";
 import ScreenPlot from "./screenPlot";
 import {showLoginDialog} from "./index";
 

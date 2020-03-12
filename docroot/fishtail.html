@@ -1,28 +1,14 @@
 <!DOCTYPE html SYSTEM "about:legacy-compat">
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
-<!-- <head z:replace="head :: head(~{::title}, ~{}, ~{::script})">
+<head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
 
 	<title>Fishtail Plot - Phenosaurus</title>
 
 	<script src="/scripts/screen.js" type="application/ecmascript" z:src="@{/scripts/screen.js}"></script>
 
-</head> -->
-
-<!-- <head z:replace="head :: head"> -->
-
-<head>
-
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-	<link rel="stylesheet" type="text/css" href="css/styles.css" z:href="@{/css/styles.css}" />
-
-	<title>Phenosaurus TEST gene regions</title>
-	<script src="scripts/screen.js" z:src="@{/scripts/screen.js}"></script>
 </head>
-
 <body>
-	<!-- <nav z:replace="menu :: menu"></nav> -->
+	<nav z:replace="menu :: menu"></nav>
 
 	<input type="hidden" name="selectedScreen" z:value="${selectedScreen}" />
 	<input type="hidden" name="selectedGene" z:value="${selectedGene}" />
@@ -250,6 +236,7 @@
 	</div>
 
 	<!-- <div z:replace="~{contextMenu :: contextMenuNav(_)}"></div> -->
+	<div z:replace="contextMenu :: contextMenuNav"></div>
 
 	<footer z:replace="footer :: content"></footer>
 
