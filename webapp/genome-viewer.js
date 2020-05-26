@@ -14,7 +14,30 @@ export class GenomeViewerContextMenu extends ContextMenu {
 		super(menuID ? menuID : "genome-viewer-context-menu");
 
 		this.viewer = viewer;
-		this.svg = viewer.svg.node();
+	}
+
+	clickIsInsideTarget(e) {
+		let el = e.srcElement || e.target;
+
+		const container = document.getElementById('genome-viewer-container');
+
+		while (el != null && el !== container) {
+			el = el.parentNode;
+		}
+
+		return el;
+	}
+
+	handleSelect(target, action) {
+		switch (action) {
+
+			case 'export-svg':
+				this.viewer.exportSVG();
+				break;
+
+			default:
+				super.handleSelect(target, action);
+		}
 	}
 }
 
@@ -24,9 +47,16 @@ export default class GenomveViewer {
 
 	constructor(svg) {
 
+		this.svg = svg;
+
 		const plot = document.getElementById("plot");
 		if (plot != null) {
 			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.geneID));
+		}
+
+		const antiSenseCB = document.geneSelectionForm['antisense'];
+		if (antiSenseCB != null) {
+			antiSenseCB.addEventListener("change", () => this.recolor());
 		}
 
 		// create the context menu
@@ -204,14 +234,15 @@ export default class GenomveViewer {
 	};
 
 	setGene(data) {
-		console.log(data);
-
 		this.createSVG(data.genes.length);
 
 		this.region = data;
 
 		this.svg.select("text.x.axis-label")
 			.text(`position at chromosome ${data.chrom}`);
+
+		const f = document.geneSelectionForm;
+		const colorAntiSense = f['antisense'].checked == true;
 
 		const x = this.adjustAxis();
 
@@ -231,10 +262,9 @@ export default class GenomveViewer {
 				.attr("y", ii.y)
 				.attr("height", 5)
 				.attr("width", 2)
-				// .attr("stroke", "#fbc")
 				.attr("fill", d => {
 					let color = "#888";
-					if (ii.sense)
+					if (ii.sense === !colorAntiSense)
 					{
 						this.region.area.forEach(a => {
 							if (d >= a.start && d < a.end)
@@ -311,6 +341,31 @@ export default class GenomveViewer {
 
 	}
 
+	recolor() {
+		const f = document.geneSelectionForm;
+		const colorAntiSense = f['antisense'].checked == true;
+
+		[
+			{ low: false, y: 0, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
+			{ low: false, y: 7, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
+			{ low: true, y: 14, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
+			{ low: true, y: 21, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
+		].forEach(ii => {
+			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
+				.attr("fill", d => {
+					let color = "#888";
+					if (ii.sense === !colorAntiSense)
+					{
+						this.region.area.forEach(a => {
+							if (d >= a.start && d < a.end)
+								color = ii.low ? "#3bc" : "#fb8";
+						});
+					}
+					return color;
+				});
+		});
+	}
+
 	adjustAxis() {
 		const xRange = [ this.region.start + 1, this.region.end + 1 ];
 
@@ -331,6 +386,32 @@ export default class GenomveViewer {
 		// 	.attr("transform", d => `translate(${x(d.insertions)},${y(d.log2mi)})`);
 
 		return x;
+	}
+
+	exportSVG() {
+		//get svg source.
+		const svg = this.svg.node();
+		const serializer = new XMLSerializer();
+		let source = serializer.serializeToString(svg);
+
+		//add name spaces.
+		if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/))
+			source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+		if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/))
+			source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+
+		//add xml declaration
+		source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+
+		//convert svg source to URI data scheme.
+		const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = this.screenID + "-plot.svg";
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
 	}
 
 }

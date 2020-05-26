@@ -313,6 +313,8 @@ int main_analyze(int argc, char* const argv[])
 
 		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
 
+		("antisense",							"Use antisense integrations")
+
 		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
 
 		("output", po::value<std::string>(),	"Output file")
@@ -444,6 +446,8 @@ Examples:
 	bool cutOverlap = true;
 	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 		cutOverlap = false;
+	
+	bool antisense = vm.count("antisense");
 
 	Mode mode;
 	if (vm["mode"].as<std::string>() == "collapse")
@@ -486,27 +490,17 @@ Examples:
 
 	std::vector<double> pvalues(transcripts.size(), 0);
 
-	// for (size_t i = 0; i < transcripts.size(); ++i)
-	// {
-	// 	long low = lowInsertions[i].sense.size();
-	// 	long high = highInsertions[i].sense.size();
-	
-	// 	long v[2][2] = {
-	// 		{ low, high },
-	// 		{ lowSenseCount - low, highSenseCount - high }
-	// 	};
-
-	// 	pvalues[i] = fisherTest2x2(v);
-	// }
+	auto lowCount = antisense ? lowAntiSenseCount : lowSenseCount;
+	auto highCount = antisense ? highAntiSenseCount : lowAntiSenseCount;
 
 	parallel_for(transcripts.size(), [&](size_t i)
 	{
-		long low = lowInsertions[i].sense.size();
-		long high = highInsertions[i].sense.size();
+		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 	
 		long v[2][2] = {
 			{ low, high },
-			{ lowSenseCount - low, highSenseCount - high }
+			{ lowCount - low, highCount - high }
 		};
 
 		pvalues[i] = fisherTest2x2(v);
@@ -521,10 +515,10 @@ Examples:
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
 		auto& t = transcripts[i];
-		auto low = lowInsertions[i].sense.size();
-		auto high = highInsertions[i].sense.size();
+		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 
-		double miL = low, miH = high, miLT = lowSenseCount - low, miHT = highSenseCount - high;
+		double miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
 		if (low == 0)
 		{
 			miL = 1;

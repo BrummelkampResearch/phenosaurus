@@ -27,7 +27,7 @@ $(warning "Please consider installing it to enable built-in data files.")
 $(warning "See https://github.com/mhekkel/mrc")
 $(warning "")
 else
-	DEFINES			+= USE_RSRC WEBAPP_USES_RESOURCES
+	DEFINES			+= USE_RSRC
 endif
 
 CPU			= $(shell uname -m)
@@ -38,7 +38,8 @@ ifeq "$(OS)" "GNU/Linux"
 	SYSLIBDIR	:= $(SYSLIBDIR)/$(CPU)-linux-gnu
 endif
 
-BOOST_LIB_DIR		?= $(SYSLIBDIR)
+BOOST_INC_DIR		?= $(BOOST)
+BOOST_LIB_DIR		?= $(BOOST:%=%/stage/lib)
 
 PACKAGES			=
 WARNINGS			= all no-multichar no-unknown-pragmas no-deprecated-declarations
@@ -52,6 +53,8 @@ CFLAGS				+= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags $(PA
 LDFLAGS				+= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs $(PACKAGES) --static )
 endif
 
+INCLUDE_DIR			+= $(BOOST_INC_DIR)
+
 CFLAGS				+= -std=c++17 -pthread
 CFLAGS				+= -ffunction-sections -fdata-sections
 CFLAGS				+= $(addprefix -I, $(INCLUDE_DIR))
@@ -61,12 +64,29 @@ BOOST_LIBS			= date_time iostreams program_options filesystem thread math_c99 ma
 BOOST_LIBS			:= $(BOOST_LIBS:%=boost_%$(BOOST_LIB_SUFFIX))
 BOOST_LIBS			:= $(BOOST_LIBS:%=$(BOOST_LIB_DIR)/lib%.a)
 
-ZEEP_LIBS			?= rest webapp http xml el generic
+ZEEP_LIBS			?= http xml json
 ZEEP_LIBS			:= $(ZEEP_LIBS:%=-lzeep-%)
 
 LIBS				+= m rt stdc++fs
 LIBS				:= $(LIBS:%=-l%)
 LIBS				+= $(ZEEP_LIBS) $(BOOST_LIBS) -lz -lbz2 -lpthread 
+
+OBJDIR				= obj
+
+ifneq ($(DEBUG),1)
+CFLAGS				+= -O3 -ffunction-sections -fdata-sections -g
+DEFINES				+= NDEBUG WEBAPP_USES_RESOURCES
+LDFLAGS				+= -static
+else
+DEFINES				+= DEBUG WEBAPP_USES_RESOURCES=0
+OBJDIR				:= $(OBJDIR).dbg
+endif
+
+ifeq ($(PROFILE),1)
+CFLAGS				+= -pg
+LDFLAGS				+= -pg
+OBJDIR				:= $(OBJDIR).profile
+endif
 
 # generic defines
 
@@ -78,21 +98,6 @@ CFLAGS				+= -g
 LDFLAGS				+= $(LIBRARY_DIR:%=-L %) $(LIBS) -g
 LDFLAGS				+= -Wl,-rpath=$(CLIB)
 
-OBJDIR				= obj
-
-ifneq ($(DEBUG),1)
-CFLAGS				+= -O3 -ffunction-sections -fdata-sections -DNDEBUG -g
-LDFLAGS				+= -static
-else
-CFLAGS				+= -DDEBUG 
-OBJDIR				:= $(OBJDIR).dbg
-endif
-
-ifeq ($(PROFILE),1)
-CFLAGS				+= -pg
-LDFLAGS				+= -pg
-OBJDIR				:= $(OBJDIR).profile
-endif
 
 SOURCE_DIRS			= ./src/
 

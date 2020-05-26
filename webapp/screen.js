@@ -193,7 +193,7 @@ class ScreenPlotRegular extends ScreenPlot {
 	}
 }
 
-$(function () {
+window.addEventListener('load', () => {
 	const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 
 	new GenomeViewer();
@@ -235,6 +235,5 @@ $(function () {
 	const svgExportBtn = document.getElementById('btn-export-svg');
 	if (svgExportBtn != null)
 		svgExportBtn.addEventListener('click', () => plot.exportSVG());
-	
 });
 

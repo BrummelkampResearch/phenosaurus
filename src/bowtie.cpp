@@ -16,7 +16,8 @@
 #include <filesystem>
 #include <functional>
 
-// #include <thread>		// Don't use GNU's version, it crashes...
+// #include <thread>
+// Don't use GNU's version, it crashes...
 #include <boost/thread.hpp>
 
 #include <boost/iostreams/filtering_stream.hpp>

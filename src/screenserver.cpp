@@ -2,8 +2,9 @@
 
 #include <iostream>
 
-#include <zeep/http/webapp.hpp>
-#include <zeep/rest/controller.hpp>
+#include <zeep/http/server.hpp>
+#include <zeep/http/html-controller.hpp>
+#include <zeep/http/rest-controller.hpp>
 
 #include <tbb/parallel_for.h>
 
@@ -101,7 +102,7 @@ struct Region
 
 // -----------------------------------------------------------------------
 
-void to_element(zeep::el::element& e, Mode mode)
+void to_element(zeep::json::element& e, Mode mode)
 {
 	switch (mode)
 	{
@@ -112,7 +113,7 @@ void to_element(zeep::el::element& e, Mode mode)
 	}
 }
 
-void from_element(const zeep::el::element& e, Mode& mode)
+void from_element(const zeep::json::element& e, Mode& mode)
 {
 	if (e == "collapse")		mode = Mode::Collapse;
 	else if (e == "longest")	mode = Mode::Longest;
@@ -132,13 +133,14 @@ class ScreenRestController : public zh::rest_controller
 	{
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
 		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "antisense");
 		map_post_request("gene-info/{id}", &ScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
 	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		bool antisense);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -147,7 +149,7 @@ class ScreenRestController : public zh::rest_controller
 };
 
 std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, bool antisense)
 {
 	const unsigned readLength = 50;
 
@@ -171,49 +173,30 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	if (lowInsertions.size() != transcripts.size() or highInsertions.size() != transcripts.size())
 		throw std::runtime_error("Failed to calculate analysis");
 
-	long lowSenseCount = 0, lowAntiSenseCount = 0;
+	long lowCount = 0, highCount = 0;
+
 	for (auto& i: lowInsertions)
-	{
-		lowSenseCount += i.sense.size();
-		lowAntiSenseCount += i.antiSense.size();
-	}
+		lowCount += antisense ? i.antiSense.size() : i.sense.size();
 
-	long highSenseCount = 0, highAntiSenseCount = 0;
 	for (auto& i: highInsertions)
-	{
-		highSenseCount += i.sense.size();
-		highAntiSenseCount += i.antiSense.size();
-	}
+		highCount += antisense ? i.antiSense.size() : i.sense.size();
 
-	std::vector<double> pvalues(transcripts.size(), 0);
-
-	// for (size_t i = 0; i < transcripts.size(); ++i)
-	// {
-	// 	long low = lowInsertions[i].sense.size();
-	// 	long high = highInsertions[i].sense.size();
-	
-	// 	long v[2][2] = {
-	// 		{ low, high },
-	// 		{ lowSenseCount - low, highSenseCount - high }
-	// 	};
-
-	// 	pvalues[i] = fisherTest2x2(v);
-	// }
+	std::vector<double> pvalues_sense(transcripts.size(), 0);
 
 	parallel_for(transcripts.size(), [&](size_t i)
 	{
-		long low = lowInsertions[i].sense.size();
-		long high = highInsertions[i].sense.size();
+		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 	
 		long v[2][2] = {
 			{ low, high },
-			{ lowSenseCount - low, highSenseCount - high }
+			{ lowCount - low, highCount - high }
 		};
 
-		pvalues[i] = fisherTest2x2(v);
+		pvalues_sense[i] = fisherTest2x2(v);
 	});
 
-	auto fcpv = adjustFDR_BH(pvalues);
+	auto fcpv = adjustFDR_BH(pvalues_sense);
 
 	std::vector<DataPoint> result;
 
@@ -221,13 +204,13 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	{
 		auto& t = transcripts[i];
 
-		auto low = lowInsertions[i].sense.size();
-		auto high = highInsertions[i].sense.size();
+		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 
 		if (low == 0 and high == 0)
 			continue;
 
-		float miL = low, miH = high, miLT = lowSenseCount - low, miHT = highSenseCount - high;
+		float miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
 		if (low == 0)
 		{
 			miL = 1;
@@ -255,7 +238,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 
 std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
 {
-	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds");
+	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", false);
 }
 
 Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
@@ -359,45 +342,30 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 
 // --------------------------------------------------------------------
 
-#if DEBUG
-using webapp_base = zh::file_based_webapp;
-#else
-using webapp_base = zh::rsrc_based_webapp;
-#endif
-
-class ScreenServer : public webapp_base
+class ScreenHtmlController : public zh::html_controller
 {
   public:
-	ScreenServer(const fs::path& docroot, const fs::path& screenDir)
-		: webapp_base(docroot)
-		, mRestController(new ScreenRestController(screenDir))
+	ScreenHtmlController(const fs::path& docroot, const fs::path& screenDir)
+		: zh::html_controller("", docroot)
 		, mScreenDir(screenDir)
 	{
-		register_tag_processor<zh::tag_processor_v2>("http://www.hekkelman.com/libzeep/m2");
-
-		add_controller(mRestController);
-	
-		mount("", &ScreenServer::fishtail);
-
-		mount("css", &ScreenServer::handle_file);
-		mount("scripts", &ScreenServer::handle_file);
-		mount("fonts", &ScreenServer::handle_file);
+		mount("", &ScreenHtmlController::fishtail);
+		mount("{css,scripts,fonts}/", &ScreenHtmlController::handle_file);
 	}
 
 	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
-	ScreenRestController* mRestController;
 	fs::path mScreenDir;
 };
 
-void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
 	zh::scope sub(scope);
 
 	sub.put("page", "fishtail");
 
-	using json = zeep::el::element;
+	using json = zeep::json::element;
 	json screens, screenInfo;
 
 	std::vector<std::string> screenNames;
@@ -456,5 +424,8 @@ void ScreenServer::fishtail(const zh::request& request, const zh::scope& scope, 
 
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir)
 {
-	return new ScreenServer(docroot, screenDir);
+	auto server = new zh::server();
+	server->add_controller(new ScreenRestController(screenDir));
+	server->add_controller(new ScreenHtmlController(docroot, screenDir));
+	return server;
 }

@@ -6,16 +6,16 @@
 
 	<script src="/scripts/screen.js" type="application/ecmascript" z:src="@{/scripts/screen.js}"></script>
 
+	<script z:inline="javascript">
+		let screenInfo = /*[[${screenInfo}]]*/ null;
+	</script>
+
 </head>
 <body>
 	<nav z:replace="menu :: menu"></nav>
 
 	<input type="hidden" name="selectedScreen" z:value="${selectedScreen}" />
 	<input type="hidden" name="selectedGene" z:value="${selectedGene}" />
-
-	<script z:inline="javascript">
-		const screenInfo = /*[[${screenInfo}]]*/ null;
-	</script>
 
 	<div class="container-fluid">
 
@@ -138,6 +138,17 @@
 										placeholder="offset..." />
 								</div>
 
+								<div class="input-group input-group-sm mb-3">
+									<div class="input-group-prepend">
+										<span class="input-group-text">
+											<input type="checkbox" class="form-control form-control-sm"
+												name="antisense" />
+										</span>
+									</div>
+									<input type="text" class="form-control form-control-sm"
+										value="Use antisense integrations" />
+								</div>
+
 							</li>
 						</ul>
 					</form>
@@ -163,7 +174,7 @@
 						</li>
 
 						<li>
-							<div z:replace="gene-info :: geneDiv"></div>
+							<div z:replace="gene-info :: geneDiv('ip')"></div>
 							<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
 							<label>
 								<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
@@ -237,6 +248,7 @@
 
 	<!-- <div z:replace="~{contextMenu :: contextMenuNav(_)}"></div> -->
 	<div z:replace="contextMenu :: contextMenuNav"></div>
+	<div z:replace="contextMenu :: genomeViewerContextMenuNav"></div>
 
 	<footer z:replace="footer :: content"></footer>
 

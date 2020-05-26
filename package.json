@@ -7,6 +7,9 @@
   "author": "Maarten L. Hekkelman",
   "license": "UNLICENSED",
   "private": true,
+  "scripts": {
+    "build": "webpack --config webpack.config.js"
+  },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.3.1",
     "bootstrap": "^4.1.3",
