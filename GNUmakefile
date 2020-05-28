@@ -69,7 +69,7 @@ ZEEP_LIBS			:= $(ZEEP_LIBS:%=-lzeep-%)
 
 LIBS				+= m rt stdc++fs
 LIBS				:= $(LIBS:%=-l%)
-LIBS				+= $(ZEEP_LIBS) $(BOOST_LIBS) -lz -lbz2 -lpthread 
+LIBS				:= $(ZEEP_LIBS) $(BOOST_LIBS) -lz -lbz2 -lpthread $(LIBS)
 
 OBJDIR				= obj
 
@@ -95,8 +95,8 @@ CFLAGS				+= $(addprefix -D, $(DEFINES))
 CFLAGS				+= -g
 
 #LDFLAGS				+= $(LIBRARY_DIR:%=-L %) $(LIBS:%=-l%) -g
+# LDFLAGS				+= -Wl,-rpath=$(CLIB)
 LDFLAGS				+= $(LIBRARY_DIR:%=-L %) $(LIBS) -g
-LDFLAGS				+= -Wl,-rpath=$(CLIB)
 
 
 SOURCE_DIRS			= ./src/

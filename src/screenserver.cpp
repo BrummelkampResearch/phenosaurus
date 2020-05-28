@@ -1,6 +1,7 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
 #include <iostream>
+#include <numeric>
 
 #include <zeep/http/server.hpp>
 #include <zeep/http/html-controller.hpp>
@@ -124,6 +125,31 @@ void from_element(const zeep::json::element& e, Mode& mode)
 
 // --------------------------------------------------------------------
 
+enum class Direction
+{
+	Sense, AntiSense, Both
+};
+
+void to_element(zeep::json::element& e, Direction direction)
+{
+	switch (direction)
+	{
+		case Direction::Sense:		e = "sense"; break;
+		case Direction::AntiSense:	e = "antisense"; break;
+		case Direction::Both:		e = "both"; break;
+	}
+}
+
+void from_element(const zeep::json::element& e, Direction& direction)
+{
+	if (e == "sense")			direction = Direction::Sense;
+	else if (e == "antisense")	direction = Direction::AntiSense;
+	else if (e == "both")		direction = Direction::Both;
+	else throw std::runtime_error("Invalid direction");
+}
+
+// --------------------------------------------------------------------
+
 class ScreenRestController : public zh::rest_controller
 {
   public:
@@ -131,16 +157,21 @@ class ScreenRestController : public zh::rest_controller
 		: zh::rest_controller("ajax")
 		, mScreenDir(screenDir)
 	{
+		zeep::value_serializer<Direction>::instance()
+			("sense", Direction::Sense)
+			("antisense", Direction::AntiSense)
+			("both", Direction::Both);
+
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
 		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "antisense");
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 		map_post_request("gene-info/{id}", &ScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
 	std::vector<DataPoint> screenData(const std::string& screen);
 	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		bool antisense);
+		Direction direction);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -149,7 +180,7 @@ class ScreenRestController : public zh::rest_controller
 };
 
 std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, bool antisense)
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	const unsigned readLength = 50;
 
@@ -173,21 +204,43 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	if (lowInsertions.size() != transcripts.size() or highInsertions.size() != transcripts.size())
 		throw std::runtime_error("Failed to calculate analysis");
 
+	auto countLowHigh = [direction,&lowInsertions,&highInsertions](size_t i) -> std::tuple<long,long>
+	{
+		long low, high;
+		switch (direction)
+		{
+			case Direction::Sense:
+				low = lowInsertions[i].sense.size();
+				high = highInsertions[i].sense.size();
+				break;
+
+			case Direction::AntiSense:
+				low = lowInsertions[i].antiSense.size();
+				high = highInsertions[i].antiSense.size();
+				break;
+
+			case Direction::Both:
+				low = lowInsertions[i].sense.size() + lowInsertions[i].antiSense.size();
+				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
+				break;
+		}
+		return { low, high };
+	};
+
 	long lowCount = 0, highCount = 0;
-
-	for (auto& i: lowInsertions)
-		lowCount += antisense ? i.antiSense.size() : i.sense.size();
-
-	for (auto& i: highInsertions)
-		highCount += antisense ? i.antiSense.size() : i.sense.size();
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto&& [low, high] = countLowHigh(i);;
+		lowCount += low;
+		highCount += high;
+	}
 
 	std::vector<double> pvalues_sense(transcripts.size(), 0);
 
 	parallel_for(transcripts.size(), [&](size_t i)
 	{
-		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
-	
+		auto&& [low, high] = countLowHigh(i);
+
 		long v[2][2] = {
 			{ low, high },
 			{ lowCount - low, highCount - high }
@@ -203,9 +256,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
 		auto& t = transcripts[i];
-
-		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
+		auto&& [low, high] = countLowHigh(i);
 
 		if (low == 0 and high == 0)
 			continue;
@@ -238,7 +289,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 
 std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
 {
-	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", false);
+	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
 }
 
 Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
@@ -345,9 +396,8 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 class ScreenHtmlController : public zh::html_controller
 {
   public:
-	ScreenHtmlController(const fs::path& docroot, const fs::path& screenDir)
-		: zh::html_controller("", docroot)
-		, mScreenDir(screenDir)
+	ScreenHtmlController(const fs::path& screenDir)
+		: mScreenDir(screenDir)
 	{
 		mount("", &ScreenHtmlController::fishtail);
 		mount("{css,scripts,fonts}/", &ScreenHtmlController::handle_file);
@@ -417,15 +467,15 @@ void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope&
 	sub.put("screens", screens);
 	sub.put("screenInfo", screenInfo);
 
-	create_reply_from_template("fishtail.html", sub, reply);
+	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
 }
 
 // --------------------------------------------------------------------
 
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir)
 {
-	auto server = new zh::server();
+	auto server = new zh::server(docroot);
 	server->add_controller(new ScreenRestController(screenDir));
-	server->add_controller(new ScreenHtmlController(docroot, screenDir));
+	server->add_controller(new ScreenHtmlController(screenDir));
 	return server;
 }

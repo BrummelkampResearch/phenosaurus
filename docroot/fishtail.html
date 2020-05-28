@@ -43,7 +43,7 @@
 
 						<!-- <li>
 						<form name="graphTypeForm">
-							<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="graphTypeBtns">
+							<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
 								<label class="btn btn-secondary active">
 									<input type="radio" name="graphType" autocomplete="off"
 										   data-type="regular" checked="checked"/>Regular
@@ -138,7 +138,7 @@
 										placeholder="offset..." />
 								</div>
 
-								<div class="input-group input-group-sm mb-3">
+								<!-- <div class="input-group input-group-sm mb-3">
 									<div class="input-group-prepend">
 										<span class="input-group-text">
 											<input type="checkbox" class="form-control form-control-sm"
@@ -147,7 +147,24 @@
 									</div>
 									<input type="text" class="form-control form-control-sm"
 										value="Use antisense integrations" />
+								</div> -->
+
+								<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
+									<label class="btn btn-secondary active">
+										<input type="radio" name="direction" autocomplete="off"
+											   value="sense" checked="checked"/>Sense
+									</label>
+	
+									<label class="btn btn-secondary">
+										<input type="radio" name="direction" value="antisense"
+											   autocomplete="off"/>AntiSense
+									</label>
+	
+									<label class="btn btn-secondary">
+										<input type="radio" name="direction" value="both" autocomplete="off"/>Both
+									</label>
 								</div>
+	
 
 							</li>
 						</ul>

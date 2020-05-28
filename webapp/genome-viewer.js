@@ -54,11 +54,6 @@ export default class GenomveViewer {
 			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.geneID));
 		}
 
-		const antiSenseCB = document.geneSelectionForm['antisense'];
-		if (antiSenseCB != null) {
-			antiSenseCB.addEventListener("change", () => this.recolor());
-		}
-
 		// create the context menu
 		const contextMenuDiv = document.getElementById("genome-viewer-context-menu");
 		if (contextMenuDiv)
@@ -242,7 +237,7 @@ export default class GenomveViewer {
 			.text(`position at chromosome ${data.chrom}`);
 
 		const f = document.geneSelectionForm;
-		const colorAntiSense = f['antisense'].checked == true;
+		const direction = f['direction'].value;
 
 		const x = this.adjustAxis();
 
@@ -264,7 +259,7 @@ export default class GenomveViewer {
 				.attr("width", 2)
 				.attr("fill", d => {
 					let color = "#888";
-					if (ii.sense === !colorAntiSense)
+					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense))
 					{
 						this.region.area.forEach(a => {
 							if (d >= a.start && d < a.end)
@@ -343,7 +338,7 @@ export default class GenomveViewer {
 
 	recolor() {
 		const f = document.geneSelectionForm;
-		const colorAntiSense = f['antisense'].checked == true;
+		const direction = f['direction'].value;
 
 		[
 			{ low: false, y: 0, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
@@ -354,7 +349,7 @@ export default class GenomveViewer {
 			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
 				.attr("fill", d => {
 					let color = "#888";
-					if (ii.sense === !colorAntiSense)
+					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense))
 					{
 						this.region.area.forEach(a => {
 							if (d >= a.start && d < a.end)
