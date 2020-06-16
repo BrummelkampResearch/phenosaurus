@@ -41,12 +41,10 @@ endif
 BOOST_INC_DIR		?= $(BOOST)
 BOOST_LIB_DIR		?= $(BOOST:%=%/stage/lib)
 
-PACKAGES			=
+PACKAGES			= # tbb
 WARNINGS			= all no-multichar no-unknown-pragmas no-deprecated-declarations
 
 RANLIB				?= ranlib
-SVN					?= svn
-PROCESSOR			?= $(shell uname -p)
 
 ifneq ($(PACKAGES),)
 CFLAGS				+= $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags $(PACKAGES))
@@ -120,7 +118,7 @@ OBJECTS = \
 	$(OBJDIR)/screenserver.o \
 	$(OBJDIR)/utils.o
 
-$(OBJDIR)/%.o: %.cpp | $(OBJDIR)
+$(OBJDIR)/%.o: %.cpp | $(OBJDIR) src/mrsrc.h
 	@ echo ">>" $<
 	@ $(CXX) -MD -c -o $@ $< $(CFLAGS) $(CXXFLAGS)
 
@@ -133,11 +131,13 @@ $(OBJDIR):
 
 FORCE:
 
-REVISION = $(shell LANG=C $(SVN) info | tr -d '\n' | sed -e's/.*Revision: \([[:digit:]]*\).*/\1/' )
+# REVISION = $(shell LANG=C $(SVN) info | tr -d '\n' | sed -e's/.*Revision: \([[:digit:]]*\).*/\1/' )
+REVISION = $(git log --pretty=format:%h --max-count=1)
 REVISION_FILE = version-info-$(REVISION).txt
 
 $(REVISION_FILE):
-	LANG=C $(SVN) info > $@
+	git log --pretty=fuller -1 > $@
+	# LANG=C $(SVN) info > $@
 
 rsrc/version.txt: $(REVISION_FILE)
 	cp $? $@
