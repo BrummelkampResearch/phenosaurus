@@ -313,7 +313,7 @@ int main_analyze(int argc, char* const argv[])
 
 		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
 
-		("antisense",							"Use antisense integrations")
+		("direction", po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'")
 
 		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
 
@@ -430,6 +430,10 @@ Examples:
 			throw std::runtime_error("Could not open output file");
 	}
 
+	std::streambuf* sb = nullptr;
+	if (out.is_open())
+		sb = std::cout.rdbuf(out.rdbuf());
+
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
@@ -447,8 +451,6 @@ Examples:
 	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 		cutOverlap = false;
 	
-	bool antisense = vm.count("antisense");
-
 	Mode mode;
 	if (vm["mode"].as<std::string>() == "collapse")
 		mode = Mode::Collapse;
@@ -488,57 +490,79 @@ Examples:
 			  << " sense      : " << std::setw(10) << highSenseCount << std::endl
 			  << " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
 
-	std::vector<double> pvalues(transcripts.size(), 0);
+	// std::vector<double> pvalues(transcripts.size(), 0);
 
-	auto lowCount = antisense ? lowAntiSenseCount : lowSenseCount;
-	auto highCount = antisense ? highAntiSenseCount : lowAntiSenseCount;
+	// auto lowCount = antisense ? lowAntiSenseCount : lowSenseCount;
+	// auto highCount = antisense ? highAntiSenseCount : lowAntiSenseCount;
 
-	parallel_for(transcripts.size(), [&](size_t i)
-	{
-		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
+	// parallel_for(transcripts.size(), [&](size_t i)
+	// {
+	// 	long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+	// 	long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 	
-		long v[2][2] = {
-			{ low, high },
-			{ lowCount - low, highCount - high }
-		};
+	// 	long v[2][2] = {
+	// 		{ low, high },
+	// 		{ lowCount - low, highCount - high }
+	// 	};
 
-		pvalues[i] = fisherTest2x2(v);
-	});
+	// 	pvalues[i] = fisherTest2x2(v);
+	// });
 
-	auto fcpv = adjustFDR_BH(pvalues);
+	// auto fcpv = adjustFDR_BH(pvalues);
 
-	std::streambuf* sb = nullptr;
-	if (out.is_open())
-		sb = std::cout.rdbuf(out.rdbuf());
+	// for (size_t i = 0; i < transcripts.size(); ++i)
+	// {
+	// 	auto& t = transcripts[i];
+	// 	long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
+	// 	long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
 
-	for (size_t i = 0; i < transcripts.size(); ++i)
+	// 	double miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
+	// 	if (low == 0)
+	// 	{
+	// 		miL = 1;
+	// 		miLT -= 1;
+	// 	}
+
+	// 	if (high == 0)
+	// 	{
+	// 		miH = 1;
+	// 		miHT -= 1;
+	// 	}
+
+	// 	double mi = ((miH / miHT) / (miL / miLT));
+
+	// 	std::cout << t.geneName << '\t'
+	// 			  << low << '\t'
+	// 			  << high << '\t'
+	// 			  << pvalues[i] << '\t'
+	// 			  << fcpv[i] << '\t'
+	// 			  << std::log2(mi) << std::endl;
+	// }
+
+	Direction direction = Direction::Sense;
+	if (vm.count("direction"))
 	{
-		auto& t = transcripts[i];
-		long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-		long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
-
-		double miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
-		if (low == 0)
+		if (vm["direction"].as<std::string>() == "sense")
+			direction = Direction::Sense;
+		else if (vm["direction"].as<std::string>() == "antisense" or vm["direction"].as<std::string>() == "anti-sense")
+			direction = Direction::AntiSense;
+		else if (vm["direction"].as<std::string>() == "both")
+			direction = Direction::Both;
+		else
 		{
-			miL = 1;
-			miLT -= 1;
+			std::cerr << "invalid direction" << std::endl;
+			exit(1);
 		}
+	}
 
-		if (high == 0)
-		{
-			miH = 1;
-			miHT -= 1;
-		}
-
-		double mi = ((miH / miHT) / (miL / miLT));
-
-		std::cout << t.geneName << '\t'
-				  << low << '\t'
-				  << high << '\t'
-				  << pvalues[i] << '\t'
-				  << fcpv[i] << '\t'
-				  << std::log2(mi) << std::endl;
+	for (auto& dp: data->dataPoints(transcripts, lowInsertions, highInsertions, direction))
+	{
+		std::cout << dp.geneName << '\t'
+				  << dp.low << '\t'
+				  << dp.high << '\t'
+				  << dp.pv << '\t'
+				  << dp.fcpv << '\t'
+				  << std::log2(dp.mi) << std::endl;
 	}
 
 	if (sb)

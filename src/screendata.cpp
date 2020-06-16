@@ -15,6 +15,8 @@
 
 #include "screendata.hpp"
 #include "bowtie.hpp"
+#include "fisher.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
@@ -231,6 +233,9 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 
 	if (eptr)
 		std::rethrow_exception(eptr);
+
+	if (lowInsertions.size() != transcripts.size() or highInsertions.size() != transcripts.size())
+		throw std::runtime_error("Failed to calculate analysis");
 }
 
 // --------------------------------------------------------------------
@@ -292,6 +297,113 @@ ScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start,
 	t.join_all();
 
 	return std::make_tuple(std::move(highP), std::move(highM), std::move(lowP), std::move(lowM));
+}
+
+// --------------------------------------------------------------------
+
+std::vector<DataPoint> ScreenData::dataPoints(const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		Direction direction)
+{
+	const unsigned readLength = 50;
+
+	auto transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+
+	// -----------------------------------------------------------------------
+	
+	std::vector<Insertions> lowInsertions, highInsertions;
+
+	analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
+
+	return dataPoints(transcripts, lowInsertions, highInsertions, direction);
+}
+
+std::vector<DataPoint> ScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+	const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
+		Direction direction)
+{
+	auto countLowHigh = [direction,&lowInsertions,&highInsertions](size_t i) -> std::tuple<long,long>
+	{
+		long low, high;
+		switch (direction)
+		{
+			case Direction::Sense:
+				low = lowInsertions[i].sense.size();
+				high = highInsertions[i].sense.size();
+				break;
+
+			case Direction::AntiSense:
+				low = lowInsertions[i].antiSense.size();
+				high = highInsertions[i].antiSense.size();
+				break;
+
+			case Direction::Both:
+				low = lowInsertions[i].sense.size() + lowInsertions[i].antiSense.size();
+				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
+				break;
+		}
+		return { low, high };
+	};
+
+	long lowCount = 0, highCount = 0;
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto&& [low, high] = countLowHigh(i);;
+		lowCount += low;
+		highCount += high;
+	}
+
+	std::vector<double> pvalues(transcripts.size(), 0);
+
+	parallel_for(transcripts.size(), [&](size_t i)
+	{
+		auto&& [low, high] = countLowHigh(i);
+
+		long v[2][2] = {
+			{ low, high },
+			{ lowCount - low, highCount - high }
+		};
+
+		pvalues[i] = fisherTest2x2(v);
+	});
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	std::vector<DataPoint> result;
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto& t = transcripts[i];
+		auto&& [low, high] = countLowHigh(i);
+
+		if (low == 0 and high == 0)
+			continue;
+
+		float miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
+		if (low == 0)
+		{
+			miL = 1;
+			miLT -= 1;
+		}
+
+		if (high == 0)
+		{
+			miH = 1;
+			miHT -= 1;
+		}
+
+		DataPoint p;
+		p.geneName = t.geneName;
+		p.geneID = i;
+		p.pv = pvalues[i];
+		p.fcpv = fcpv[i];
+		p.mi = ((miH / miHT) / (miL / miLT));
+		p.high = high;
+		p.low = low;
+		result.push_back(std::move(p));
+	}
+	
+	return result;
 }
 
 // --------------------------------------------------------------------

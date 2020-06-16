@@ -3,8 +3,11 @@ docroot/fonts/
 make.config
 screen-analyzer
 obj/
+obj.dbg/
 docroot/scripts/
 rsrc/version.txt
 src/mrsrc.h
 .vscode/
 version-info-*.txt
+core
+screen-analyzer.conf

@@ -7,8 +7,6 @@
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/rest-controller.hpp>
 
-#include <tbb/parallel_for.h>
-
 #include "screenserver.hpp"
 #include "screendata.hpp"
 #include "fisher.hpp"
@@ -16,90 +14,6 @@
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
-
-// --------------------------------------------------------------------
-
-struct DataPoint
-{
-	int geneID;
-	std::string geneName;
-	float fcpv;
-	float mi;
-	int low;
-	int high;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("geneID", geneID)
-		   & zeep::make_nvp("geneName", geneName)
-		   & zeep::make_nvp("fcpv", fcpv)
-		   & zeep::make_nvp("mi", mi)
-		   & zeep::make_nvp("low", low)
-		   & zeep::make_nvp("high", high);
-	}	
-};
-
-// --------------------------------------------------------------------
-
-struct GeneExon
-{
-	uint32_t start, end;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("start", start)
-		   & zeep::make_nvp("end", end);
-	}	
-};
-
-struct Gene
-{
-	std::string geneName;
-	std::string strand;
-	uint32_t txStart, txEnd, cdsStart, cdsEnd;
-	std::vector<GeneExon> utr3, exons, utr5;
-	
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("name", geneName)
-		   & zeep::make_nvp("strand", strand)
-		   & zeep::make_nvp("txStart", txStart)
-		   & zeep::make_nvp("txEnd", txEnd)
-		   & zeep::make_nvp("cdsStart", cdsStart)
-		   & zeep::make_nvp("cdsEnd", cdsEnd)
-		   & zeep::make_nvp("utr3", utr3)
-		   & zeep::make_nvp("exons", exons)
-		   & zeep::make_nvp("utr5", utr5);
-	}	
-};
-
-struct Region
-{
-	CHROM chrom;
-	int start, end;
-	std::string geneStrand;
-	std::vector<GeneExon> area;
-	std::vector<Gene> genes;
-	std::vector<uint32_t> lowPlus, lowMinus, highPlus, highMinus;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("chrom", chrom)
-		   & zeep::make_nvp("start", start)
-		   & zeep::make_nvp("end", end)
-		   & zeep::make_nvp("geneStrand", geneStrand)
-		   & zeep::make_nvp("genes", genes)
-		   & zeep::make_nvp("area", area)
-		   & zeep::make_nvp("lowPlus", lowPlus)
-		   & zeep::make_nvp("lowMinus", lowMinus)
-		   & zeep::make_nvp("highPlus", highPlus)
-		   & zeep::make_nvp("highMinus", highMinus);
-	}	
-};
 
 // -----------------------------------------------------------------------
 
@@ -124,11 +38,6 @@ void from_element(const zeep::json::element& e, Mode& mode)
 }
 
 // --------------------------------------------------------------------
-
-enum class Direction
-{
-	Sense, AntiSense, Both
-};
 
 void to_element(zeep::json::element& e, Direction direction)
 {
@@ -157,11 +66,6 @@ class ScreenRestController : public zh::rest_controller
 		: zh::rest_controller("ajax")
 		, mScreenDir(screenDir)
 	{
-		zeep::value_serializer<Direction>::instance()
-			("sense", Direction::Sense)
-			("antisense", Direction::AntiSense)
-			("both", Direction::Both);
-
 		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
 		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
@@ -182,8 +86,6 @@ class ScreenRestController : public zh::rest_controller
 std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
-	const unsigned readLength = 50;
-
 	fs::path screenDir = mScreenDir / screen;
 
 	if (not fs::is_directory(screenDir))
@@ -193,98 +95,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	
 	// -----------------------------------------------------------------------
 
-	auto transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
-
-	// -----------------------------------------------------------------------
-	
-	std::vector<Insertions> lowInsertions, highInsertions;
-
-	data->analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
-	
-	if (lowInsertions.size() != transcripts.size() or highInsertions.size() != transcripts.size())
-		throw std::runtime_error("Failed to calculate analysis");
-
-	auto countLowHigh = [direction,&lowInsertions,&highInsertions](size_t i) -> std::tuple<long,long>
-	{
-		long low, high;
-		switch (direction)
-		{
-			case Direction::Sense:
-				low = lowInsertions[i].sense.size();
-				high = highInsertions[i].sense.size();
-				break;
-
-			case Direction::AntiSense:
-				low = lowInsertions[i].antiSense.size();
-				high = highInsertions[i].antiSense.size();
-				break;
-
-			case Direction::Both:
-				low = lowInsertions[i].sense.size() + lowInsertions[i].antiSense.size();
-				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
-				break;
-		}
-		return { low, high };
-	};
-
-	long lowCount = 0, highCount = 0;
-	for (size_t i = 0; i < transcripts.size(); ++i)
-	{
-		auto&& [low, high] = countLowHigh(i);;
-		lowCount += low;
-		highCount += high;
-	}
-
-	std::vector<double> pvalues_sense(transcripts.size(), 0);
-
-	parallel_for(transcripts.size(), [&](size_t i)
-	{
-		auto&& [low, high] = countLowHigh(i);
-
-		long v[2][2] = {
-			{ low, high },
-			{ lowCount - low, highCount - high }
-		};
-
-		pvalues_sense[i] = fisherTest2x2(v);
-	});
-
-	auto fcpv = adjustFDR_BH(pvalues_sense);
-
-	std::vector<DataPoint> result;
-
-	for (size_t i = 0; i < transcripts.size(); ++i)
-	{
-		auto& t = transcripts[i];
-		auto&& [low, high] = countLowHigh(i);
-
-		if (low == 0 and high == 0)
-			continue;
-
-		float miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
-		if (low == 0)
-		{
-			miL = 1;
-			miLT -= 1;
-		}
-
-		if (high == 0)
-		{
-			miH = 1;
-			miHT -= 1;
-		}
-
-		DataPoint p;
-		p.geneName = t.geneName;
-		p.geneID = i;
-		p.fcpv = fcpv[i];
-		p.mi = ((miH / miHT) / (miL / miLT));
-		p.high = high;
-		p.low = low;
-		result.push_back(std::move(p));
-	}
-	
-	return result;
+	return data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
 }
 
 std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
