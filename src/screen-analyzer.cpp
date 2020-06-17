@@ -490,55 +490,6 @@ Examples:
 			  << " sense      : " << std::setw(10) << highSenseCount << std::endl
 			  << " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
 
-	// std::vector<double> pvalues(transcripts.size(), 0);
-
-	// auto lowCount = antisense ? lowAntiSenseCount : lowSenseCount;
-	// auto highCount = antisense ? highAntiSenseCount : lowAntiSenseCount;
-
-	// parallel_for(transcripts.size(), [&](size_t i)
-	// {
-	// 	long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-	// 	long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
-	
-	// 	long v[2][2] = {
-	// 		{ low, high },
-	// 		{ lowCount - low, highCount - high }
-	// 	};
-
-	// 	pvalues[i] = fisherTest2x2(v);
-	// });
-
-	// auto fcpv = adjustFDR_BH(pvalues);
-
-	// for (size_t i = 0; i < transcripts.size(); ++i)
-	// {
-	// 	auto& t = transcripts[i];
-	// 	long low = antisense ? lowInsertions[i].antiSense.size() : lowInsertions[i].sense.size();
-	// 	long high = antisense ? highInsertions[i].antiSense.size() : highInsertions[i].sense.size();
-
-	// 	double miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
-	// 	if (low == 0)
-	// 	{
-	// 		miL = 1;
-	// 		miLT -= 1;
-	// 	}
-
-	// 	if (high == 0)
-	// 	{
-	// 		miH = 1;
-	// 		miHT -= 1;
-	// 	}
-
-	// 	double mi = ((miH / miHT) / (miL / miLT));
-
-	// 	std::cout << t.geneName << '\t'
-	// 			  << low << '\t'
-	// 			  << high << '\t'
-	// 			  << pvalues[i] << '\t'
-	// 			  << fcpv[i] << '\t'
-	// 			  << std::log2(mi) << std::endl;
-	// }
-
 	Direction direction = Direction::Sense;
 	if (vm.count("direction"))
 	{

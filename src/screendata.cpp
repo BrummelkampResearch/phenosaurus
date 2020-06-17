@@ -75,8 +75,8 @@ void checkIsFastQ(fs::path infile)
 }
 
 // --------------------------------------------------------------------
-
 ScreenData::ScreenData(std::filesystem::path dir)
+
 	: mDataDir(dir)
 {
 	if (not fs::exists(dir))
@@ -183,7 +183,7 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 			
 				auto ts = transcripts.begin();
 
-				for (auto&& [chr, strand, pos]: bwt)
+				for (const auto& [chr, strand, pos]: bwt)
 				{
 					assert(chr != CHROM::INVALID);
 
@@ -203,7 +203,6 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 						{
 							if (pos >= r.start and pos < r.end)
 							{
-								// insertions.push_back({ pos, t, strand == t->strand });
 								if (strand == t->strand)
 									insertions[t - transcripts.begin()].sense.insert(pos);
 								else
@@ -374,7 +373,7 @@ std::vector<DataPoint> ScreenData::dataPoints(const std::vector<Transcript>& tra
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
 		auto& t = transcripts[i];
-		auto&& [low, high] = countLowHigh(i);
+		const auto& [low, high] = countLowHigh(i);
 
 		if (low == 0 and high == 0)
 			continue;
