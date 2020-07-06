@@ -12,3 +12,7 @@ version-info-*.txt
 core
 screen-analyzer.conf
 autom4te.cache/
+GNUmakefile
+src/config.hpp
+config.status
+config.log
