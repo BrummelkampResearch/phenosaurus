@@ -57,7 +57,7 @@ struct splitted_range
 		}
 
 		iterator(const iterator& i) = default;
-		iterator& operator=(const iterator& i) = default;
+		// iterator& operator=(const iterator& i) = default;
 
 		pointer operator->() { return &m_sv; }
 		reference operator*() { return m_sv; }

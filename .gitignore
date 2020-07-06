@@ -11,3 +11,4 @@ src/mrsrc.h
 version-info-*.txt
 core
 screen-analyzer.conf
+autom4te.cache/
