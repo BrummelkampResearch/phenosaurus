@@ -36,7 +36,8 @@ AC_CHECK_PROG([HAVE_GOOGLE_FONT_DOWNLOADER], [google-font-downloader], [yes],
 
 AC_PATH_PROG([PKG_CONFIG], [pkg-config])
 
-AX_PKG_CHECK_MODULES([PQXX], [libpq libpqxx], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
+AX_PKG_CHECK_MODULES([PQXX], [libpqxx], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
+AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package libpq-dev is not installed])])
 # AX_PKG_CHECK_MODULES([BZ2], [libbz2], [], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
 AC_CHECK_HEADER([bzlib.h], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
 AC_CHECK_LIB([bz2], [BZ2_bzCompressInit], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
@@ -61,10 +62,11 @@ AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++f
 				AC_TRY_LINK(
 					[#include <filesystem>],
 					[(void)std::filesystem::current_path();],
-					[],
+					[
+						ax_cv_need_stdcppfs="yes";
+					],
 					[
 						AC_MSG_ERROR([Could not link filesystem])
-						ax_cv_need_stdcppfs="yes";
 					]
 				)
 				LIBS=$SAVE_LIBS
