@@ -57,7 +57,7 @@
 		</li>
 
 		<li z:if="${not #security.authorized()}" class="nav-item">
-			<a class="item-content" href="/login">
+			<a class="item-content" href="/login" z:href="@{/login}">
 				<span class="nav-link">login</span>
 			</a>
 		</li>
