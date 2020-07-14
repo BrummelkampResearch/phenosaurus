@@ -1,0 +1,45 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
+<head z:replace="~{head :: head(~{::title}, ~{::link}, ~{::script})}">
+
+	<title>Phenosaurus &#x2014; Login</title>
+
+	<script src="/scripts/index.js" type="application/ecmascript" z:src="@{/scripts/index.js}"></script>
+
+	<link href="/css/signin.css" z:src="@{/css/signin.css}" rel="stylesheet" />
+
+</head>
+<body>
+	<nav z:fragment="menu" class="navbar navbar-expand-sm bg-dark navbar-dark">
+
+		<form name="logoutForm" z:action="@{/logout}" method="post"></form>
+	
+		<a href="/" z:href="@{/}" class="navbar-brand">Phenosaurus</a>
+	</nav>
+	
+    <br/>
+
+	<div class="container">
+		<form class="form-signin" method="post" action="/login" z:action="@{/login}">
+			<input type="hidden" name="uri" />
+			<input type="hidden" name="_csrf" />
+			<h2 class="form-signin-heading">Please sign in</h2>
+			<div class="mt-2 mb-2">
+				<label for="username" class="sr-only">Username</label>
+				<input type="text" id="username" name="username" class="form-control" placeholder="Username"
+					required="required" autofocus="autofocus" />
+			</div>
+			<div class="mt-2 mb-2">
+				<label for="password" class="sr-only">Password</label>
+				<input type="password" id="password" name="password" class="form-control" placeholder="Password"
+					required="required" value="" />
+				<div class="invalid-feedback">
+					Invalid username/password
+				</div>
+			</div>
+			<button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+		</form>
+	</div>
+</body>
+
+</html>

@@ -195,7 +195,7 @@ export default class GenomveViewer {
 			geneEnd += geneEndOffset;
 		fd.append("gene-end", geneEnd);
 
-		fetch(`ajax/gene-info/${geneID}`, { credentials: "include", method: "post", body: fd })
+		fetch(`${context_name}ajax/gene-info/${geneID}`, { credentials: "include", method: "post", body: fd })
 			.then(data => {
 				if (data.ok)
 					return data.json();
