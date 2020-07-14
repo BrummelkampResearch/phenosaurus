@@ -1,5 +1,7 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
+#include "config.hpp"
+
 #include <fstream>
 #include <regex>
 #include <iostream>

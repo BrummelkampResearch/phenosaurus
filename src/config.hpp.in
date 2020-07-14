@@ -6,8 +6,14 @@
 /* define if the Boost::ASIO library is available */
 #undef HAVE_BOOST_ASIO
 
+/* define if the Boost::Chrono library is available */
+#undef HAVE_BOOST_CHRONO
+
 /* define if the Boost::IOStreams library is available */
 #undef HAVE_BOOST_IOSTREAMS
+
+/* define if the Boost::PROGRAM_OPTIONS library is available */
+#undef HAVE_BOOST_PROGRAM_OPTIONS
 
 /* define if the Boost::Thread library is available */
 #undef HAVE_BOOST_THREAD

@@ -1,3 +1,5 @@
+#include "config.hpp"
+
 #include <cmath>
 #include <vector>
 #include <algorithm>

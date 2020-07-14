@@ -1,3 +1,9 @@
+- correlatie grafiek
+- export SVG met opties
+- uniqueness uitrekenen voor meerdere datasets
+
+
+
 Questions:
 
 longest or collapse?

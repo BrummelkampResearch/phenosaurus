@@ -1,5 +1,7 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
+#include "config.hpp"
+
 #include <termios.h>
 #include <sys/ioctl.h>
 
@@ -13,8 +15,10 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <zeep/http/daemon.hpp>
+#include <zeep/crypto.hpp>
 
 #include "refseq.hpp"
 #include "fisher.hpp"
@@ -22,6 +26,7 @@
 #include "utils.hpp"
 #include "screendata.hpp"
 #include "screenserver.hpp"
+#include "db-connection.hpp"
 
 #include "mrsrc.h"
 
@@ -29,9 +34,9 @@ namespace po = boost::program_options;
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
 namespace zh = zeep::http;
-using namespace std::literals;
+namespace ba = boost::algorithm;
 
-#define APP_NAME "screen-analyzer"
+using namespace std::literals;
 
 int VERBOSE = 0;
 
@@ -56,16 +61,19 @@ void print_what (const std::exception& e)
 
 po::options_description get_config_options()
 {
-	po::options_description config(APP_NAME R"( config file options)");
+	po::options_description config(PACKAGE_NAME R"( config file options)");
 	
 	config.add_options()
-		("bowtie", po::value<std::string>(),	"Bowtie executable")
-		("assembly", po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
-		("trim-length", po::value<unsigned>(),	"Trim reads to this length, if specified")
-		("threads", po::value<unsigned>(),		"Nr of threads to use")
-		("screen-dir", po::value<std::string>(), "Directory containing the screen data")
-		("bowtie-index-hg19", po::value<std::string>(), "Bowtie index parameter for HG19")
-		("bowtie-index-hg38", po::value<std::string>(), "Bowtie index parameter for HG38");
+		("bowtie", po::value<std::string>(),			"Bowtie executable")
+		("assembly", po::value<std::string>(),			"Default assembly to use, currently one of hg19 or hg38")
+		("trim-length", po::value<unsigned>(),			"Trim reads to this length, if specified")
+		("threads", po::value<unsigned>(),				"Nr of threads to use")
+		("screen-dir", po::value<std::string>(),		"Directory containing the screen data")
+		("bowtie-index-hg19", po::value<std::string>(),	"Bowtie index parameter for HG19")
+		("bowtie-index-hg38", po::value<std::string>(),	"Bowtie index parameter for HG38")
+		
+		;
+
 
 	return config;
 }
@@ -93,7 +101,7 @@ int main_create(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( create screen-name --low low-fastq-file --high high-fastq-file [options])");
+	po::options_description visible(PACKAGE_NAME R"( create screen-name --low low-fastq-file --high high-fastq-file [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
@@ -101,7 +109,7 @@ int main_create(int argc, char* const argv[])
 		("low", po::value<std::string>(),		"The path to the LOW FastQ file")
 		("high", po::value<std::string>(),		"The path to the HIGH FastQ file")
 
-		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
 
 		("force",								"By default a screen is only created if it not already exists, use this flag to delete the old screen before creating a new.")
 
@@ -126,9 +134,9 @@ int main_create(int argc, char* const argv[])
 
 	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
 
-	fs::path configFile = APP_NAME ".conf";
+	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -188,7 +196,7 @@ int main_map(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( map screen-name assembly [options])");
+	po::options_description visible(PACKAGE_NAME R"( map screen-name assembly [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
@@ -196,7 +204,7 @@ int main_map(int argc, char* const argv[])
 		("bowtie-index", po::value<std::string>(),
 												"Bowtie index filename stem for the assembly")
 
-		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
 		("force",								"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping.")
 
 		("verbose,v",							"Verbose output")
@@ -219,9 +227,9 @@ int main_map(int argc, char* const argv[])
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
 
-	fs::path configFile = APP_NAME ".conf";
+	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -301,7 +309,7 @@ int main_analyze(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( analyze screen-name assembly [options])");
+	po::options_description visible(PACKAGE_NAME R"( analyze screen-name assembly [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
@@ -315,7 +323,7 @@ int main_analyze(int argc, char* const argv[])
 
 		("direction", po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'")
 
-		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
 
 		("output", po::value<std::string>(),	"Output file")
 
@@ -339,9 +347,9 @@ int main_analyze(int argc, char* const argv[])
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
 
-	fs::path configFile = APP_NAME ".conf";
+	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -528,7 +536,7 @@ int main_refseq(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME R"( refseq [options])");
+	po::options_description visible(PACKAGE_NAME R"( refseq [options])");
 	visible.add_options()
 		("help,h",								"Display help message")
 		("version",								"Print version")
@@ -540,7 +548,7 @@ int main_refseq(int argc, char* const argv[])
 
 		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
 
-		("config", po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
+		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
 
 		("output", po::value<std::string>(),	"Output file")
 
@@ -559,9 +567,9 @@ int main_refseq(int argc, char* const argv[])
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
 
-	fs::path configFile = APP_NAME ".conf";
+	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -674,17 +682,23 @@ int main_server(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(APP_NAME " server command [options]"s);
+	po::options_description visible(PACKAGE_NAME " server command [options]"s);
 	visible.add_options()
-		("help,h",											"Display help message")
-		("verbose,v",										"Verbose output")
+		("help,h",										"Display help message")
+		("verbose,v",									"Verbose output")
+		("config",			po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
+		("address",			po::value<std::string>(),	"External address, default is 0.0.0.0")
+		("port",			po::value<uint16_t>(),		"Port to listen to, default is 10336")
+		("no-daemon,F",									"Do not fork into background")
+		("user,u",			po::value<std::string>(),	"User to run the daemon")
 
-		("config",				po::value<std::string>(),	"Name of config file to use, default is " APP_NAME ".conf located in current of home directory")
-
-		("address",				po::value<std::string>(),	"External address, default is 0.0.0.0")
-		("port",				po::value<uint16_t>(),		"Port to listen to, default is 10336")
-		("no-daemon,F",										"Do not fork into background")
-		("user,u",				po::value<std::string>(),	"User to run the daemon")
+		("db-host",			po::value<std::string>(),	"Database host")
+		("db-port",			po::value<std::string>(),	"Database port")
+		("db-dbname",		po::value<std::string>(),	"Database name")
+		("db-user",			po::value<std::string>(),	"Database user name")
+		("db-password",		po::value<std::string>(),	"Database password")
+		
+		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
 		;
 
 	po::options_description config = get_config_options();
@@ -705,9 +719,9 @@ int main_server(int argc, char* const argv[])
 
 	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
 
-	fs::path configFile = APP_NAME ".conf";
+	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / APP_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -719,7 +733,7 @@ int main_server(int argc, char* const argv[])
 	if (fs::exists(configFile))
 	{
 		po::options_description config_options ;
-		config_options.add(config).add(hidden);
+		config_options.add(config).add(visible).add(hidden);
 
 		std::ifstream cfgFile(configFile);
 		if (cfgFile.is_open())
@@ -744,6 +758,21 @@ Command should be either:
 		exit(vm.count("help") ? 0 : 1);
 	}
 	
+	// --------------------------------------------------------------------
+	
+	std::vector<std::string> vConn;
+	for (std::string opt: { "db-host", "db-port", "db-dbname", "db-user", "db-password" })
+	{
+		if (vm.count(opt) == 0)
+			continue;
+		
+		vConn.push_back(opt.substr(3) + "=" + vm[opt].as<std::string>());
+	}
+
+	db_connection::init(ba::join(vConn, " "));
+
+	// --------------------------------------------------------------------
+
 	fs::path docroot;
 
 	char exePath[PATH_MAX + 1];
@@ -757,9 +786,18 @@ Command should be either:
 	if (not fs::exists(docroot))
 		throw std::runtime_error("Could not locate docroot directory");
 
-	zh::daemon server([docroot,screenDir=vm["screen-dir"].as<std::string>()]()
+	std::string secret;
+	if (vm.count("secret"))
+		secret = vm["secret"].as<std::string>();
+	else
 	{
-		return createServer(docroot, screenDir);
+		secret = zeep::encode_base64(zeep::random_hash());
+		std::cerr << "starting with created secret " << secret << std::endl;
+	}
+
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>()]()
+	{
+		return createServer(docroot, screenDir, secret);
 	}, "screen-analyzer");
 
 	std::string user = "www-data";
@@ -778,10 +816,12 @@ Command should be either:
 
 	if (command == "start")
 	{
+		std::cout << "starting server at " << address << ':' << port << std::endl;
+
 		if (vm.count("no-daemon"))
 			result = server.run_foreground(address, port);
 		else
-			result = server.start(address, port, 2, user);
+			result = server.start(address, port, 1, 2, user);
 	}
 	else if (command == "stop")
 		result = server.stop();

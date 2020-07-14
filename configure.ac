@@ -1,4 +1,4 @@
-AC_INIT([screen-analyzer], 1.0, [maarten@hekkelman.com])
+AC_INIT([screen-analyzer], 2.0, [m.hekkelman@nki.nl])
 
 dnl Switch to a C++ compiler, and check if it works.
 AC_LANG(C++)
@@ -44,10 +44,40 @@ AX_PKG_CHECK_MODULES([Z], [zlib], [], [], [AC_MSG_ERROR([the required package li
 
 AX_PTHREAD
 
+AC_CHECK_HEADER([filesystem], [], [AC_MSG_ERROR([The file <filesystem> is missing, perhaps you should install a more recent libstdc++ implementation.])])
+
+dnl check if we need stdc++fs as library
+AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++fs], ax_cv_need_stdcppfs,
+	[
+		AC_TRY_LINK(
+			[#include <filesystem>],
+			[(void)std::filesystem::current_path();],
+			[
+				ax_cv_need_stdcppfs="no";
+			],
+			[
+				AC_TRY_LINK(
+					[#include <filesystem>],
+					[(void)std::filesystem::current_path();],
+					[],
+					[
+						AC_MSG_ERROR([Could not link filesystem])
+						ax_cv_need_stdcppfs="yes";
+					]
+				)
+			]
+		)
+	])
+if test "x$ax_cv_need_stdcppfs" = "xyes"; then
+	LIBS="$LIBS -lstdc++fs"
+fi
+
 AX_BOOST_BASE([1.65.1], [], [AC_MSG_ERROR([Could not find a recent version of boost])])
 AX_BOOST_ASIO
 AX_BOOST_IOSTREAMS
 AX_BOOST_THREAD
+AX_BOOST_PROGRAM_OPTIONS
+AX_BOOST_CHRONO
 
 AC_ARG_WITH([zeep],
 	AS_HELP_STRING([--with-zeep=@<:@location@:>@],

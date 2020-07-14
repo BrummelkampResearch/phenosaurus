@@ -14,7 +14,7 @@
 			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
 			   href="#">Intracellular Phenotype</a>
 			<div class="dropdown-menu">
-				<a class="dropdown-item" href="/simpleplot" z:href="@{/simpleplot}">Fishtail Plot</a>
+				<a class="dropdown-item" href="/simpleplot" z:href="@{/screen}">Fishtail Plot</a>
 				<a class="dropdown-item" href="/geneFinder" z:href="@{/geneFinder(screenType='IP')}">Gene Search</a>
 				<a class="dropdown-item" href="/screen-query" z:href="@{/screen-query/}">Find Similar</a>
 				<div class="dropdown-divider"></div>
@@ -36,15 +36,33 @@
 			</div>
 		</li>
 
-		<li class="nav-item">
+		<!-- <li class="nav-item">
 			<a class="nav-link" href="/browse" z:href="@{/browse}">Genome Browser</a>
-		</li>
+		</li> -->
 
 		<li class="nav-item">
 			<a class="nav-link" href="/screens" z:href="@{/screens}">Screens</a>
 		</li>
 
-		<li class="nav-item">
+		<li class="nav-item dropdown" z:if="${#security.hasRole('ADMIN')}">
+			<a aria-expanded="false" aria-haspopup="false" class="nav-link dropdown-toggle" data-toggle="dropdown"
+			   href="#">Admin</a>
+			<div class="dropdown-menu" id="admin-menu">
+				<a class="dropdown-item" href="/admin?users" z:href="@{/admin(users)}">Users</a>
+				<a class="dropdown-item" href="/admin?groups" z:href="@{/admin(groups)}">Groups</a>
+				<div class="dropdown-divider"></div>
+				<a class="dropdown-item" href="/admin?reference" z:href="@{/admin(reference)}">Reference Genome</a>
+				<a class="dropdown-item" href="/admin?screens" z:href="@{/admin(screens)}">Screens</a>
+			</div>
+		</li>
+
+		<li z:if="${not #security.authorized()}" class="nav-item">
+			<a class="item-content" href="/login">
+				<span class="nav-link">login</span>
+			</a>
+		</li>
+
+		<li z:if="${#security.authorized()}" class="nav-item">
 			<a class="nav-link" href="#" onclick="document.logoutForm.submit()">
 				<span>Log out</span>
 			</a>

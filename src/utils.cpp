@@ -1,5 +1,7 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
+#include "config.hpp"
+
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>

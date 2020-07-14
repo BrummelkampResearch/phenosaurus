@@ -1,16 +1,20 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
+#include "config.hpp"
+
 #include <iostream>
 #include <numeric>
 
 #include <zeep/http/server.hpp>
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/rest-controller.hpp>
+#include <zeep/http/login-controller.hpp>
 
 #include "screenserver.hpp"
 #include "screendata.hpp"
 #include "fisher.hpp"
 #include "utils.hpp"
+#include "user-service.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -66,13 +70,13 @@ class ScreenRestController : public zh::rest_controller
 		: zh::rest_controller("ajax")
 		, mScreenDir(screenDir)
 	{
-		map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
+		// map_get_request("screenData/{id}", &ScreenRestController::screenData, "id");
 		map_post_request("screenData/{id}", &ScreenRestController::screenDataEx,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 		map_post_request("gene-info/{id}", &ScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	std::vector<DataPoint> screenData(const std::string& screen);
+	// std::vector<DataPoint> screenData(const std::string& screen);
 	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
@@ -98,10 +102,10 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	return data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
 }
 
-std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
-{
-	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
-}
+// std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
+// {
+// 	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
+// }
 
 Region ScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
@@ -210,15 +214,22 @@ class ScreenHtmlController : public zh::html_controller
 	ScreenHtmlController(const fs::path& screenDir)
 		: mScreenDir(screenDir)
 	{
-		mount("", &ScreenHtmlController::fishtail);
-		mount("{css,scripts,fonts}/", &ScreenHtmlController::handle_file);
+		mount("{,index,index.html}", &ScreenHtmlController::welcome);
+		mount("screen", &ScreenHtmlController::fishtail);
+		mount("{css,scripts,fonts,images}/", &ScreenHtmlController::handle_file);
 	}
 
+	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
 	fs::path mScreenDir;
 };
+
+void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	return get_template_processor().create_reply_from_template("index", scope, reply);
+}
 
 void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
@@ -283,9 +294,17 @@ void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope&
 
 // --------------------------------------------------------------------
 
-zh::server* createServer(const fs::path& docroot, const fs::path& screenDir)
+zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
+	const std::string& secret)
 {
-	auto server = new zh::server(docroot);
+	auto sc = new zh::security_context(secret, user_service::instance());
+	sc->add_rule("/admin", { "ADMIN" });
+	sc->add_rule("/admin/**", { "ADMIN" });
+	sc->add_rule("/screen", { "USER" });
+	sc->add_rule("/", {});
+
+	auto server = new zh::server(sc, docroot);
+	server->add_controller(new zh::login_controller());
 	server->add_controller(new ScreenRestController(screenDir));
 	server->add_controller(new ScreenHtmlController(screenDir));
 	return server;
