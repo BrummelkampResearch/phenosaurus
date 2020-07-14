@@ -656,6 +656,8 @@ Z_CFLAGS
 EGREP
 GREP
 CXXCPP
+PQ_LIBS
+PQ_CFLAGS
 AX_PACKAGE_REQUIRES_PRIVATE
 AX_PACKAGE_REQUIRES
 PQXX_LIBS
@@ -746,6 +748,8 @@ PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
 PQXX_CFLAGS
 PQXX_LIBS
+PQ_CFLAGS
+PQ_LIBS
 CXXCPP
 Z_CFLAGS
 Z_LIBS
@@ -1433,6 +1437,8 @@ Some influential environment variables:
               path overriding pkg-config's built-in search path
   PQXX_CFLAGS C compiler flags for PQXX, overriding pkg-config
   PQXX_LIBS   linker flags for PQXX, overriding pkg-config
+  PQ_CFLAGS   C compiler flags for PQ, overriding pkg-config
+  PQ_LIBS     linker flags for PQ, overriding pkg-config
   CXXCPP      C++ preprocessor
   Z_CFLAGS    C compiler flags for Z, overriding pkg-config
   Z_LIBS      linker flags for Z, overriding pkg-config
@@ -4144,7 +4150,7 @@ fi
 
 
 
-    AX_PACKAGE_REQUIRES="$AX_PACKAGE_REQUIRES libpq libpqxx"
+    AX_PACKAGE_REQUIRES="$AX_PACKAGE_REQUIRES libpqxx"
     AX_PACKAGE_REQUIRES_PRIVATE="$AX_PACKAGE_REQUIRES_PRIVATE "
 
 
@@ -4156,12 +4162,12 @@ if test -n "$PQXX_CFLAGS"; then
     pkg_cv_PQXX_CFLAGS="$PQXX_CFLAGS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpq libpqxx \""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpq libpqxx ") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpqxx \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpqxx ") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_PQXX_CFLAGS=`$PKG_CONFIG --cflags "libpq libpqxx " 2>/dev/null`
+  pkg_cv_PQXX_CFLAGS=`$PKG_CONFIG --cflags "libpqxx " 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4173,12 +4179,12 @@ if test -n "$PQXX_LIBS"; then
     pkg_cv_PQXX_LIBS="$PQXX_LIBS"
  elif test -n "$PKG_CONFIG"; then
     if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpq libpqxx \""; } >&5
-  ($PKG_CONFIG --exists --print-errors "libpq libpqxx ") 2>&5
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpqxx \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpqxx ") 2>&5
   ac_status=$?
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
-  pkg_cv_PQXX_LIBS=`$PKG_CONFIG --libs "libpq libpqxx " 2>/dev/null`
+  pkg_cv_PQXX_LIBS=`$PKG_CONFIG --libs "libpqxx " 2>/dev/null`
 		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
@@ -4199,9 +4205,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        PQXX_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpq libpqxx " 2>&1`
+	        PQXX_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpqxx " 2>&1`
         else
-	        PQXX_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpq libpqxx " 2>&1`
+	        PQXX_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpqxx " 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$PQXX_PKG_ERRORS" >&5
@@ -4214,6 +4220,89 @@ $as_echo "no" >&6; }
 else
 	PQXX_CFLAGS=$pkg_cv_PQXX_CFLAGS
 	PQXX_LIBS=$pkg_cv_PQXX_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
+    # Substitute output.
+
+
+
+
+
+
+
+    AX_PACKAGE_REQUIRES="$AX_PACKAGE_REQUIRES libpq"
+    AX_PACKAGE_REQUIRES_PRIVATE="$AX_PACKAGE_REQUIRES_PRIVATE "
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for PQ" >&5
+$as_echo_n "checking for PQ... " >&6; }
+
+if test -n "$PQ_CFLAGS"; then
+    pkg_cv_PQ_CFLAGS="$PQ_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpq \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpq ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_PQ_CFLAGS=`$PKG_CONFIG --cflags "libpq " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$PQ_LIBS"; then
+    pkg_cv_PQ_LIBS="$PQ_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libpq \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libpq ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_PQ_LIBS=`$PKG_CONFIG --libs "libpq " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        PQ_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpq " 2>&1`
+        else
+	        PQ_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpq " 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$PQ_PKG_ERRORS" >&5
+
+	as_fn_error $? "the required package libpq-dev is not installed" "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "the required package libpq-dev is not installed" "$LINENO" 5
+else
+	PQ_CFLAGS=$pkg_cv_PQ_CFLAGS
+	PQ_LIBS=$pkg_cv_PQ_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -6263,10 +6352,11 @@ main ()
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"; then :
 
+						ax_cv_need_stdcppfs="yes";
+
 else
 
 						as_fn_error $? "Could not link filesystem" "$LINENO" 5
-						ax_cv_need_stdcppfs="yes";
 
 
 fi
