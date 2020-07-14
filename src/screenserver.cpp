@@ -295,7 +295,7 @@ void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope&
 // --------------------------------------------------------------------
 
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
-	const std::string& secret)
+	const std::string& secret, const std::string& context_name)
 {
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });
@@ -304,8 +304,12 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	sc->add_rule("/", {});
 
 	auto server = new zh::server(sc, docroot);
+
+	server->set_context_name(context_name);
+
 	server->add_controller(new zh::login_controller());
 	server->add_controller(new ScreenRestController(screenDir));
 	server->add_controller(new ScreenHtmlController(screenDir));
+
 	return server;
 }

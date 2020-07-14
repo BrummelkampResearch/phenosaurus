@@ -699,6 +699,7 @@ int main_server(int argc, char* const argv[])
 		("db-password",		po::value<std::string>(),	"Database password")
 		
 		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
+		("context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
 		;
 
 	po::options_description config = get_config_options();
@@ -795,9 +796,13 @@ Command should be either:
 		std::cerr << "starting with created secret " << secret << std::endl;
 	}
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>()]()
+	std::string context_name;
+	if (vm.count("context"))
+		context_name = vm["context"].as<std::string>();
+
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),context_name]()
 	{
-		return createServer(docroot, screenDir, secret);
+		return createServer(docroot, screenDir, secret, context_name);
 	}, "screen-analyzer");
 
 	std::string user = "www-data";
