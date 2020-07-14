@@ -56,6 +56,8 @@ AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++f
 				ax_cv_need_stdcppfs="no";
 			],
 			[
+				SAVE_LIBS="$LIBS"
+				LIBS="$LIBS -lstdc++fs"
 				AC_TRY_LINK(
 					[#include <filesystem>],
 					[(void)std::filesystem::current_path();],
@@ -65,6 +67,7 @@ AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++f
 						ax_cv_need_stdcppfs="yes";
 					]
 				)
+				LIBS=$SAVE_LIBS
 			]
 		)
 	])

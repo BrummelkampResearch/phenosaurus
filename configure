@@ -6248,6 +6248,8 @@ if ac_fn_cxx_try_link "$LINENO"; then :
 
 else
 
+				SAVE_LIBS="$LIBS"
+				LIBS="$LIBS -lstdc++fs"
 				cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <filesystem>
@@ -6270,6 +6272,7 @@ else
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+				LIBS=$SAVE_LIBS
 
 
 fi
