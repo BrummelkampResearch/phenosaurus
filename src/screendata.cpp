@@ -442,7 +442,7 @@ void SLIScreenData::addFile(std::filesystem::path file)
 	int r = 1;
 	for (; r <= 4; ++r)
 	{
-		auto name = "replicate-" + std::to_string(r);
+		auto name = "replicate-" + std::to_string(r) + ".fastq";
 
 		if (fs::exists(mDataDir / name) or
 			fs::exists(mDataDir / (name + ".gz")) or
@@ -500,6 +500,8 @@ ScreenData* ScreenData::create(std::filesystem::path dir)
 			name = name.stem();
 		if (name.extension() != ".fastq")
 			continue;
+		
+		name = name.stem();
 		
 		if (name == "low")
 			hasLow = true;
