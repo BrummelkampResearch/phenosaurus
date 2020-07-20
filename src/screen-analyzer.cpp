@@ -77,7 +77,11 @@ po::options_description get_config_options()
 		("db-dbname",		po::value<std::string>(),	"Database name")
 		("db-user",			po::value<std::string>(),	"Database user name")
 		("db-password",		po::value<std::string>(),	"Database password")
-		
+
+		("address",			po::value<std::string>(),	"External address, default is 0.0.0.0")
+		("port",			po::value<uint16_t>(),		"Port to listen to, default is 10336")
+		("no-daemon,F",									"Do not fork into background")
+		("user,u",			po::value<std::string>(),	"User to run the daemon")
 		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
 		("context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
 
@@ -253,78 +257,12 @@ int main_map(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(PACKAGE_NAME R"( map screen-name assembly [options])");
-	visible.add_options()
-		("help,h",								"Display help message")
-		("version",								"Print version")
-
-		("bowtie-index", po::value<std::string>(),
-												"Bowtie index filename stem for the assembly")
-
-		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
-		("force",								"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping.")
-
-		("verbose,v",							"Verbose output")
-		;
-
-	po::options_description config = get_config_options();
-
-	po::options_description hidden("hidden options");
-	hidden.add_options()
-		("screen-name", po::value<std::string>(),	"Screen name")
-		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
-
-	po::options_description cmdline_options;
-	cmdline_options.add(visible).add(config).add(hidden);
-
-	po::positional_options_description p;
-	p.add("screen-name", 1);
-	p.add("assembly", 1);
-	
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-
-	fs::path configFile = PACKAGE_NAME ".conf";
-	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
-	
-	if (vm.count("config") != 0)
-	{
-		configFile = vm["config"].as<std::string>();
-		if (not fs::exists(configFile))
-			throw std::runtime_error("Specified config file does not seem to exist");
-	}
-	
-	if (fs::exists(configFile))
-	{
-		po::options_description config_options ;
-		config_options.add(config).add(hidden);
-
-		std::ifstream cfgFile(configFile);
-		if (cfgFile.is_open())
-			po::store(po::parse_config_file(cfgFile, config_options), vm);
-	}
-	
-	po::notify(vm);
-
-	if (vm.count("version"))
-	{
-		showVersionInfo();
-		exit(0);
-	}
-
-	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0)
-	{
-		po::options_description visible_options;
-		visible_options.add(visible).add(config);
-
-		std::cerr << visible_options << std::endl;
-		exit(-1);
-	}
-
-	VERBOSE = vm.count("verbose") != 0;
-	if (vm.count("debug"))
-		VERBOSE = vm["debug"].as<int>();
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( map screen-name assembly [options])",
+		{
+			{ "bowtie-index", po::value<std::string>(),	"Bowtie index filename stem for the assembly" },
+			{ "force",	new po::untyped_value(true),	"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping." }
+		},
+		{ "screen-name", "assembly" });
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
@@ -366,96 +304,22 @@ int main_analyze(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(PACKAGE_NAME R"( analyze screen-name assembly [options])");
-	visible.add_options()
-		("help,h",								"Display help message")
-		("version",								"Print version")
-
-		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
-
-		("start", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
-		("end", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
-
-		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
-
-		("direction", po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'")
-
-		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
-
-		("output", po::value<std::string>(),	"Output file")
-
-		("verbose,v",							"Verbose output")
-		;
-
-	po::options_description config = get_config_options();
-
-	po::options_description hidden("hidden options");
-	hidden.add_options()
-		("screen-name", po::value<std::string>(),	"Screen name")
-		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
-
-	po::options_description cmdline_options;
-	cmdline_options.add(visible).add(config).add(hidden);
-
-	po::positional_options_description p;
-	p.add("screen-name", 1);
-	p.add("assembly", 1);
-	
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-
-	fs::path configFile = PACKAGE_NAME ".conf";
-	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
-	
-	if (vm.count("config") != 0)
-	{
-		configFile = vm["config"].as<std::string>();
-		if (not fs::exists(configFile))
-			throw std::runtime_error("Specified config file does not seem to exist");
-	}
-	
-	if (fs::exists(configFile))
-	{
-		po::options_description config_options ;
-		config_options.add(config).add(hidden);
-
-		std::ifstream cfgFile(configFile);
-		if (cfgFile.is_open())
-			po::store(po::parse_config_file(cfgFile, config_options), vm);
-	}
-	
-	po::notify(vm);
-
-	if (vm.count("version"))
-	{
-		showVersionInfo();
-		exit(0);
-	}
-
-	if (vm.count("screen-name") == 0 or vm.count("assembly") == 0)
-	{
-		po::options_description visible_options;
-		visible_options.add(visible).add(config);
-
-		std::cerr << visible_options << std::endl;
-		exit(-1);
-	}
-
-	VERBOSE = vm.count("verbose") != 0;
-	if (vm.count("debug"))
-		VERBOSE = vm["debug"].as<int>();
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
+		{
+			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
+			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
+			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
+			{ "output",		po::value<std::string>(),	"Output file" }
+		}, { "screen-name", "assembly" });
 
 	if (vm.count("assembly") == 0 or
 		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
-		po::options_description visible_options;
-		visible_options.add(visible).add(config);
-
-		std::cerr << visible_options << std::endl
-				  << R"(
+		std::cerr << R"(
 Mode longest means take the longest transcript for each gene
 
 Mode collapse means, for each gene take the region between the first 
@@ -593,80 +457,22 @@ int main_refseq(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(PACKAGE_NAME R"( refseq [options])");
-	visible.add_options()
-		("help,h",								"Display help message")
-		("version",								"Print version")
-
-		("mode", po::value<std::string>(),		"Mode, should be either collapse, longest")
-
-		("start", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
-		("end", po::value<std::string>(),		"cds or tx with optional offset (e.g. +100 or -500)")
-
-		("overlap", po::value<std::string>(),	"Supported values are both or neither.")
-
-		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
-
-		("output", po::value<std::string>(),	"Output file")
-
-		("verbose,v",							"Verbose output")
-		;
-
-	po::options_description config = get_config_options();
-
-	po::options_description hidden("hidden options");
-	hidden.add_options()
-		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
-
-	po::options_description cmdline_options;
-	cmdline_options.add(visible).add(config).add(hidden);
-
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(cmdline_options).run(), vm);
-
-	fs::path configFile = PACKAGE_NAME ".conf";
-	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
-	
-	if (vm.count("config") != 0)
-	{
-		configFile = vm["config"].as<std::string>();
-		if (not fs::exists(configFile))
-			throw std::runtime_error("Specified config file does not seem to exist");
-	}
-	
-	if (fs::exists(configFile))
-	{
-		po::options_description config_options ;
-		config_options.add(config).add(hidden);
-
-		std::ifstream cfgFile(configFile);
-		if (cfgFile.is_open())
-			po::store(po::parse_config_file(cfgFile, config_options), vm);
-	}
-	
-	po::notify(vm);
-
-	if (vm.count("version"))
-	{
-		showVersionInfo();
-		exit(0);
-	}
-
-	VERBOSE = vm.count("verbose") != 0;
-	if (vm.count("debug"))
-		VERBOSE = vm["debug"].as<int>();
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
+		{
+			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
+			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
+			// { "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
+			{ "output",		po::value<std::string>(),	"Output file" }
+		}, { "screen-name", "assembly" });
 
 	if (vm.count("assembly") == 0 or
 		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
-		po::options_description visible_options;
-		visible_options.add(visible).add(config);
-
-		std::cerr << visible_options << std::endl
-				  << R"(
+		std::cerr << R"(
 Mode longest means take the longest transcript for each gene
 
 Mode collapse means, for each gene take the region between the first 
@@ -739,65 +545,16 @@ int main_server(int argc, char* const argv[])
 {
 	int result = 0;
 
-	po::options_description visible(PACKAGE_NAME " server command [options]"s);
-	visible.add_options()
-		("help,h",										"Display help message")
-		("verbose,v",									"Verbose output")
-		("config",			po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
-		("address",			po::value<std::string>(),	"External address, default is 0.0.0.0")
-		("port",			po::value<uint16_t>(),		"Port to listen to, default is 10336")
-		("no-daemon,F",									"Do not fork into background")
-		("user,u",			po::value<std::string>(),	"User to run the daemon")
-
-		;
-
-	po::options_description config = get_config_options();
-
-	po::options_description hidden("hidden options");
-	hidden.add_options()
-		("command", po::value<std::string>(),		"Server command")
-		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
-
-	po::options_description cmdline_options;
-	cmdline_options.add(visible).add(config).add(hidden);
-
-	po::positional_options_description p;
-	p.add("command", 1);
-
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-
-	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
-
-	fs::path configFile = PACKAGE_NAME ".conf";
-	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
-	
-	if (vm.count("config") != 0)
-	{
-		configFile = vm["config"].as<std::string>();
-		if (not fs::exists(configFile))
-			throw std::runtime_error("Specified config file does not seem to exist");
-	}
-	
-	if (fs::exists(configFile))
-	{
-		po::options_description config_options ;
-		config_options.add(config).add(visible).add(hidden);
-
-		std::ifstream cfgFile(configFile);
-		if (cfgFile.is_open())
-			po::store(po::parse_config_file(cfgFile, config_options), vm);
-	}
-	
-	po::notify(vm);
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( sever command [options])",
+		{
+			{ "command", po::value<std::string>(),		"Server command" }
+		}, { });
 
 	// --------------------------------------------------------------------
 
-	if (vm.count("help") or vm.count("command") == 0)
+	if (vm.count("command") == 0)
 	{
-		std::cerr << visible << std::endl
-			 << R"(
+		std::cerr << R"(
 Command should be either:
 
   start     start a new server
