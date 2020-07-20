@@ -72,6 +72,15 @@ po::options_description get_config_options()
 		("bowtie-index-hg19", po::value<std::string>(),	"Bowtie index parameter for HG19")
 		("bowtie-index-hg38", po::value<std::string>(),	"Bowtie index parameter for HG38")
 		
+		("db-host",			po::value<std::string>(),	"Database host")
+		("db-port",			po::value<std::string>(),	"Database port")
+		("db-dbname",		po::value<std::string>(),	"Database name")
+		("db-user",			po::value<std::string>(),	"Database user name")
+		("db-password",		po::value<std::string>(),	"Database password")
+		
+		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
+		("context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
+
 		;
 
 
@@ -97,22 +106,22 @@ int usage()
 
 // --------------------------------------------------------------------
 
-int main_create(int argc, char* const argv[])
+po::variables_map load_options(int argc, char* const argv[], const char* description,
+	std::initializer_list<po::option_description> options, std::set<std::string> required = {})
 {
-	int result = 0;
-
-	po::options_description visible(PACKAGE_NAME R"( create screen-name --low low-fastq-file --high high-fastq-file [options])");
+	po::options_description visible(description);
 	visible.add_options()
 		("help,h",								"Display help message")
-		("version",								"Print version")
+		("version",								"Print version");
 
-		("low", po::value<std::string>(),		"The path to the LOW FastQ file")
-		("high", po::value<std::string>(),		"The path to the HIGH FastQ file")
+	for (auto& option: options)
+	{
+		boost::shared_ptr<po::option_description> ptr(new po::option_description(option));
+		visible.add(ptr);
+	}
 
+	visible.add_options()
 		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
-
-		("force",								"By default a screen is only created if it not already exists, use this flag to delete the old screen before creating a new.")
-
 		("verbose,v",							"Verbose output")
 		;
 
@@ -131,8 +140,6 @@ int main_create(int argc, char* const argv[])
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
-
-	const std::regex kPosRx(R"((cds|tx)((?:\+|-)[0-9]+)?)");
 
 	fs::path configFile = PACKAGE_NAME ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
@@ -163,16 +170,38 @@ int main_create(int argc, char* const argv[])
 		exit(0);
 	}
 
-	if (vm.count("screen-name") == 0 or vm.count("screen-dir") == 0 or
-		vm.count("low") == 0 or vm.count("high") == 0)
+	for (auto r: required)
 	{
-		std::cerr << visible << std::endl;
-		exit(-1);
+		if (vm.count(r) == 0)
+		{
+			std::cerr << visible << std::endl;
+			exit(-1);
+		}
 	}
 
 	VERBOSE = vm.count("verbose") != 0;
 	if (vm.count("debug"))
 		VERBOSE = vm["debug"].as<int>();
+
+	return vm;
+}
+
+// --------------------------------------------------------------------
+
+int main_create(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( create screen-name --type <screen-type> [options])",
+		{
+			{ "type", po::value<std::string>(),		"The screen type to create, should be one of 'ip' or 'sli'" },
+			{ "low", po::value<std::string>(),		"The path to the LOW FastQ file" },
+			{ "high", po::value<std::string>(),		"The path to the HIGH FastQ file" },
+			{ "replicate", po::value<std::vector<std::string>>(),
+													"The replicate file, can be specified multiple times"},
+			{ "force", new po::untyped_value(true),	"By default a screen is only created if it not already exists, use this flag to delete the old screen before creating a new." }
+		},
+		{ "screen-name", "screen-dir", "type" });
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
@@ -185,7 +214,35 @@ int main_create(int argc, char* const argv[])
 			throw std::runtime_error("Screen already exists, use --force to delete old screen");
 	}
 
-	std::unique_ptr<ScreenData> data(ScreenData::create(screenDir, vm["low"].as<std::string>(), vm["high"].as<std::string>()));
+	auto type = zeep::value_serializer<ScreenType>::from_string(vm["type"].as<std::string>());
+	switch (type)
+	{
+		case ScreenType::IntracellularPhenotype:
+		{
+			if (not (vm.count("low") and vm.count("high")))
+				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
+
+			std::unique_ptr<IPScreenData> data(ScreenData::create<IPScreenData>(screenDir));
+
+			data->addFiles(vm["low"].as<std::string>(), vm["high"].as<std::string>());
+			break;
+		}
+
+		case ScreenType::SyntheticLethal:
+		{
+			if (vm.count("replicate") < 1)
+				throw std::runtime_error("For IP screens you should provide at least one replicate fastq file");
+
+			std::unique_ptr<SLIScreenData> data(ScreenData::create<SLIScreenData>(screenDir));
+
+			for (auto& replicate: vm["replicate"].as<std::vector<std::string>>())
+				data->addFile(replicate);
+			break;
+		}
+	}
+
+
+
 
 	return result;
 }
@@ -272,7 +329,7 @@ int main_map(int argc, char* const argv[])
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
-	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+	std::unique_ptr<ScreenData> data(new IPScreenData(screenDir));
 
 	if (vm.count("bowtie") == 0)
 		throw std::runtime_error("Bowtie executable not specified");
@@ -445,7 +502,7 @@ Examples:
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
-	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+	std::unique_ptr<IPScreenData> data(new IPScreenData(screenDir));
 
 	std::string assembly = vm["assembly"].as<std::string>();
 
@@ -692,14 +749,6 @@ int main_server(int argc, char* const argv[])
 		("no-daemon,F",									"Do not fork into background")
 		("user,u",			po::value<std::string>(),	"User to run the daemon")
 
-		("db-host",			po::value<std::string>(),	"Database host")
-		("db-port",			po::value<std::string>(),	"Database port")
-		("db-dbname",		po::value<std::string>(),	"Database name")
-		("db-user",			po::value<std::string>(),	"Database user name")
-		("db-password",		po::value<std::string>(),	"Database password")
-		
-		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
-		("context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
 		;
 
 	po::options_description config = get_config_options();
@@ -848,6 +897,13 @@ Command should be either:
 int main(int argc, char* const argv[])
 {
 	int result = 0;
+
+	// initialize enums
+
+	zeep::value_serializer<ScreenType>::init("screen-type", {
+		{ ScreenType::IntracellularPhenotype, "ip" },
+		{ ScreenType::SyntheticLethal, "sli" }
+	});
 
 	try
 	{

@@ -31,7 +31,7 @@ struct DataPoint
 		   & zeep::make_nvp("mi", mi)
 		   & zeep::make_nvp("low", low)
 		   & zeep::make_nvp("high", high);
-	}	
+	}
 };
 
 // --------------------------------------------------------------------
@@ -108,20 +108,54 @@ enum class Direction
 
 // --------------------------------------------------------------------
 
+enum class ScreenType
+{
+	IntracellularPhenotype,
+	SyntheticLethal,
+
+	// abreviated synonyms
+	IP = IntracellularPhenotype,
+	SLI = SyntheticLethal
+};
+
+// --------------------------------------------------------------------
+
 class ScreenData
 {
   public:
-	ScreenData(std::filesystem::path dir);
-
 	ScreenData(const ScreenData&) = delete;
 	ScreenData& operator=(const ScreenData&) = delete;
+	virtual ~ScreenData() = default;
 
-	static ScreenData* create(std::filesystem::path dir,
-		std::filesystem::path lowFastQ, std::filesystem::path highFastQ);
+	template<typename Type>
+	static Type* create(std::filesystem::path dir)
+	{
+		return static_cast<Type*>(create(Type::screen_type, dir));
+	}
 
-	void map(const std::string& assembly, unsigned readLength,
+	static ScreenData* create(ScreenType type, std::filesystem::path dir);
+
+	virtual void map(const std::string& assembly, unsigned readLength,
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 		unsigned threads);
+
+  protected:
+
+	ScreenData(std::filesystem::path dir);
+
+	std::filesystem::path	mDataDir;
+};
+
+// --------------------------------------------------------------------
+
+class IPScreenData : public ScreenData
+{
+  public:
+	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotype;
+
+	IPScreenData(std::filesystem::path dir);
+
+	void addFiles(std::filesystem::path low, std::filesystem::path high);
 
 	// note: will reorder transcripts!
 	void analyze(const std::string& assembly, unsigned readLength,
@@ -138,12 +172,16 @@ class ScreenData
 	std::vector<DataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction);
-
-  private:
-
-	ScreenData(std::filesystem::path dir, std::filesystem::path low, std::filesystem::path high);
-
-	std::filesystem::path	mDataDir;
 };
 
 // --------------------------------------------------------------------
+
+class SLIScreenData : public ScreenData
+{
+  public:
+	static constexpr ScreenType screen_type = ScreenType::SyntheticLethal;
+
+	SLIScreenData(std::filesystem::path dir);
+
+	void addFile(std::filesystem::path file);
+};

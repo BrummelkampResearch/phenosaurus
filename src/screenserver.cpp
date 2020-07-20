@@ -21,48 +21,6 @@ namespace zh = zeep::http;
 
 // -----------------------------------------------------------------------
 
-void to_element(zeep::json::element& e, Mode mode)
-{
-	switch (mode)
-	{
-		case Mode::Collapse:	e = "collapse"; break;
-		case Mode::Longest:		e = "longest"; break;
-		case Mode::Start:		e = "start"; break;
-		case Mode::End:			e = "end"; break;
-	}
-}
-
-void from_element(const zeep::json::element& e, Mode& mode)
-{
-	if (e == "collapse")		mode = Mode::Collapse;
-	else if (e == "longest")	mode = Mode::Longest;
-	else if (e == "start")		mode = Mode::Start;
-	else if (e == "end")		mode = Mode::End;
-	else throw std::runtime_error("Invalid mode");
-}
-
-// --------------------------------------------------------------------
-
-void to_element(zeep::json::element& e, Direction direction)
-{
-	switch (direction)
-	{
-		case Direction::Sense:		e = "sense"; break;
-		case Direction::AntiSense:	e = "antisense"; break;
-		case Direction::Both:		e = "both"; break;
-	}
-}
-
-void from_element(const zeep::json::element& e, Direction& direction)
-{
-	if (e == "sense")			direction = Direction::Sense;
-	else if (e == "antisense")	direction = Direction::AntiSense;
-	else if (e == "both")		direction = Direction::Both;
-	else throw std::runtime_error("Invalid direction");
-}
-
-// --------------------------------------------------------------------
-
 class ScreenRestController : public zh::rest_controller
 {
   public:
@@ -95,7 +53,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	if (not fs::is_directory(screenDir))
 		throw std::runtime_error("No such screen: " + screen);
 
-	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+	std::unique_ptr<IPScreenData> data(new IPScreenData(screenDir));
 	
 	// -----------------------------------------------------------------------
 
@@ -184,7 +142,7 @@ Region ScreenRestController::geneInfo(const std::string& gene, const std::string
 	if (not fs::is_directory(screenDir))
 		throw std::runtime_error("No such screen: " + screen);
 
-	std::unique_ptr<ScreenData> data(new ScreenData(screenDir));
+	std::unique_ptr<IPScreenData> data(new IPScreenData(screenDir));
 	
 	std::tie(result.highPlus, result.highMinus, result.lowPlus, result.lowMinus) = 
 		data->insertions(assembly, result.chrom, result.start, result.end);
@@ -297,6 +255,21 @@ void ScreenHtmlController::fishtail(const zh::request& request, const zh::scope&
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	const std::string& secret, const std::string& context_name)
 {
+	// map enums
+
+	zeep::value_serializer<Mode>::init("mode", {
+		{ Mode::Collapse, 	"collapse" },
+		{ Mode::Longest, 	"longest" },
+		{ Mode::Start, 		"start" },
+		{ Mode::End, 		"end" }
+	});
+
+	zeep::value_serializer<Direction>::init("direction", {
+		{ Direction::Sense, 	"sense" },
+		{ Direction::AntiSense, "antisense" },
+		{ Direction::Both, 		"both" }
+	});
+
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });

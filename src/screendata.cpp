@@ -77,16 +77,53 @@ void checkIsFastQ(fs::path infile)
 }
 
 // --------------------------------------------------------------------
-ScreenData::ScreenData(std::filesystem::path dir)
 
+ScreenData::ScreenData(std::filesystem::path dir)
 	: mDataDir(dir)
 {
 	if (not fs::exists(dir))
 		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
 }
 
-ScreenData::ScreenData(std::filesystem::path dir, std::filesystem::path low, std::filesystem::path high)
-	: mDataDir(dir)
+void ScreenData::map(const std::string& assembly, unsigned readLength,
+	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
+{
+	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(readLength);
+	if (not fs::exists(assemblyDataPath))
+		fs::create_directories(assemblyDataPath);
+	
+	for (auto fi = std::filesystem::directory_iterator(mDataDir); fi != std::filesystem::directory_iterator(); ++fi)
+	{
+		if (fi->is_directory())
+			continue;
+		
+		fs::path p = *fi;
+
+		auto name = p.filename();
+		if (name.extension() == ".gz")
+			name = name.stem();
+		if (name.extension() != ".fastq")
+			continue;
+		name = name.stem();
+
+		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, readLength);
+		std::cout << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
+
+		std::ofstream out(assemblyDataPath / name, std::ios::binary);
+		const char* data = reinterpret_cast<const char*>(hits.data());
+		size_t length = hits.size() * sizeof(Insertion);
+		out.write(data, length);
+	}
+}
+
+// --------------------------------------------------------------------
+
+IPScreenData::IPScreenData(std::filesystem::path dir)
+	: ScreenData(dir)
+{
+}
+
+void IPScreenData::addFiles(std::filesystem::path low, std::filesystem::path high)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(low))
@@ -102,44 +139,19 @@ ScreenData::ScreenData(std::filesystem::path dir, std::filesystem::path low, std
 	checkIsFastQ(low);
 	checkIsFastQ(high);
 
-	fs::create_directory(dir);
-
 	for (auto p: { std::make_pair("low.fastq", low), std::make_pair("high.fastq", high) })
 	{
 		fs::path to;
 		if (p.second.extension() == ".gz" or p.second.extension() == ".bz2")
-			to = dir / (p.first + p.second.extension().string());
+			to = mDataDir / (p.first + p.second.extension().string());
 		else
-			to = dir / p.first;
+			to = mDataDir / p.first;
 		
 		fs::create_symlink(p.second, to);
-	}
+	}	
 }
 
-void ScreenData::map(const std::string& assembly, unsigned readLength,
-	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
-{
-	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(readLength);
-	if (not fs::exists(assemblyDataPath))
-		fs::create_directories(assemblyDataPath);
-	
-	for (std::string ch: { "low", "high" })
-	{
-		fs::path p = mDataDir / (ch + ".fastq");
-		if (not fs::exists(p))
-			p = mDataDir / (ch + ".fastq.gz");
-
-		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, readLength);
-		std::cout << "Unique hits in " << ch << " channel: " << hits.size() << std::endl;
-
-		std::ofstream out(assemblyDataPath / ch, std::ios::binary);
-		const char* data = reinterpret_cast<const char*>(hits.data());
-		size_t length = hits.size() * sizeof(Insertion);
-		out.write(data, length);
-	}
-}
-
-void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::vector<Transcript>& transcripts,
+void IPScreenData::analyze(const std::string& assembly, unsigned readLength, std::vector<Transcript>& transcripts,
 	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
 {
 	// reorder transcripts based on chr > end-position, makes code easier and faster
@@ -242,7 +254,7 @@ void ScreenData::analyze(const std::string& assembly, unsigned readLength, std::
 // --------------------------------------------------------------------
 
 std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
-ScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
+IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
 {
 	const unsigned readLength = 50;
 
@@ -302,7 +314,7 @@ ScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start,
 
 // --------------------------------------------------------------------
 
-std::vector<DataPoint> ScreenData::dataPoints(const std::string& assembly,
+std::vector<DataPoint> IPScreenData::dataPoints(const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction)
 {
@@ -319,7 +331,7 @@ std::vector<DataPoint> ScreenData::dataPoints(const std::string& assembly,
 	return dataPoints(transcripts, lowInsertions, highInsertions, direction);
 }
 
-std::vector<DataPoint> ScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+std::vector<DataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& transcripts,
 	const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction)
 {
@@ -409,7 +421,62 @@ std::vector<DataPoint> ScreenData::dataPoints(const std::vector<Transcript>& tra
 
 // --------------------------------------------------------------------
 
-ScreenData* ScreenData::create(fs::path dir, fs::path lowFastQ, fs::path highFastQ)
+SLIScreenData::SLIScreenData(std::filesystem::path dir)
+	: ScreenData(dir)
 {
-	return new ScreenData(dir, lowFastQ, highFastQ);
 }
+
+void SLIScreenData::addFile(std::filesystem::path file)
+{
+	// follow links until we end up at the final destination
+	while (fs::is_symlink(file))
+		file = fs::read_symlink(file);
+	
+	// And then make these canonical/system_complete
+	file = fs::weakly_canonical(file);
+
+	checkIsFastQ(file);
+
+	auto ext = file.extension();
+
+	int r = 1;
+	for (; r < 4; ++r)
+	{
+		auto name = "replicate-" + std::to_string(r);
+
+		if (fs::exists(mDataDir / name) or
+			fs::exists(mDataDir / (name + ".gz")) or
+			fs::exists(mDataDir / (name + ".bz2")))
+		{
+			continue;
+		}
+
+		std::filesystem::path to;
+		if (ext == ".gz" or ext == ".bz2")
+			to = mDataDir / (name + ext.string());
+		else
+			to = mDataDir / name;
+		
+		fs::create_symlink(file, to);
+	}
+}
+
+// --------------------------------------------------------------------
+
+ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
+{
+	if (fs::exists(dir))
+		throw std::runtime_error("Screen already exists");
+
+	fs::create_directories(dir);
+
+	switch (type)
+	{
+		case ScreenType::IntracellularPhenotype:
+			return new IPScreenData(dir);
+		
+		case ScreenType::SyntheticLethal:
+			return new SLIScreenData(dir);
+	}
+}
+
