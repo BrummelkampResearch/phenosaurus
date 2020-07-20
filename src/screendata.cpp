@@ -484,3 +484,40 @@ ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
 	}
 }
 
+ScreenData* ScreenData::create(std::filesystem::path dir)
+{
+	// perhaps we should improve this...
+
+	bool hasLow = false, hasHigh = false, hasRepl[4] = {};
+
+	for (std::filesystem::directory_iterator iter(dir); iter != std::filesystem::directory_iterator(); ++iter)
+	{
+		if (iter->is_directory())
+			continue;
+		
+		auto name = iter->path().filename();
+		if (name.extension() == ".gz")
+			name = name.stem();
+		if (name.extension() != ".fastq")
+			continue;
+		
+		if (name == "low")
+			hasLow = true;
+		else if (name == "high")
+			hasHigh = true;
+		else if (name.string().length() == 11 and name.string().compare(0, 10, "replicate-") == 0)
+		{
+			char d = name.string().back();
+			if (d >= '1' and d <= '4')
+				hasRepl[d - '1'] = true;
+		}
+	}
+
+	if (hasLow and hasHigh)
+		return new IPScreenData(dir);
+	
+	if (hasRepl[0])
+		return new SLIScreenData(dir);
+	
+	throw std::runtime_error("Incomplete screen, missing data files");
+}

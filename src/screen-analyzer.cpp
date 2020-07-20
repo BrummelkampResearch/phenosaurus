@@ -267,7 +267,7 @@ int main_map(int argc, char* const argv[])
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
-	std::unique_ptr<ScreenData> data(new IPScreenData(screenDir));
+	std::unique_ptr<ScreenData> data(ScreenData::create(screenDir));
 
 	if (vm.count("bowtie") == 0)
 		throw std::runtime_error("Bowtie executable not specified");

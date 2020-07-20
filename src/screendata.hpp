@@ -134,6 +134,7 @@ class ScreenData
 	}
 
 	static ScreenData* create(ScreenType type, std::filesystem::path dir);
+	static ScreenData* create(std::filesystem::path dir);
 
 	virtual void map(const std::string& assembly, unsigned readLength,
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
