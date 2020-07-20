@@ -440,7 +440,7 @@ void SLIScreenData::addFile(std::filesystem::path file)
 	auto ext = file.extension();
 
 	int r = 1;
-	for (; r < 4; ++r)
+	for (; r <= 4; ++r)
 	{
 		auto name = "replicate-" + std::to_string(r);
 
@@ -458,7 +458,11 @@ void SLIScreenData::addFile(std::filesystem::path file)
 			to = mDataDir / name;
 		
 		fs::create_symlink(file, to);
+		break;
 	}
+
+	if (r > 4)
+		throw std::runtime_error("Screen already contains 4 fastq files");
 }
 
 // --------------------------------------------------------------------
