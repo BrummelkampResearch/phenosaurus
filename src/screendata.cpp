@@ -18,6 +18,7 @@
 #include "screendata.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
+#include "binom.hpp"
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
@@ -314,7 +315,7 @@ IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t star
 
 // --------------------------------------------------------------------
 
-std::vector<DataPoint> IPScreenData::dataPoints(const std::string& assembly,
+std::vector<IPDataPoint> IPScreenData::dataPoints(const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction)
 {
@@ -331,7 +332,7 @@ std::vector<DataPoint> IPScreenData::dataPoints(const std::string& assembly,
 	return dataPoints(transcripts, lowInsertions, highInsertions, direction);
 }
 
-std::vector<DataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+std::vector<IPDataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& transcripts,
 	const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction)
 {
@@ -382,7 +383,7 @@ std::vector<DataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& t
 
 	auto fcpv = adjustFDR_BH(pvalues);
 
-	std::vector<DataPoint> result;
+	std::vector<IPDataPoint> result;
 
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
@@ -405,7 +406,7 @@ std::vector<DataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& t
 			miHT -= 1;
 		}
 
-		DataPoint p;
+		IPDataPoint p;
 		p.geneName = t.geneName;
 		p.geneID = i;
 		p.pv = pvalues[i];
@@ -421,12 +422,12 @@ std::vector<DataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& t
 
 // --------------------------------------------------------------------
 
-SLIScreenData::SLIScreenData(std::filesystem::path dir)
+SLScreenData::SLScreenData(std::filesystem::path dir)
 	: ScreenData(dir)
 {
 }
 
-void SLIScreenData::addFile(std::filesystem::path file)
+void SLScreenData::addFile(std::filesystem::path file)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(file))
@@ -465,6 +466,137 @@ void SLIScreenData::addFile(std::filesystem::path file)
 		throw std::runtime_error("Screen already contains 4 fastq files");
 }
 
+void SLScreenData::analyze(int replicate, const std::string& assembly, unsigned readLength,
+	std::vector<Transcript>& transcripts, std::vector<Insertions>& insertions)
+{
+	// reorder transcripts based on chr > end-position, makes code easier and faster
+
+	// reorder transcripts
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.start() - b.start();
+		return d < 0;
+	});
+
+	boost::thread_group t;
+	std::exception_ptr eptr;
+
+	auto rn = "replicate-" + std::to_string(replicate);
+
+	auto infile = mDataDir / assembly / std::to_string(readLength) / rn;
+	if (not fs::exists(infile))
+		throw std::runtime_error("Missing " + rn + " file, did you run map already?");
+
+	insertions.resize(transcripts.size());
+
+	auto size = fs::file_size(infile);
+	auto N = size / sizeof(Insertion);
+
+	std::vector<Insertion> bwt(N);
+
+	std::ifstream file(infile, std::ios::binary);
+	if (not file.is_open())
+		throw std::runtime_error("Could not open " + rn + " file, did you run map already?");
+	
+	file.read(reinterpret_cast<char*>(bwt.data()), size);
+
+	auto ts = transcripts.begin();
+
+	for (const auto& [chr, strand, pos]: bwt)
+	{
+		assert(chr != CHROM::INVALID);
+
+		// we have a valid hit at chr:pos, see if it matches a transcript
+
+		// skip all that are before the current position
+		while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
+			++ts;
+
+		auto t = ts;
+		while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
+		{
+			if (VERBOSE >= 3)
+				std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+			for (auto& r: t->ranges)
+			{
+				if (pos >= r.start and pos < r.end)
+				{
+					if (strand == t->strand)
+						insertions[t - transcripts.begin()].sense.insert(pos);
+					else
+						insertions[t - transcripts.begin()].antiSense.insert(pos);
+				}
+			}
+
+			++t;
+		}
+	}
+}
+
+// std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
+// 	insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
+
+std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+{
+	const unsigned readLength = 50;
+
+	auto transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+
+	// -----------------------------------------------------------------------
+	
+	std::vector<Insertions> insertions;
+
+	analyze(replicate, assembly, readLength, transcripts, insertions);
+
+	return dataPoints(transcripts, insertions);
+}
+
+std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+	const std::vector<Insertions>& insertions)
+{
+	std::vector<double> pvalues(transcripts.size(), 0);
+
+	parallel_for(transcripts.size(), [&](size_t i)
+	{
+		int X[2] = { static_cast<int>(insertions[i].sense.size()), static_cast<int>(insertions[i].antiSense.size()) };
+		pvalues[i] = binom_test(X);
+		assert(pvalues[i] <= 1);
+	});
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	for (auto fp: fcpv)
+		assert(fp <= 1);
+
+	std::vector<SLDataPoint> result;
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto& t = transcripts[i];
+
+		int sense = insertions[i].sense.size();
+		int antisense = insertions[i].antiSense.size();
+
+		if (sense == 0 or antisense == 0)
+			continue;
+
+		SLDataPoint p;
+		p.geneName = t.geneName;
+		p.geneID = i;
+		p.pv = pvalues[i];
+		p.fcpv = fcpv[i];
+		p.sense = sense;
+		p.antisense = antisense;
+		result.push_back(std::move(p));
+	}
+	
+	return result;
+}
+
 // --------------------------------------------------------------------
 
 ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
@@ -480,11 +612,11 @@ ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
 			return new IPScreenData(dir);
 		
 		case ScreenType::SyntheticLethal:
-			return new SLIScreenData(dir);
+			return new SLScreenData(dir);
 	}
 }
 
-ScreenData* ScreenData::create(std::filesystem::path dir)
+std::tuple<std::unique_ptr<ScreenData>,ScreenType> ScreenData::create(std::filesystem::path dir)
 {
 	// perhaps we should improve this...
 
@@ -516,10 +648,10 @@ ScreenData* ScreenData::create(std::filesystem::path dir)
 	}
 
 	if (hasLow and hasHigh)
-		return new IPScreenData(dir);
+		return { std::unique_ptr<ScreenData>(new IPScreenData(dir)), ScreenType::IntracellularPhenotype };
 	
 	if (hasRepl[0])
-		return new SLIScreenData(dir);
+		return { std::unique_ptr<ScreenData>(new SLScreenData(dir)), ScreenType::SyntheticLethal };
 	
 	throw std::runtime_error("Incomplete screen, missing data files");
 }

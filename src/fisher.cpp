@@ -222,8 +222,13 @@ std::vector<double> adjustFDR_BH(const std::vector<double>& p)
 	std::vector<double> result(N);
 
 	for (size_t i = 0; i < N; ++i)
-		result[ix[i]] = (N * p[ix[i]]) / (i + 1);
-	
+	{
+		auto v = (N * p[ix[i]]) / (i + 1);
+		if (v > 1)
+			v = 1;
+		result[ix[i]] = v;
+	}
+		
 	return result;
 }
 

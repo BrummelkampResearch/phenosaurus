@@ -104,7 +104,7 @@ void cutOverlap(Transcript& a, Transcript& b);
 
 // --------------------------------------------------------------------
 
-std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly = true);
+std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly);
 
 void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode);
 
@@ -117,3 +117,17 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 // second form of loadTranscripts loads the transcripts in a window around a specified gene
 std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene,
 	int window = 500);
+
+// --------------------------------------------------------------------
+// Yet another selection: filter out exons
+
+void filterOutExons(std::vector<Transcript>& transcripts);
+
+// void filterTranscriptsNoExons(std::vector<Transcript>& transcripts,
+// 	const std::string& startPos, const std::string& endPos);
+
+// std::vector<Transcript> loadTranscriptsNoExons(const std::string& assembly,
+// 	const std::string& startPos, const std::string& endPos);
+
+// void filterTranscriptsNoExons(std::vector<Transcript>& transcripts, Mode mode,
+// 	const std::string& startPos, const std::string& endPos, bool cutOverlap);

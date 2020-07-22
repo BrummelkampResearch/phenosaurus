@@ -11,7 +11,7 @@
 
 // --------------------------------------------------------------------
 
-struct DataPoint
+struct IPDataPoint
 {
 	int geneID;
 	std::string geneName;
@@ -31,6 +31,29 @@ struct DataPoint
 		   & zeep::make_nvp("mi", mi)
 		   & zeep::make_nvp("low", low)
 		   & zeep::make_nvp("high", high);
+	}
+};
+
+// --------------------------------------------------------------------
+
+struct SLDataPoint
+{
+	int geneID;
+	std::string geneName;
+	float pv;
+	float fcpv;
+	int sense;
+	int antisense;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("geneID", geneID)
+		   & zeep::make_nvp("geneName", geneName)
+		   & zeep::make_nvp("pv", pv)
+		   & zeep::make_nvp("fcpv", fcpv)
+		   & zeep::make_nvp("sense", sense)
+		   & zeep::make_nvp("antisense", antisense);
 	}
 };
 
@@ -115,7 +138,7 @@ enum class ScreenType
 
 	// abreviated synonyms
 	IP = IntracellularPhenotype,
-	SLI = SyntheticLethal
+	SL = SyntheticLethal
 };
 
 // --------------------------------------------------------------------
@@ -134,7 +157,8 @@ class ScreenData
 	}
 
 	static ScreenData* create(ScreenType type, std::filesystem::path dir);
-	static ScreenData* create(std::filesystem::path dir);
+
+	static std::tuple<std::unique_ptr<ScreenData>,ScreenType> create(std::filesystem::path dir);
 
 	virtual void map(const std::string& assembly, unsigned readLength,
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
@@ -166,23 +190,35 @@ class IPScreenData : public ScreenData
 	std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
 		insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
 
-	std::vector<DataPoint> dataPoints(const std::string& assembly,
+	std::vector<IPDataPoint> dataPoints(const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
-	std::vector<DataPoint> dataPoints(const std::vector<Transcript>& transcripts,
+	std::vector<IPDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction);
 };
 
 // --------------------------------------------------------------------
 
-class SLIScreenData : public ScreenData
+class SLScreenData : public ScreenData
 {
   public:
 	static constexpr ScreenType screen_type = ScreenType::SyntheticLethal;
 
-	SLIScreenData(std::filesystem::path dir);
+	SLScreenData(std::filesystem::path dir);
 
 	void addFile(std::filesystem::path file);
+
+	void analyze(int replicate, const std::string& assembly, unsigned readLength,
+		std::vector<Transcript>& transcripts, std::vector<Insertions>& insertions);
+
+	// std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
+	// 	insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
+
+	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
+	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
+		const std::vector<Insertions>& insertions);
 };

@@ -34,8 +34,8 @@ class ScreenRestController : public zh::rest_controller
 		map_post_request("gene-info/{id}", &ScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	// std::vector<DataPoint> screenData(const std::string& screen);
-	std::vector<DataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
+	// std::vector<IPDataPoint> screenData(const std::string& screen);
+	std::vector<IPDataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
@@ -45,7 +45,7 @@ class ScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
+std::vector<IPDataPoint> ScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	fs::path screenDir = mScreenDir / screen;
@@ -60,7 +60,7 @@ std::vector<DataPoint> ScreenRestController::screenDataEx(const std::string& scr
 	return data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
 }
 
-// std::vector<DataPoint> ScreenRestController::screenData(const std::string& screen)
+// std::vector<IPDataPoint> ScreenRestController::screenData(const std::string& screen)
 // {
 // 	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
 // }

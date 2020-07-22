@@ -117,7 +117,7 @@ struct splitted_range
 	char m_d;
 };
 
-std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly)
+std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
 {
 	mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
@@ -296,6 +296,9 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 			continue;
 		
 		if (completeOnly and ts.cds.stat != CDSStat::COMPLETE)
+			continue;
+		
+		if (knownOnly and ts.name[0] != 'N')
 			continue;
 
 		// initially we take the whole transcription region
@@ -584,7 +587,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
-	auto transcripts = loadGenes(assembly, true);
+	auto transcripts = loadGenes(assembly, true, true);
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
@@ -733,7 +736,7 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 
 std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene, int window)
 {
-	auto transcripts = loadGenes(assembly);
+	auto transcripts = loadGenes(assembly, true, true);
 
 	std::vector<Transcript> result;
 	int minOffset = std::numeric_limits<int>::max();
@@ -770,4 +773,65 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 	}
 
 	return result;
+}
+
+// // --------------------------------------------------------------------
+
+// std::vector<Transcript> loadTranscriptsNoExons(const std::string& assembly,
+// 	const std::string& startPos, const std::string& endPos)
+// {
+// 	auto transcripts = loadGenes(assembly, true);
+
+// 	if (VERBOSE)
+// 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
+
+// 	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
+
+// 	return transcripts;
+// }
+
+void exclude_range(std::vector<Range>& r, const Range& x)
+{
+	for (auto ri = r.begin(); ri != r.end(); ++ri)
+	{
+		if (ri->end <= x.start or ri->start > x.end)
+			continue;
+
+		if (x.start <= ri->start and x.end >= ri->end)
+		{
+			ri = r.erase(ri);
+			if (ri == r.end())
+				break;
+			continue;
+		}
+		
+		if (x.start > ri->start and x.end < ri->end)
+		{
+			auto r2 = *ri;
+			ri->end = x.start;
+			ri = r.insert(ri, r2);
+			ri->start = x.end;
+			continue;
+		}
+
+		if (x.start > ri->start)
+			ri->end = x.start;
+		else
+			ri->start = x.end;
+	}
+}
+
+void filterOutExons(std::vector<Transcript>& transcripts)
+{
+	for (auto& t: transcripts)
+	{
+		std::vector<Range> r{ t.tx };
+
+		for (auto& exon: t.exons)
+			exclude_range(r, exon);
+		
+		std::sort(r.begin(), r.end(), [](auto& a, auto& b) { return a.start < b.start; });
+
+		std::swap(t.ranges, r);
+	}
 }

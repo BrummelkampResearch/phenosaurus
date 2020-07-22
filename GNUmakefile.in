@@ -71,6 +71,7 @@ APPLICATION = @PACKAGE_NAME@
 
 OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(APPLICATION:%=$(OBJDIR)/%_rsrc.o) \
+	$(OBJDIR)/binom.o \
 	$(OBJDIR)/bowtie.o \
 	$(OBJDIR)/db-connection.o \
 	$(OBJDIR)/fisher.o \
