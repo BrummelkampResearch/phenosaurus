@@ -20,6 +20,10 @@
 
 void parallel_for(size_t N, std::function<void(size_t)>&& f)
 {
+// #if DEBUG
+//     for (size_t i = 0; i < N; ++i)
+//         f(i);
+// #else
 	std::atomic<size_t> i = 0;
 
 	boost::thread_group t;
@@ -37,6 +41,7 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 		});
 
 	t.join_all();
+// #endif
 }
 
 // -----------------------------------------------------------------------

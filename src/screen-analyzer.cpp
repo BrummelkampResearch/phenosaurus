@@ -71,6 +71,8 @@ po::options_description get_config_options()
 		("screen-dir", po::value<std::string>(),		"Directory containing the screen data")
 		("bowtie-index-hg19", po::value<std::string>(),	"Bowtie index parameter for HG19")
 		("bowtie-index-hg38", po::value<std::string>(),	"Bowtie index parameter for HG38")
+
+		("control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
 		
 		("db-host",			po::value<std::string>(),	"Database host")
 		("db-port",			po::value<std::string>(),	"Database port")
@@ -111,7 +113,9 @@ int usage()
 // --------------------------------------------------------------------
 
 po::variables_map load_options(int argc, char* const argv[], const char* description,
-	std::initializer_list<po::option_description> options, std::set<std::string> required = {})
+	std::initializer_list<po::option_description> options,
+	std::initializer_list<std::string> required = {},
+	std::initializer_list<std::string> positional = { "screen-name" })
 {
 	po::options_description visible(description);
 	visible.add_options()
@@ -140,7 +144,8 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 	cmdline_options.add(visible).add(config).add(hidden);
 
 	po::positional_options_description p;
-	p.add("screen-name", 1);
+	for (auto& pos: positional)
+		p.add(pos.c_str(), 1);
 	
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
@@ -424,9 +429,9 @@ Examples:
 	return 0;
 }
 
-int analyze_sl(po::variables_map& vm, SLScreenData& screenData)
+int analyze_sl(po::variables_map& vm, SLScreenData& screenData, SLScreenData& controlData)
 {
-	if (vm.count("assembly") == 0 or vm.count("start") == 0 or vm.count("end") == 0)
+	if (vm.count("assembly") == 0 or vm.count("start") == 0 or vm.count("end") == 0 or vm.count("control") == 0)
 	{
 		std::cerr << R"(
 Start and end should be either 'cds' or 'tx' with an optional offset 
@@ -447,7 +452,28 @@ or txEnd to have the start at the cdsEnd e.g.
 	auto transcripts = loadTranscripts(assembly, Mode::Longest, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
 	filterOutExons(transcripts);
 
+	// reorder transcripts based on chr > end-position, makes code easier and faster
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.start() - b.start();
+		return d < 0;
+	});
+
 	// -----------------------------------------------------------------------
+
+	std::thread ct[4];
+	std::array<std::vector<Insertions>,4> controlInsertions;
+
+	for (int i = 0; i < 4; ++i)
+	{
+		ct[i] = std::thread([replicate = i + 1, &insertions = controlInsertions[i], &controlData,
+			&assembly, trimLength, &transcripts]()
+		{
+			controlData.count_insertions(replicate, assembly, trimLength, transcripts, insertions);
+		});
+	}
 
 	int replicate = 1;
 	if (vm.count("replicate"))
@@ -455,7 +481,10 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	std::vector<Insertions> insertions;
 
-	screenData.analyze(replicate, assembly, trimLength, transcripts, insertions);
+	screenData.count_insertions(replicate, assembly, trimLength, transcripts, insertions);
+
+	for (auto& t: ct)
+		t.join();
 
 	long senseCount = 0, antiSenseCount = 0;
 	for (auto& i: insertions)
@@ -471,13 +500,25 @@ or txEnd to have the start at the cdsEnd e.g.
 			<< " sense      : " << std::setw(10) << senseCount << std::endl
 			<< " anti sense : " << std::setw(10) << antiSenseCount << std::endl;
 
-	for (auto& dp: screenData.dataPoints(transcripts, insertions))
+	for (auto& dp: screenData.dataPoints(transcripts, insertions, controlInsertions))
 	{
 		std::cout << dp.geneName << '\t'
 				<< dp.sense << '\t'
 				<< dp.antisense << '\t'
 				<< dp.pv << '\t'
-				<< dp.fcpv << std::endl;
+				<< dp.fcpv << '\t'
+				<< dp.sense_normalized << '\t'
+				<< dp.antisense_normalized << '\t'
+				<< dp.ref_fcpv[0] << '\t'
+				<< dp.ref_pv[0] << '\t'
+				<< dp.ref_fcpv[1] << '\t'
+				<< dp.ref_pv[1] << '\t'
+				<< dp.ref_fcpv[2] << '\t'
+				<< dp.ref_pv[2] << '\t'
+				<< dp.ref_fcpv[3] << '\t'
+				<< dp.ref_pv[3] << '\t'
+				<< (dp.sense + dp.antisense) << '\t'
+				<< dp.sense_ratio << std::endl;
 	}
 
 	return 0;
@@ -514,9 +555,8 @@ int main_analyze(int argc, char* const argv[])
 		sb = std::cout.rdbuf(out.rdbuf());
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
 
-	const auto& [ data, type ] = ScreenData::create(screenDir);
+	const auto& [ data, type ] = ScreenData::create(screenDir / vm["screen-name"].as<std::string>());
 
 	switch (type)
 	{
@@ -525,8 +565,11 @@ int main_analyze(int argc, char* const argv[])
 			break;
 
 		case ScreenType::SyntheticLethal:
-			result = analyze_sl(vm, *static_cast<SLScreenData*>(data.get()));
+		{
+			SLScreenData controlScreen(screenDir / vm["control"].as<std::string>());
+			result = analyze_sl(vm, *static_cast<SLScreenData*>(data.get()), controlScreen);
 			break;
+		}
 	}
 
 	if (sb)
@@ -536,6 +579,7 @@ int main_analyze(int argc, char* const argv[])
 }
 
 // --------------------------------------------------------------------
+// Write out the resulting genes as a BED file
 
 int main_refseq(int argc, char* const argv[])
 {
@@ -602,14 +646,6 @@ the parts with overlap will be left out.
 	if (out.is_open())
 		sb = std::cout.rdbuf(out.rdbuf());
 
-	std::cout
-		<< "chr" << '\t'
-		<< "start" << '\t'
-		<< "end" << '\t'
-		<< "gene" << '\t'
-		<< "score" << '\t'
-		<< "strand" << std::endl;
-				
 	for (auto& transcript: transcripts)
 	{
 		for (auto& range: transcript.ranges)
@@ -641,7 +677,7 @@ int main_server(int argc, char* const argv[])
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( sever command [options])",
 		{
 			{ "command", po::value<std::string>(),		"Server command" }
-		}, { });
+		}, { }, { "command" });
 
 	// --------------------------------------------------------------------
 

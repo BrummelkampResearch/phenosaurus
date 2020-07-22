@@ -8,16 +8,16 @@ namespace bm = boost::math;
 
 inline double xlogy(double x, double y)
 {
-	if (x == 0 and not std::isnan(y))
-		return 0;
-	return x * std::log(y);
+	return (x == 0 and not std::isnan(y)) 
+		? 0
+		: x * std::log(y);
 }
 
 inline double xlog1py(double x, double y)
 {
-	if (x == 0 and not std::isnan(y))
-		return 0;
-	return x * std::log1p(y);
+	return (x == 0 and not std::isnan(y))
+		? 0
+		: x * std::log1p(y);
 }
 
 double binom_pmf(int x, int n, double p)
@@ -59,11 +59,8 @@ double binom_sf(double x, double n, double p)
 	return result;
 }
 
-double binom_test(const int X[2], double p)
+double binom_test(int x, int n, double p)
 {
-	int x = X[0];
-	int n = X[0] + X[1];
-
 	if (p < 0 or p > 1)
 		throw std::invalid_argument("p should be in the range 0 <= p <= 1");
 

@@ -42,8 +42,11 @@ struct SLDataPoint
 	std::string geneName;
 	float pv;
 	float fcpv;
-	int sense;
-	int antisense;
+	float ref_pv[4];
+	float ref_fcpv[4];
+	int sense, sense_normalized;
+	int antisense, antisense_normalized;
+	float sense_ratio, ref_sense_ratio;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -210,8 +213,8 @@ class SLScreenData : public ScreenData
 
 	void addFile(std::filesystem::path file);
 
-	void analyze(int replicate, const std::string& assembly, unsigned readLength,
-		std::vector<Transcript>& transcripts, std::vector<Insertions>& insertions);
+	void count_insertions(int replicate, const std::string& assembly, unsigned readLength,
+		const std::vector<Transcript>& transcripts, std::vector<Insertions>& insertions);
 
 	// std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
 	// 	insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
@@ -220,5 +223,5 @@ class SLScreenData : public ScreenData
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
-		const std::vector<Insertions>& insertions);
+		const std::vector<Insertions>& insertions, const std::array<std::vector<Insertions>,4>& controlInsertions);
 };
