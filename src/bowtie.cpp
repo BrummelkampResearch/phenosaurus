@@ -262,7 +262,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 	if (readLength == 0)
 		throw std::runtime_error("invalid read length...");
 
-	boost::thread thread([trimLength=(trimLength == readLength ? trimLength : 0), &fastq, fd = ifd[1]]()
+	boost::thread thread([trimLength, trim = (trimLength < readLength), &fastq, fd = ifd[1]]()
 	{
 		progress p(fastq.string(), fs::file_size(fastq));
 		p.message(fastq.filename().string());
@@ -290,7 +290,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 		while (not in.eof())
 		{
-			if (trimLength)
+			if (trim)
 			{
 				// readLength != trimLength
 				// read four lines
