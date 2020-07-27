@@ -470,7 +470,7 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	{
 		if (fs::file_size(m) > 0)
 		{
-			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, 0);
+			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, trimLength);
 
 			std::vector<Insertion> merged;
 			merged.reserve(result.size() + ins_2.size());
