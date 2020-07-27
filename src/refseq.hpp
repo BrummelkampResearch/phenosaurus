@@ -118,6 +118,9 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene,
 	int window = 500);
 
+// loadTranscripts variant that read the transcripts from a BED file
+std::vector<Transcript> loadTranscripts(const std::string& bedFile);
+
 // --------------------------------------------------------------------
 // Yet another selection: filter out exons
 

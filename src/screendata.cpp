@@ -86,10 +86,10 @@ ScreenData::ScreenData(std::filesystem::path dir)
 		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
 }
 
-void ScreenData::map(const std::string& assembly, unsigned readLength,
+void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
-	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(readLength);
+	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(trimLength);
 	if (not fs::exists(assemblyDataPath))
 		fs::create_directories(assemblyDataPath);
 	
@@ -107,7 +107,7 @@ void ScreenData::map(const std::string& assembly, unsigned readLength,
 			continue;
 		name = name.stem();
 
-		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, readLength);
+		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, trimLength);
 		std::cout << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
 		std::ofstream out(assemblyDataPath / name, std::ios::binary);
@@ -506,13 +506,13 @@ void SLScreenData::count_insertions(int replicate, const std::string& assembly, 
 		auto t = ts;
 		while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 		{
-			if (VERBOSE >= 3)
-				std::cerr << "hit " << t->geneName << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
-
 			for (auto& r: t->ranges)
 			{
 				if (pos >= r.start and pos < r.end)
 				{
+					if (VERBOSE >= 3)
+						std::cerr << "hit\t" << t->geneName << "\t" << pos << "\t" << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
 					if (strand == t->strand)
 						insertions[t - transcripts.begin()].sense.insert(pos);
 					else
@@ -660,7 +660,7 @@ const size_t kGroupSize = 500;
 
 	auto groups = divide(index.size(), kGroupSize);
 
-	std::v
+//	std::v
 
 
 	parallel_for(groups.size(), [&](size_t i)

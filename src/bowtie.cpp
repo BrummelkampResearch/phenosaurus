@@ -261,9 +261,6 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 	if (readLength == 0)
 		throw std::runtime_error("invalid read length...");
-	
-	if (trimLength == 0)
-		trimLength = readLength;
 
 	boost::thread thread([trimLength=(trimLength == readLength ? trimLength : 0), &fastq, fd = ifd[1]]()
 	{
@@ -404,7 +401,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 					std::push_heap(result.begin(), result.end());
 				}
 			}
-			catch(const std::exception& e)
+			catch (const std::exception& e)
 			{
 				std::cerr << std::endl
 						  << "Exception parsing " << fastq << e.what() << std::endl
@@ -428,7 +425,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 				std::push_heap(result.begin(), result.end());
 			}
 		}
-		catch(const std::exception& e)
+		catch (const std::exception& e)
 		{
 			std::cerr << e.what() << std::endl
 						<< line << std::endl;

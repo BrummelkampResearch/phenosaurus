@@ -2,10 +2,12 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <regex>
 #include <numeric>
 
 #include <boost/program_options.hpp>
+#include <zeep/value-serializer.hpp>
 
 #include "mrsrc.h"
 #include "refseq.hpp"
@@ -13,6 +15,10 @@
 namespace po = boost::program_options;
 
 extern int VERBOSE;
+
+// --------------------------------------------------------------------
+
+const std::regex kChromRx(R"(^chr([1-9]|1[0-9]|2[0-3]|X|Y)$)");
 
 // --------------------------------------------------------------------
 
@@ -164,7 +170,6 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 	}
 
 	size_t lineNr = 1;
-	const std::regex kChromRx(R"(^chr([1-9]|1[0-9]|2[0-3]|X|Y)$)");
 
 	while (std::getline(in, line))
 	{
@@ -286,7 +291,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 				}
 			}
 		}
-		catch(const std::exception& ex)
+		catch (const std::exception& ex)
 		{
 			std::cerr << "Parse error at line " << lineNr << ": " << ex.what() << '\n';
 			throw;
@@ -595,6 +600,58 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
 
 	return transcripts;
+}
+
+// --------------------------------------------------------------------
+
+std::vector<Transcript> loadTranscripts(const std::string& bedFile)
+{
+	std::ifstream in(bedFile);
+	if (not in.is_open())
+		throw std::runtime_error("Could not open BED file " + bedFile);
+	
+	const std::regex rx(R"(^chr([1-9]|1[0-9]|2[0-3]|X|Y)\t(\d+)\t(\d+)\t(\S+)\t(?:[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)\t([-+]))");
+
+	std::vector<Transcript> result;
+
+	std::string line;
+	while (getline(in, line))
+	{
+		if (line.empty())
+			continue;
+		
+		std::smatch m;
+		if (not std::regex_match(line, m, rx))
+			throw std::runtime_error("Invalid BED file");
+		
+		Transcript t;
+		t.name = t.geneName = m[4].str();
+		if (m[1] == "X")
+			t.chrom = CHR_X;
+		else if (m[1] == "Y")
+			t.chrom = CHR_Y;
+		else
+			t.chrom = static_cast<CHROM>(stoi(m[1]));
+		t.tx = { static_cast<uint32_t>(stoi(m[2].str())), static_cast<uint32_t>(stoi(m[3].str())) };
+		t.strand = *m[5].first;
+
+		if (result.empty() or result.back().geneName != t.geneName or result.back().chrom != t.chrom or result.back().strand != t.strand)
+		{
+			t.ranges = { t.tx };
+			result.push_back(std::move(t));
+		}
+		else
+		{
+			auto& b = result.back();
+			b.ranges.push_back(t.tx);
+			if (b.tx.start > t.tx.start)
+				b.tx.start = t.tx.start;
+			if (b.tx.end < t.tx.end)
+				b.tx.end = t.tx.end;
+		}
+	}
+
+	return result;
 }
 
 // --------------------------------------------------------------------

@@ -64,29 +64,25 @@ po::options_description get_config_options()
 	po::options_description config(PACKAGE_NAME R"( config file options)");
 	
 	config.add_options()
-		("bowtie", po::value<std::string>(),			"Bowtie executable")
-		("assembly", po::value<std::string>(),			"Default assembly to use, currently one of hg19 or hg38")
-		("trim-length", po::value<unsigned>(),			"Trim reads to this length, if specified")
-		("threads", po::value<unsigned>(),				"Nr of threads to use")
-		("screen-dir", po::value<std::string>(),		"Directory containing the screen data")
-		("bowtie-index-hg19", po::value<std::string>(),	"Bowtie index parameter for HG19")
-		("bowtie-index-hg38", po::value<std::string>(),	"Bowtie index parameter for HG38")
-
-		("control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
-		
-		("db-host",			po::value<std::string>(),	"Database host")
-		("db-port",			po::value<std::string>(),	"Database port")
-		("db-dbname",		po::value<std::string>(),	"Database name")
-		("db-user",			po::value<std::string>(),	"Database user name")
-		("db-password",		po::value<std::string>(),	"Database password")
-
-		("address",			po::value<std::string>(),	"External address, default is 0.0.0.0")
-		("port",			po::value<uint16_t>(),		"Port to listen to, default is 10336")
-		("no-daemon,F",									"Do not fork into background")
-		("user,u",			po::value<std::string>(),	"User to run the daemon")
-		("secret",			po::value<std::string>(),	"Secret hashed used in user authentication")
-		("context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
-
+		( "bowtie",				po::value<std::string>(),	"Bowtie executable")
+		( "assembly",			po::value<std::string>(),	"Default assembly to use, currently one of hg19 or hg38")
+		( "trim-length",		po::value<unsigned>(),		"Trim reads to this length, default is 50")
+		( "threads",			po::value<unsigned>(),		"Nr of threads to use")
+		( "screen-dir",			po::value<std::string>(),	"Directory containing the screen data")
+		( "bowtie-index-hg19",	po::value<std::string>(),	"Bowtie index parameter for HG19")
+		( "bowtie-index-hg38",	po::value<std::string>(),	"Bowtie index parameter for HG38")
+		( "control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
+		( "db-host",			po::value<std::string>(),	"Database host")
+		( "db-port",			po::value<std::string>(),	"Database port")
+		( "db-dbname",			po::value<std::string>(),	"Database name")
+		( "db-user",			po::value<std::string>(),	"Database user name")
+		( "db-password",		po::value<std::string>(),	"Database password")
+		( "address",			po::value<std::string>(),	"External address, default is 0.0.0.0")
+		( "port",				po::value<uint16_t>(),		"Port to listen to, default is 10336")
+		( "no-daemon,F",									"Do not fork into background")
+		( "user,u",				po::value<std::string>(),	"User to run the daemon")
+		( "secret",				po::value<std::string>(),	"Secret hashed used in user authentication")
+		( "context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
 		;
 
 
@@ -296,7 +292,7 @@ int main_map(int argc, char* const argv[])
 		bowtieIndex = vm["bowtie-index-" + assembly].as<std::string>();
 	}
 
-	unsigned trimLength = 0;
+	unsigned trimLength = 50;
 	if (vm.count("trim-length"))
 		trimLength = vm["trim-length"].as<unsigned>();
 	
@@ -431,7 +427,8 @@ Examples:
 
 int analyze_sl(po::variables_map& vm, SLScreenData& screenData, SLScreenData& controlData)
 {
-	if (vm.count("assembly") == 0 or vm.count("start") == 0 or vm.count("end") == 0 or vm.count("control") == 0)
+	if (vm.count("assembly") == 0 or vm.count("control") == 0 or
+		((vm.count("start") == 0 or vm.count("end") == 0) and vm.count("gene-bed-file") == 0))
 	{
 		std::cerr << R"(
 Start and end should be either 'cds' or 'tx' with an optional offset 
@@ -449,8 +446,15 @@ or txEnd to have the start at the cdsEnd e.g.
 	
 	// -----------------------------------------------------------------------
 
-	auto transcripts = loadTranscripts(assembly, Mode::Longest, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
-	filterOutExons(transcripts);
+	std::vector<Transcript> transcripts;
+
+	if (vm.count("gene-bed-file"))
+		transcripts = loadTranscripts(vm["gene-bed-file"].as<std::string>());
+	else
+	{
+		transcripts = loadTranscripts(assembly, Mode::Longest, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
+		filterOutExons(transcripts);
+	}
 
 	// reorder transcripts based on chr > end-position, makes code easier and faster
 	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
@@ -537,6 +541,8 @@ int main_analyze(int argc, char* const argv[])
 			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 
 			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
+
+			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 
 			{ "output",		po::value<std::string>(),	"Output file" }
 		}, { "screen-name", "assembly" });
@@ -791,6 +797,35 @@ int main(int argc, char* const argv[])
 		{ ScreenType::SyntheticLethal, "sl" }
 	});
 
+	zeep::value_serializer<CHROM>::init({
+		{ INVALID, 	"unk" },
+		{ CHR_1, 	"chr1" },
+		{ CHR_2, 	"chr2" },
+		{ CHR_3, 	"chr3" },
+		{ CHR_4, 	"chr4" },
+		{ CHR_5, 	"chr5" },
+		{ CHR_6, 	"chr6" },
+		{ CHR_7, 	"chr7" },
+		{ CHR_8, 	"chr8" },
+		{ CHR_9, 	"chr9" },
+		{ CHR_10, 	"chr10" },
+		{ CHR_11, 	"chr11" },
+		{ CHR_12, 	"chr12" },
+		{ CHR_13, 	"chr13" },
+		{ CHR_14, 	"chr14" },
+		{ CHR_15, 	"chr15" },
+		{ CHR_16, 	"chr16" },
+		{ CHR_17, 	"chr17" },
+		{ CHR_18, 	"chr18" },
+		{ CHR_19, 	"chr19" },
+		{ CHR_20, 	"chr20" },
+		{ CHR_21, 	"chr21" },
+		{ CHR_22, 	"chr22" },
+		{ CHR_23, 	"chr23" },
+		{ CHR_X, 	"chrX" },
+		{ CHR_Y, 	"chrY" }
+	});
+
 	try
 	{
 		if (argc < 2)
@@ -815,7 +850,7 @@ int main(int argc, char* const argv[])
 		else
 			result = usage();
 	}
-	catch(const std::exception& ex)
+	catch (const std::exception& ex)
 	{
 		std::cerr << std::endl
 				  << "Fatal exception" << std::endl;
