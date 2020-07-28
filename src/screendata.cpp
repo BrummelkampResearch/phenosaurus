@@ -646,19 +646,6 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		int x = static_cast<int>(insertions[i].sense.size());
 		int n = x + static_cast<int>(insertions[i].antiSense.size());
 		pvalues[0][i] = binom_test(x, n);
-
-		for (int j = 0; j < 4; ++j)
-		{
-			x = static_cast<int>(controlInsertions[j][i].sense.size());
-			n = x + static_cast<int>(controlInsertions[j][i].antiSense.size());
-			pvalues[j + 1][i] = binom_test(x, n);
-		}
-	});
-
-	std::vector<double> fcpv[5];
-	parallel_for(5, [&](size_t i)
-	{
-		fcpv[i] = adjustFDR_BH(pvalues[i]);
 	});
 
 	std::vector<SLDataPoint> datapoints(transcripts.size(), SLDataPoint{});
@@ -686,15 +673,6 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 		p.geneName = t.geneName;
 		p.geneID = i;
-		p.pv = pvalues[0][i];
-		p.fcpv = fcpv[0][i];
-		
-		for (int j = 0; j < 4; ++j)
-		{
-			p.ref_pv[j] = pvalues[j + 1][i];
-			p.ref_fcpv[j] = fcpv[j + 1][i];
-		}
-
 		p.sense = sense;
 		p.antisense = antisense;
 		if (sense or antisense)
@@ -729,15 +707,14 @@ const size_t kGroupSize = 500;
 
 	auto groups = divide(index.size(), kGroupSize);
 
-//	std::v
-
-
 	parallel_for(groups.size(), [&](size_t i)
 	{
 		const auto& [b, e] = groups[i];
 		auto l = e - b;
 
 		// calculate median ratio for sample and reference in this group
+		// The median for ref can be picked up immediately since the
+		// group is already sorted on this value
 		float ref_median;
 
 		if (l & 1)
@@ -751,6 +728,7 @@ const size_t kGroupSize = 500;
 			ref_median = (datapoints[index[ix]].ref_sense_ratio + datapoints[index[ix + 1]].ref_sense_ratio) / 2.0;
 		}
 
+		// median for sample needs to be calculated
 		std::vector<float> srs;
 		for (auto ix = b; ix < e; ++ix)
 			srs.push_back(datapoints[index[ix]].sense_ratio);
@@ -762,7 +740,10 @@ const size_t kGroupSize = 500;
 		// adjust counts
 		for (size_t ix = b; ix < e; ++ix)
 		{
-			auto& dp = datapoints[index[ix]];
+			auto iix = index[ix];
+			assert(iix < datapoints.size());
+
+			auto& dp = datapoints[iix];
 
 			float f = dp.sense_ratio <= sample_median
 				? (ref_median * dp.sense_ratio) / sample_median
@@ -773,10 +754,42 @@ const size_t kGroupSize = 500;
 
 			dp.sense_normalized = static_cast<int>(std::round(f * (dp.sense + dp.antisense)));
 			dp.antisense_normalized = dp.sense + dp.antisense - dp.sense_normalized;
+
+			// and calculate pvalues
+
+			for (int i = 0; i < 4; ++i)
+			{
+				long v[2][2] = {
+					{ dp.sense_normalized, dp.antisense_normalized },
+					{ static_cast<long>(controlInsertions[i][iix].sense.size()), static_cast<long>(controlInsertions[i][iix].antiSense.size()) }
+				};
+
+				pvalues[i + 1][iix] = fisherTest2x2(v);
+			}
 		}
+	});
 
-		// 
+	std::vector<double> fcpv[5];
+	parallel_for(5, [&](size_t i)
+	{
+		fcpv[i] = adjustFDR_BH(pvalues[i]);
+	});
 
+	parallel_for(transcripts.size(), [&](size_t i)
+	{
+		auto& dp = datapoints[i];
+
+		dp.pv = pvalues[0][i];
+		dp.fcpv = fcpv[0][i];
+
+		dp.ref_pv[0]	= pvalues[1][i];
+		dp.ref_fcpv[0]	= fcpv[1][i];
+		dp.ref_pv[1]	= pvalues[2][i];
+		dp.ref_fcpv[1]	= fcpv[2][i];
+		dp.ref_pv[2]	= pvalues[3][i];
+		dp.ref_fcpv[2]	= fcpv[3][i];
+		dp.ref_pv[3]	= pvalues[4][i];
+		dp.ref_fcpv[3]	= fcpv[4][i];
 	});
 
 	// remove redundant datapoints
