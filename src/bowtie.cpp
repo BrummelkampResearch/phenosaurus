@@ -215,54 +215,8 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 	close(ifd[0]);
 
-	// this sucks a little, we have to find out the readlength
-	// but somehow we have to do it by prescanning the fastq file.
-	// (the other solution didn't work properly....)
-
-	unsigned readLength;
-
-	{
-		std::ifstream file(fastq, std::ios::binary);
-
-		if (not file.is_open())
-			throw std::runtime_error("Could not open file " + fastq.string());
-
-		io::filtering_stream<io::input> in;
-		std::string ext = fastq.extension().string();
-		
-		if (fastq.extension() == ".gz")
-		{
-			in.push(io::gzip_decompressor());
-			ext = fastq.stem().extension().string();
-		}
-
-		in.push(file);
-
-		std::string line[4];
-		if (not std::getline(in, line[0]) or 
-			not std::getline(in, line[1]) or 
-			not std::getline(in, line[2]) or 
-			not std::getline(in, line[3]))
-		{
-			throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
-		}
-
-		if (line[0].length() < 2 or line[0][0] != '@')
-			throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
-
-		if (line[2].empty() or line[2][0] != '+')
-			throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
-
-		if (line[1].length() != line[3].length() or line[1].empty())
-			throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
-
-		readLength = line[1].length();
-	}
-
-	if (readLength == 0)
-		throw std::runtime_error("invalid read length...");
-
-	boost::thread thread([trimLength, trim = (trimLength < readLength), &fastq, fd = ifd[1]]()
+	// always assume we have to trim (we used to check for trim length==read length, but that complicated the code too much)
+	boost::thread thread([trimLength, &fastq, fd = ifd[1]]()
 	{
 		progress p(fastq.string(), fs::file_size(fastq));
 		p.message(fastq.filename().string());
@@ -285,66 +239,48 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		
 		in.push(file);
 
-		char buffer[1024];
 		char nl[1] = { '\n' };
 
 		while (not in.eof())
 		{
-			if (trim)
+			// readLength != trimLength
+			// read four lines
+
+			std::string line[4];
+			if (not std::getline(in, line[0]) or 
+				not std::getline(in, line[1]) or 
+				not std::getline(in, line[2]) or 
+				not std::getline(in, line[3]))
 			{
-				// readLength != trimLength
-				// read four lines
-
-				std::string line[4];
-				if (not std::getline(in, line[0]) or 
-					not std::getline(in, line[1]) or 
-					not std::getline(in, line[2]) or 
-					not std::getline(in, line[3]))
-				{
-					break;
-					// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
-				}
-
-				if (line[0].length() < 2 or line[0][0] != '@')
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
-
-				if (line[2].empty() or line[2][0] != '+')
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
-
-				if (line[1].length() != line[3].length() or line[1].empty())
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
-
-				iovec v[8] = {
-					{ line[0].data(), line[0].length() },
-					{ nl, 1 },
-					{ line[1].data(), trimLength },
-					{ nl, 1 },
-					{ line[2].data(), line[2].length() },
-					{ nl, 1 },
-					{ line[3].data(), trimLength },
-					{ nl, 1 },
-				};
-
-				int r = writev(fd, v, 8);
-				if (r < 0)
-				{
-					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
-					break;
-				}
+				break;
+				// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
 			}
-			else
+
+			if (line[0].length() < 2 or line[0][0] != '@')
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
+
+			if (line[2].empty() or line[2][0] != '+')
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
+
+			if (line[1].length() != line[3].length() or line[1].empty())
+				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+
+			iovec v[8] = {
+				{ line[0].data(), line[0].length() },
+				{ nl, 1 },
+				{ line[1].data(), trimLength },
+				{ nl, 1 },
+				{ line[2].data(), line[2].length() },
+				{ nl, 1 },
+				{ line[3].data(), trimLength },
+				{ nl, 1 },
+			};
+
+			int r = writev(fd, v, 8);
+			if (r < 0)
 			{
-				std::streamsize k = io::read(in, buffer, sizeof(buffer));
-
-				if (k <= -1)
-					break;
-
-				int r = write(fd, buffer, k);
-				if (r != k)
-				{
-					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
-					break;
-				}
+				std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+				break;
 			}
 		}
 
