@@ -738,20 +738,26 @@ const size_t kGroupSize = 500;
 		auto l = e - b;
 
 		// calculate median ratio for sample and reference in this group
-		float sample_median, ref_median;
+		float ref_median;
 
 		if (l & 1)
 		{
 			auto ix = (e + b) / 2 + 1;
-			sample_median = datapoints[index[ix]].sense_ratio;
 			ref_median = datapoints[index[ix]].ref_sense_ratio;
 		}
 		else
 		{
 			auto ix = (e + b) / 2;
-			sample_median = (datapoints[index[ix]].sense_ratio + datapoints[index[ix + 1]].sense_ratio) / 2.0;
 			ref_median = (datapoints[index[ix]].ref_sense_ratio + datapoints[index[ix + 1]].ref_sense_ratio) / 2.0;
 		}
+
+		std::vector<float> srs;
+		for (auto ix = b; ix < e; ++ix)
+			srs.push_back(datapoints[index[ix]].sense_ratio);
+		std::sort(srs.begin(), srs.end());
+		float sample_median = l & 1
+			? srs[l / 2 + 1]
+			: (srs[l / 2] + srs[l / 2 + 1]) / 2.0;
 		
 		// adjust counts
 		for (size_t ix = b; ix < e; ++ix)
