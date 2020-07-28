@@ -110,7 +110,9 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, trimLength);
 		std::cout << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
-		std::ofstream out(assemblyDataPath / name, std::ios::binary);
+		std::ofstream out(assemblyDataPath / name, std::ios::binary | std::ios::trunc);
+		if (not out.is_open())
+			throw std::runtime_error("Could not open output file " + (assemblyDataPath / name).string());
 		const char* data = reinterpret_cast<const char*>(hits.data());
 		size_t length = hits.size() * sizeof(Insertion);
 		out.write(data, length);
