@@ -15,6 +15,8 @@
 
 #include <boost/thread.hpp>
 
+#include <zeep/value-serializer.hpp>
+
 #include "screendata.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
@@ -116,6 +118,71 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 		const char* data = reinterpret_cast<const char*>(hits.data());
 		size_t length = hits.size() * sizeof(Insertion);
 		out.write(data, length);
+	}
+}
+
+void ScreenData::correct_map(const std::string& assembly, unsigned readLength, int32_t offset)
+{
+	for (fs::directory_iterator iter(mDataDir / assembly / std::to_string(readLength)); iter != fs::directory_iterator(); ++iter)
+	{
+		auto size = fs::file_size(*iter);
+		auto N = size / sizeof(Insertion);
+
+		std::vector<Insertion> bwt(N);
+
+		std::ifstream infile(iter->path(), std::ios::binary);
+		if (not infile.is_open())
+			throw std::runtime_error("Could not open " + iter->path().string() + " file");
+		
+		infile.read(reinterpret_cast<char*>(bwt.data()), size);
+
+		for (auto&& [chr, strand, pos]: bwt)
+		{
+			assert(chr != CHROM::INVALID);
+			if (strand == '-')
+				pos += offset;
+		}
+
+		infile.close();
+
+		auto backup = iter->path();
+		backup = backup.parent_path() / (backup.filename().string() + "-backup");
+		fs::rename(iter->path(), backup);
+
+		std::ofstream outfile(iter->path(), std::ios::binary);
+		if (not outfile.is_open())
+			throw std::runtime_error("Could not open new " + iter->path().string() + " file");
+		
+		const char* data = reinterpret_cast<const char*>(bwt.data());
+		outfile.write(data, size);
+	}
+}
+
+// --------------------------------------------------------------------
+
+void ScreenData::dump_map(const std::string& assembly, unsigned readLength, const std::string& file)
+{
+	fs::path p = mDataDir / assembly / std::to_string(readLength) / file;
+
+	if (not fs::exists(p))
+		throw std::runtime_error("File does not exist: " + p.string());
+
+	auto size = fs::file_size(p);
+	auto N = size / sizeof(Insertion);
+
+	std::vector<Insertion> bwt(N);
+
+	std::ifstream infile(p, std::ios::binary);
+	if (not infile.is_open())
+		throw std::runtime_error("Could not open " + p.string() + " file");
+	
+	infile.read(reinterpret_cast<char*>(bwt.data()), size);
+	infile.close();
+
+	for (auto&& [chr, strand, pos]: bwt)
+	{
+		assert(chr != CHROM::INVALID);
+		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << std::endl;
 	}
 }
 

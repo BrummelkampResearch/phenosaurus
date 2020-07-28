@@ -786,6 +786,66 @@ Command should be either:
 
 // --------------------------------------------------------------------
 
+int main_correct(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( correct screen-name assembly offset [options])",
+		{
+			{ "offset", po::value<int>(),	"The offset to correct the - strand with" }
+		},
+		{ "screen-name", "assembly", "offset" });
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	const auto& [ data, type ] = ScreenData::create(screenDir);
+
+	std::string assembly = vm["assembly"].as<std::string>();
+
+	unsigned trimLength = 50;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
+	
+	int offset = vm["offset"].as<int>();
+
+	data->correct_map(assembly, trimLength, offset);
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
+int main_dump(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( dump screen-name assembly file [options])",
+		{
+			{ "file", po::value<std::string>(),	"The file to dump" }
+		},
+		{ "screen-name", "assembly", "file" });
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	const auto& [ data, type ] = ScreenData::create(screenDir);
+
+	std::string assembly = vm["assembly"].as<std::string>();
+
+	unsigned trimLength = 50;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
+	
+	auto file = vm["file"].as<std::string>();
+
+	data->dump_map(assembly, trimLength, file);
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
 int main(int argc, char* const argv[])
 {
 	int result = 0;
@@ -845,6 +905,10 @@ int main(int argc, char* const argv[])
 			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
+		else if (command == "correct")
+			result = main_correct(argc - 1, argv + 1);
+		else if (command == "dump")
+			result = main_dump(argc - 1, argv + 1);
 		else if (command == "help")
 			usage();
 		else

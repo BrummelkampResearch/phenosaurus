@@ -167,6 +167,9 @@ class ScreenData
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 		unsigned threads);
 
+	void correct_map(const std::string& assembly, unsigned readLength, int32_t offset);
+	void dump_map(const std::string& assembly, unsigned readLength, const std::string& file);
+
   protected:
 
 	ScreenData(std::filesystem::path dir);
