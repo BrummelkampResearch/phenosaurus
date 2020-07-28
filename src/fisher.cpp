@@ -192,7 +192,7 @@ double fisherTest2x2(long v[2][2])
 
 	std::vector<double> d(hi - lo + 1);
 	for (auto i = lo; i <= hi; ++i)
-		d[i] = hypergeometric_probability(i, m, n, k);
+		d[i - lo] = hypergeometric_probability(i, m, n, k);
 	
 	auto dmax = *std::max_element(d.begin(), d.end());
 
