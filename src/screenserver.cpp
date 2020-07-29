@@ -482,6 +482,8 @@ void SLScreenHtmlController::screen(const zh::request& request, const zh::scope&
 			{ "name", screenName }
 		};
 
+		std::vector<int> replicates;
+
 		for (auto a = fs::directory_iterator(i->path()); a != fs::directory_iterator(); ++a)
 		{
 			if (a->is_directory())
@@ -492,8 +494,12 @@ void SLScreenHtmlController::screen(const zh::request& request, const zh::scope&
 			if (not std::regex_match(filename, m, rx))
 				continue;
 			
-			info["replicates"].push_back(m[1].str());
+			replicates.push_back(std::stoi(m[1].str()));
 		}
+
+		std::sort(replicates.begin(), replicates.end());
+		
+		info["replicates"] = replicates;
 
 		screens.push_back(std::move(info));
 	}
