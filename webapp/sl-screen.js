@@ -660,7 +660,7 @@ class SLScreenPlot {
 				label.appendChild(btn);
 				label.appendChild(document.createTextNode(`${replicate}`));
 				replicateBtnContainer.appendChild(label);
-				btn.addEventListener('change', () => this.selectReplicate(replicate));
+				btn.onchange = () => this.selectReplicate(replicate);
 			}
 		}
 	}
