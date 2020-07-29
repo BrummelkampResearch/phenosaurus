@@ -41,7 +41,7 @@ class ColorMap {
 			case 'raw':
 				return this.scale(mapped.diff);
 			case 'significant':
-				if (this.significantGenes.has(d.geneName))
+				if (d.significant || this.significantGenes.has(d.geneName))
 					return this.scale(mapped.diff);
 				else
 					return neutral;
@@ -218,6 +218,10 @@ class SLScreenPlot {
 		this.loadScreen(this.name, replicate);
 	}
 
+	reloadScreen(name) {
+		this.loadScreen(this.name ? this.name : name, this.replicateNr);
+	}
+
 	loadScreen(name, replicate = 1) {
 		return new Promise((resolve, reject) => {
 			this.name = name;
@@ -288,38 +292,6 @@ class SLScreenPlot {
 		});
 	}
 
-	loadSignificantGenes() {
-	
-		const f = document.geneSelectionForm;
-		const fd = new FormData(f);
-
-		const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
-
-		let geneStart = document.getElementById("geneStartType").value;
-		if (geneStartOffset > 0)
-			geneStart += "+" + geneStartOffset;
-		else if (geneStartOffset < 0)
-			geneStart += geneStartOffset;
-
-		fd.append("gene-start", geneStart);
-
-		const geneEndOffset = parseInt(document.getElementById('geneEndOffset').value);
-
-		let geneEnd = document.getElementById("geneEndType").value;
-		if (geneEndOffset > 0)
-			geneEnd += "+" + geneEndOffset;
-		else if (geneEndOffset < 0)
-			geneEnd += geneEndOffset;
-
-		fd.append("gene-end", geneEnd);
-	
-		fetch(`${context_name}sl/significantGenes/${this.name}/${this.replicateNr}?pvCutOff=${pvCutOff}&binomCutOff=${pvCutOff}&effectSize=${effectSize}`,
-			{ credentials: "include", method: "post", body: fd })
-			.then(value => value.json())
-			.then(value => this.setSignificantGenes(value))
-			.catch(reason => console.log(reason));
-	}
-
 	process(data) {
 		console.log(data);
 
@@ -371,7 +343,13 @@ class SLScreenPlot {
 			.select("text")
 			.filter(d => d.values.length === 1 && d.values[0].binom_fdr < pvCutOff)
 			.text(d => d.values[0].geneName)
-			.classed("significant", true);
+			.classed("significant", d => d.significant);
+
+		if (this.control != null)
+		{
+			colorMap.setSignificantGenes(data.filter(d => d.significant).map(d => d.geneName));
+			this.updateSignificantTable();
+		}
 
 		this.highlightGenes();
 	}
@@ -454,7 +432,7 @@ class SLScreenPlot {
 
 	getOpacity() {
 		return (d) => {
-			if (d.values.findIndex(d => highlightedGenes.has(d.geneName)) !== -1 || colorMap.significantGenes.has(d.geneName))
+			if (d.values.findIndex(d => highlightedGenes.has(d.geneName)) !== -1 || d.significant || colorMap.significantGenes.has(d.geneName))
 				return 1;
 			else if (Math.min(...d.values.map(d => d.binom_fdr)) <= pvCutOff)
 				return 0.5;
@@ -672,7 +650,7 @@ class SLScreenPlot {
 			for (let replicate of replicates) {
 				const label = document.createElement("label");
 				label.classList.add("btn", "btn-secondary");
-				if (number === replicate)
+				if (+number === +replicate)
 					label.classList.add("active");
 				const btn = document.createElement("input");
 				btn.type = "radio";
@@ -682,7 +660,7 @@ class SLScreenPlot {
 				label.appendChild(btn);
 				label.appendChild(document.createTextNode(`${replicate}`));
 				replicateBtnContainer.appendChild(label);
-				btn.onchange = () => this.selectReplicate(replicate);
+				btn.addEventListener('change', () => this.selectReplicate(replicate));
 			}
 		}
 	}
@@ -694,20 +672,17 @@ class SLScreenPlot {
 			.select("circle")
 			.style("fill", this.getColor())
 			.style("opacity", this.getOpacity())
-			.filter(d => significantGenes.has(d.geneName))
+			.filter(d => d.significant || significantGenes.has(d.geneName))
 			.raise();
 	}
 
-	setSignificantGenes(genes) {
-
-		colorMap.setSignificantGenes(genes);
-
+	updateSignificantTable() {
 		const table = document.getElementById("significantGenesTable");
 		$("tr", table).remove();
 		const fmt = d3.format(".3g");
 
 		this.screenData
-			.filter(d => colorMap.significantGenes.has(d.geneName))
+			.filter(d => d.significant)
 			.forEach(d => {
 				let row = $("<tr/>");
 				$("<td/>").text(d.geneName).appendTo(row);
@@ -725,16 +700,6 @@ class SLScreenPlot {
 					this.control.highlightGene(d.geneName);
 				};
 			});
-	}
-
-	setPvCutOff(pv) {
-		setPvCutOff(pv);
-		this.loadSignificantGenes();
-	}
-
-	setEffectSize(es) {
-		effectSize = es;
-		this.loadSignificantGenes();
 	}
 }
 
@@ -778,12 +743,7 @@ window.addEventListener('load', () => {
 	const plot = new SLScreenPlot(svg);
 
 	const controlSvg = d3.select("#plot-control");
-	try {
-		new SLControlScreenPlot(controlSvg, plot);
-	}
-	catch (err) {
-		alert(err);
-	}
+	new SLControlScreenPlot(controlSvg, plot);
 
 	const screenList = document.getElementById("screenList");
 
@@ -793,8 +753,7 @@ window.addEventListener('load', () => {
 			const name = selected.item(0).dataset.screen;
 			const replicates = screenReplicatesMap.get(name);
 
-			plot.loadScreen(name, replicates[0])
-				.then(data => plot.loadSignificantGenes());
+			plot.loadScreen(name, replicates[0]);
 		}
 	});
 
@@ -822,7 +781,6 @@ window.addEventListener('load', () => {
 				pvCutOffEdit.classList.add("error");
 			} else {
 				pvCutOffEdit.classList.remove("error");
-				plot.setPvCutOff(pv);
 			}
 		});
 	}
@@ -836,10 +794,21 @@ window.addEventListener('load', () => {
 				effectSizeEdit.classList.add("error");
 			} else {
 				effectSizeEdit.classList.remove("error");
-				plot.setEffectSize(es);
 			}
 		});
 	}
+
+	const reloadButton = document.getElementById("reload-btn");
+	if (reloadButton != null)
+		reloadButton.addEventListener('click', (evt) => {
+			evt.preventDefault();
+
+			const selected = screenList.selectedOptions;
+			if (selected.length === 1) {
+				const name = selected.item(0).dataset.screen;
+				plot.reloadScreen(name);
+			}
+		})
 
 });
 

@@ -275,17 +275,10 @@ class SLScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screenData/{id}/{replicate}", &SLScreenRestController::screenData,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "replicate");
-		map_post_request("significantGenes/{id}/{replicate}", &SLScreenRestController::significantGenes,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "replicate", "pvCutOff", "binomCutOff", "effectSize");
-		// map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
 	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		Direction direction, uint16_t replicate);
-
-	std::vector<std::string> significantGenes(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction, uint16_t replicate, float pvCutOff, float binomCutOff, float effectSize);
 
@@ -296,7 +289,8 @@ class SLScreenRestController : public zh::rest_controller
 };
 
 std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, uint16_t replicate)
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, uint16_t replicate,
+	float pvCutOff, float binomCutOff, float effectSize)
 {
 	fs::path screenDir = mScreenDir / screen;
 
@@ -330,46 +324,7 @@ std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& s
 
 	// -----------------------------------------------------------------------
 
-	return data->dataPoints(replicate, assembly, trimLength, transcripts, *controlData, groupSize);
-}
-
-std::vector<std::string> SLScreenRestController::significantGenes(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-	Direction direction, uint16_t replicate, float pvCutOff, float binomCutOff, float effectSize)
-{
-fs::path screenDir = mScreenDir / screen;
-
-	if (not fs::is_directory(screenDir))
-		throw std::runtime_error("No such screen: " + screen);
-
-	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
-#warning "make control a parameter"
-	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / "ControlData-HAP1"));
-	
-	// -----------------------------------------------------------------------
-
-	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
-	filterOutExons(transcripts);
-
-	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-	{
-		int d = a.chrom - b.chrom;
-		if (d == 0)
-			d = a.start() - b.start();
-		return d < 0;
-	});
-
-	// --------------------------------------------------------------------
-	
-#warning "make groupSize a parameter"
-	unsigned groupSize = 500;
-#warning "make trimLength a parameter"
-	unsigned trimLength = 50;
-
-	// -----------------------------------------------------------------------
-
-	return data->significantGenes(replicate, assembly, trimLength, transcripts, *controlData, groupSize, pvCutOff, binomCutOff, effectSize);	
+	return data->dataPoints(replicate, assembly, trimLength, transcripts, *controlData, groupSize, pvCutOff, binomCutOff, effectSize);
 }
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)

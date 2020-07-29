@@ -19,120 +19,131 @@
 <br/>
 
 <div class="container-fluid">
-	<div class="row option-row">
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="input-group input-group-sm">
-				<div class="input-group-prepend">
-					<span class="input-group-text">Binom_fdr cut off</span>
-				</div>
-				<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="4" size="3"
-					   placeholder="0.05" class="form-control form-control-sm"/> 
-			</div>
-		</div>
+	<form name="geneSelectionForm">
+		<div class="row option-row">
 
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="input-group input-group-sm">
-				<div class="input-group-prepend">
-					<span class="input-group-text">Effect size</span>
-				</div>
-				<input type="number" min="0" max="1" step="0.01" id="effect-size" maxlength="4" size="3"
-					   placeholder="0.2" class="form-control form-control-sm"/> 
-			</div>
-		</div>
-
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="input-group input-group-sm">
-				<input type="text" id="highlightGene" size="5"
-					placeholder="Enter genename..."
-					z:value="${#request.getParameter('highlightGene')}"
-					class="form-control form-control-sm"/>
-
-				<div class="input-group-append" id="button-addon4">
-					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
-					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
-				</div>
-			</div>	
-		</div>
-
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
-				<label class="btn btn-secondary active">
-					<input type="radio" name="graphColor" id="raw" autocomplete="off" data-colortype="raw" class="graph-color-btn" checked="checked"/>Raw Difference
-				</label>
-				<label class="btn btn-secondary">
-					<input type="radio" name="graphColor" id="significant" autocomplete="off" data-colortype="significant" class="graph-color-btn"/>Significant
-				</label>
-			</div>
-		</div>
-
-		<div class="col col-12 col-md-4 col-lg-2">
-			<select id="screenList" data-placeholder="Choose a Screen...">
-				<option value=""></option>
-				<option z:each="screen: ${screenReplicates}" z:attr="data-screen=${screen.name}"
-						z:text="${screen.name}"></option>
-			</select>
-		</div>
-
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div z:replace="~{gene-info :: geneDiv('sl')}"></div>
-			<label>
-				<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info Dialog</button>
-			</label>
-		</div>
-
-	</div>
-
-	<form name="geneSelectionForm" class="row option-row">
-		<input type="hidden" name="assembly" value="hg38"/>
-
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="input-group input-group-sm">
-				<div class="input-group-prepend">
-					<span class="input-group-text">Mode</span>
-				</div>
-
-				<select class="custom-select custom-select-sm" name="mode">
-					<option value="collapse" selected="selected">Collapse</option>
-					<option value="longest">Longest</option>
+			<div class="col col-12 col-md-4 col-lg-2 mb-1">
+				<select id="screenList" data-placeholder="Choose a Screen..." name="screen">
+					<option value=""></option>
+					<option z:each="screen: ${screenReplicates}" z:attr="data-screen=${screen.name}"
+							z:text="${screen.name}"></option>
 				</select>
 			</div>
-		</div>
 
-		<div class="col col-12 col-md-4 col-lg-2">
-			<div class="input-group input-group-sm">
-				<div class="input-group-prepend">
-					<div class="input-group-text">
-						<input type="checkbox" name="cut-overlap" checked="checked" />
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<span class="input-group-text">pv cut off</span>
 					</div>
+					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="4" size="3"
+						value="0.05" class="form-control form-control-sm" name="pvCutOff"/> 
 				</div>
-				<input type="text" class="form-control" value="Remove overlapped regions" />
 			</div>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Binom_fdr cut off</span>
+					</div>
+					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="4" size="3"
+						value="0.05" class="form-control form-control-sm" name="binomCutOff"/> 
+				</div>
+			</div>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Effect size</span>
+					</div>
+					<input type="number" min="0" max="1" step="0.01" id="effect-size" maxlength="4" size="3"
+						value="0.2" class="form-control form-control-sm" name="effectSize"/> 
+				</div>
+			</div>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<input type="text" id="highlightGene" size="5"
+						placeholder="Enter genename..."
+						z:value="${#request.getParameter('highlightGene')}"
+						class="form-control form-control-sm"/>
+
+					<div class="input-group-append" id="button-addon4">
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
+					</div>
+				</div>	
+			</div>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
+					<label class="btn btn-secondary active">
+						<input type="radio" name="graphColor" id="raw" autocomplete="off" data-colortype="raw" class="graph-color-btn"/>Raw Difference
+					</label>
+					<label class="btn btn-secondary">
+						<input type="radio" name="graphColor" id="significant" autocomplete="off" data-colortype="significant" class="graph-color-btn" checked="checked"/>Significant
+					</label>
+				</div>
+			</div>
+
 		</div>
 
-		<div class="col col-12 col-md-4 col-lg-2" z:each="se: ${{'Start', 'End'}}">
-			<div class="input-group input-group-sm">
-				<div class="input-group-prepend">
-					<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;"
-						z:text="${se}"></span>
+		<div class="row option-row">
+			<input type="hidden" name="assembly" value="hg38"/>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<span class="input-group-text">Mode</span>
+					</div>
+
+					<select class="custom-select custom-select-sm" name="mode">
+						<option value="collapse" selected="selected">Collapse</option>
+						<option value="longest">Longest</option>
+					</select>
 				</div>
-
-				<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
-					<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
-					<option value="txEnd">tx-end</option>
-					<option value="cdsStart">cds-start</option>
-					<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
-				</select>
-
-				<input type="text" class="form-control" z:aria-label="|${se} of gene|"
-					z:aria-describedby="|${se}Label|" z:id="|gene${se}Offset|"
-					placeholder="offset..." />
 			</div>
-		</div>
 
-		<div class="col"></div>
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<div class="input-group-text">
+							<input type="checkbox" name="cut-overlap" checked="checked" />
+						</div>
+					</div>
+					<input type="text" class="form-control" value="Remove overlapped regions" />
+				</div>
+			</div>
 
-		<div class="col col-1">
-			<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
+			<div class="col col-12 col-md-4 col-lg-2" z:each="se: ${{'Start', 'End'}}">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;"
+							z:text="${se}"></span>
+					</div>
+
+					<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
+						<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
+						<option value="txEnd">tx-end</option>
+						<option value="cdsStart">cds-start</option>
+						<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
+					</select>
+
+					<input type="text" class="form-control" z:aria-label="|${se} of gene|"
+						z:aria-describedby="|${se}Label|" z:id="|gene${se}Offset|"
+						placeholder="offset..." />
+				</div>
+			</div>
+
+			<div class="col col-12 col-md-4 col-lg-2">
+				<div z:replace="~{gene-info :: geneDiv('sl')}"></div>
+				<label>
+					<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info Dialog</button>
+				</label>
+			</div>
+
+			<div class="col col-1">
+				<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
+			</div>
 		</div>
 	</form>
 

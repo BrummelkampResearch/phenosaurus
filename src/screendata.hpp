@@ -50,6 +50,8 @@ struct SLDataPoint
 	float senseratio;
 	int insertions;
 
+	bool significant;
+
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
@@ -62,7 +64,8 @@ struct SLDataPoint
 		   & zeep::make_nvp("sense", sense_normalized)
 		   & zeep::make_nvp("antisense", antisense_normalized)
 		   & zeep::make_nvp("senseratio", senseratio)
-		   & zeep::make_nvp("insertions", insertions);
+		   & zeep::make_nvp("insertions", insertions)
+		   & zeep::make_nvp("significant", significant);
 	}
 };
 
@@ -242,9 +245,6 @@ class SLScreenData : public ScreenData
 	void addFile(std::filesystem::path file);
 
 	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly, unsigned readLength,
-		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize);
-
-	std::vector<std::string> significantGenes(int replicate, const std::string& assembly, unsigned trimLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
 		float pvCutOff, float binomCutOff, float effectSize);
 
@@ -258,5 +258,6 @@ class SLScreenData : public ScreenData
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<InsertionCount>& insertions,
-		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize,
+		float pvCutOff, float binomCutOff, float effectSize);
 };

@@ -475,9 +475,14 @@ or txEnd to have the start at the cdsEnd e.g.
 	if (vm.count("group-size"))
 		groupSize = vm["group-size"].as<unsigned short>();
 
+#warning "make options"
+	float pvCutOff = 0.05f;
+	float binom_fdrCutOff = 0.05f;
+	float effectSize = 0.2f;
+
 	// -----------------------------------------------------------------------
 
-	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize))
+	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
 	{
 		std::cout << dp.geneName << '\t'
 				  << dp.sense << '\t'
