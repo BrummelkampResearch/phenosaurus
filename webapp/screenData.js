@@ -1,4 +1,3 @@
-import { showLoginDialog } from "./index";
 import * as d3 from "d3";
 import { pvCutOff } from "./screenPlot";
 
@@ -12,7 +11,7 @@ export default class ScreenData {
 
 	load(options) {
 		return new Promise((resolve, reject) => {
-			fetch(`${context_name}ajax/screenData/${this.screenID}`, {
+			fetch(`${context_name}ip/screenData/${this.screenID}`, {
 				method: "post",
 				credentials: "include",
 				body: options
@@ -92,7 +91,7 @@ export default class ScreenData {
 				reject('already loading');
 			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
 
-			fetch(`${context_name}ajax/unique/${this.screenID}&pvCutOff=${pvCutOff}`, { credentials: "include" })
+			fetch(`${context_name}ip/unique/${this.screenID}&pvCutOff=${pvCutOff}`, { credentials: "include" })
 				.then(data => {
 					if (data.ok)
 						return data.json();

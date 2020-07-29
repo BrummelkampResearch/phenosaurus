@@ -47,15 +47,22 @@ struct SLDataPoint
 	int sense, sense_normalized;
 	int antisense, antisense_normalized;
 
+	float senseratio;
+	int insertions;
+
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
 		ar & zeep::make_nvp("geneID", geneID)
 		   & zeep::make_nvp("geneName", geneName)
 		   & zeep::make_nvp("pv", pv)
-		   & zeep::make_nvp("fcpv", fcpv)
-		   & zeep::make_nvp("sense", sense)
-		   & zeep::make_nvp("antisense", antisense);
+		   & zeep::make_nvp("binom_fdr", fcpv)
+		   & zeep::make_nvp("ref_pv", ref_pv)
+		   & zeep::make_nvp("ref_fcpv", ref_fcpv)
+		   & zeep::make_nvp("sense", sense_normalized)
+		   & zeep::make_nvp("antisense", antisense_normalized)
+		   & zeep::make_nvp("senseratio", senseratio)
+		   & zeep::make_nvp("insertions", insertions);
 	}
 };
 
@@ -99,6 +106,21 @@ struct Gene
 
 // --------------------------------------------------------------------
 
+struct InsertionInfo
+{
+	std::string strand;
+	std::string name;
+	std::vector<uint32_t> pos;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("strand", strand)
+		   & zeep::make_nvp("name", name)
+		   & zeep::make_nvp("pos", pos);
+	}	
+};
+
 struct Region
 {
 	CHROM chrom;
@@ -106,7 +128,7 @@ struct Region
 	std::string geneStrand;
 	std::vector<GeneExon> area;
 	std::vector<Gene> genes;
-	std::vector<uint32_t> lowPlus, lowMinus, highPlus, highMinus;
+	std::vector<InsertionInfo> insertions;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -117,11 +139,8 @@ struct Region
 		   & zeep::make_nvp("geneStrand", geneStrand)
 		   & zeep::make_nvp("genes", genes)
 		   & zeep::make_nvp("area", area)
-		   & zeep::make_nvp("lowPlus", lowPlus)
-		   & zeep::make_nvp("lowMinus", lowMinus)
-		   & zeep::make_nvp("highPlus", highPlus)
-		   & zeep::make_nvp("highMinus", highMinus);
-	}	
+		   & zeep::make_nvp("insertions", insertions);
+	}
 };
 
 // --------------------------------------------------------------------
@@ -135,6 +154,8 @@ enum class Direction
 
 enum class ScreenType
 {
+	Unspecified,
+
 	IntracellularPhenotype,
 	SyntheticLethal,
 
@@ -222,6 +243,10 @@ class SLScreenData : public ScreenData
 
 	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize);
+
+	std::vector<std::string> significantGenes(int replicate, const std::string& assembly, unsigned trimLength,
+		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
+		float pvCutOff, float binomCutOff, float effectSize);
 
   private:
 

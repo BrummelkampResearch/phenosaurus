@@ -1,9 +1,6 @@
 import 'bootstrap';
 import 'bootstrap/js/dist/modal'
-import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'chosen-js/chosen.jquery';
-import 'bootstrap4c-chosen/dist/css/component-chosen.min.css';
 
 import * as d3 from 'd3';
 

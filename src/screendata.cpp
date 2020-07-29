@@ -554,7 +554,14 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::stri
 	count_insertions(replicate, assembly, trimLength, transcripts, insertions);
 
 	// And now analyse this
-	return dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
+	auto datapoints = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
+
+	// remove redundant datapoints
+	datapoints.erase(
+		std::remove_if(datapoints.begin(), datapoints.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
+		datapoints.end());
+	
+	return datapoints;
 }
 
 // --------------------------------------------------------------------
@@ -813,14 +820,69 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		dp.ref_fcpv[2]	= fcpv[3][i];
 		dp.ref_pv[3]	= pvalues[4][i];
 		dp.ref_fcpv[3]	= fcpv[4][i];
+
+		dp.insertions = dp.sense_normalized + dp.antisense_normalized;
+		dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
 	});
 
-	// remove redundant datapoints
-	datapoints.erase(
-		std::remove_if(datapoints.begin(), datapoints.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
-		datapoints.end());
-	
 	return datapoints;
+}
+
+// --------------------------------------------------------------------
+
+std::vector<std::string> SLScreenData::significantGenes(int replicate, const std::string& assembly,
+	unsigned trimLength, const std::vector<Transcript>& transcripts, const SLScreenData& controlData,
+	unsigned groupSize, float pvCutOff, float binomCutOff, float effectSize)
+{
+	// First load the control data
+	std::array<std::vector<InsertionCount>,4> controlInsertions;
+	parallel_for(4, [&](size_t i) {
+		controlData.count_insertions(i + 1, assembly, trimLength, transcripts, controlInsertions[i]);
+	});
+
+	std::array<std::vector<InsertionCount>,4> normalizedControlInsertions;
+	parallel_for(4, [&](size_t i) {
+		normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
+	});
+
+	// Then load the screen data
+	std::vector<InsertionCount> insertions;
+	count_insertions(replicate, assembly, trimLength, transcripts, insertions);
+
+	// And now analyse this
+	auto datapoints = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
+
+	// Calculate the minimal sense ratio per gene in the controls
+	std::vector<float> minSenseRatio(transcripts.size());
+	for (auto& cdi: normalizedControlInsertions)
+	{
+		for (size_t i = 0; i < cdi.size(); ++i)
+		{
+			auto& cd = cdi[i];
+			float r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
+			if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
+				minSenseRatio[i] = r;
+		}
+	}
+
+	std::vector<std::string> result;
+	// Collect the result
+
+	for (size_t i = 0; i < datapoints.size(); ++i)
+	{
+		auto& dp = datapoints[i];
+		if (dp.fcpv < binomCutOff and
+			dp.ref_fcpv[0] < pvCutOff and
+			dp.ref_fcpv[1] < pvCutOff and
+			dp.ref_fcpv[2] < pvCutOff and
+			dp.ref_fcpv[3] < pvCutOff)
+		{
+			if ((minSenseRatio[i] - dp.senseratio) > effectSize)
+				result.push_back(dp.geneName);
+		}
+	}
+
+	return result;
 }
 
 // --------------------------------------------------------------------
@@ -839,6 +901,9 @@ ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
 		
 		case ScreenType::SyntheticLethal:
 			return new SLScreenData(dir);
+		
+		case ScreenType::Unspecified:
+			throw std::logic_error("should not be called with unspecified");
 	}
 }
 
@@ -879,5 +944,7 @@ std::tuple<std::unique_ptr<ScreenData>,ScreenType> ScreenData::create(std::files
 	if (hasRepl[0])
 		return { std::unique_ptr<ScreenData>(new SLScreenData(dir)), ScreenType::SyntheticLethal };
 	
-	throw std::runtime_error("Incomplete screen, missing data files");
+	return { std::unique_ptr<ScreenData>{}, ScreenType::Unspecified };
+
+	// throw std::runtime_error("Incomplete screen, missing data files");
 }

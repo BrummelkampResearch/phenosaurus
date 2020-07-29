@@ -195,7 +195,7 @@ export default class GenomveViewer {
 			geneEnd += geneEndOffset;
 		fd.append("gene-end", geneEnd);
 
-		fetch(`${context_name}ajax/gene-info/${geneID}`, { credentials: "include", method: "post", body: fd })
+		fetch(`${context_name}ip/gene-info/${geneID}`, { credentials: "include", method: "post", body: fd })
 			.then(data => {
 				if (data.ok)
 					return data.json();
@@ -241,12 +241,16 @@ export default class GenomveViewer {
 
 		const x = this.adjustAxis();
 
-		[
-			{ low: false, y: 0, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
-			{ low: false, y: 7, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
-			{ low: true, y: 14, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
-			{ low: true, y: 21, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
-		].forEach(ii => {
+		let Y = -7;
+		data.insertions.map(d => {
+			return {
+				low: d.name === "low",
+				y: (Y += 7),
+				i: d.pos,
+				n: `${d.name}-${d.strand==='+'?'p':'m'}`,
+				sense: data.geneStrand === d.strand
+			};
+		}).forEach(ii => {
 			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
 				.data(ii.i, d => d);
 		

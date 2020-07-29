@@ -73,7 +73,7 @@
 								</div>
 
 								<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
-									placeholder="0.05" align="right" class="form-control form-control-sm" />
+									placeholder="0.05" class="form-control form-control-sm" />
 							</div>
 						</li>
 
@@ -111,8 +111,7 @@
 								<div class="input-group input-group-sm mb-3">
 									<div class="input-group-prepend">
 										<span class="input-group-text">
-											<input type="checkbox" class="form-control form-control-sm"
-												name="cut-overlap" checked="checked" />
+											<input type="checkbox" name="cut-overlap" checked="checked" />
 										</span>
 									</div>
 									<input type="text" class="form-control form-control-sm"
@@ -138,17 +137,6 @@
 										placeholder="offset..." />
 								</div>
 
-								<!-- <div class="input-group input-group-sm mb-3">
-									<div class="input-group-prepend">
-										<span class="input-group-text">
-											<input type="checkbox" class="form-control form-control-sm"
-												name="antisense" />
-										</span>
-									</div>
-									<input type="text" class="form-control form-control-sm"
-										value="Use antisense integrations" />
-								</div> -->
-
 								<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
 									<label class="btn btn-secondary active">
 										<input type="radio" name="direction" autocomplete="off"
@@ -170,7 +158,7 @@
 						</ul>
 					</form>
 
-					<button class="btn" id="reload-btn">Reload</button>
+					<button class="btn btn-secondary btn-sm" id="reload-btn">Reload</button>
 
 					<hr />
 					<h6>highlight</h6>
@@ -182,7 +170,7 @@
 								</div>
 
 								<input type="text" id="highlightGene" size="5" placeholder="Enter genename..."
-									align="right" z:value="${selectedGene?:''}" class="form-control form-control-sm" />
+									z:value="${selectedGene?:''}" class="form-control form-control-sm" />
 							</div>
 
 							<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight</button>
@@ -194,7 +182,7 @@
 							<div z:replace="gene-info :: geneDiv('ip')"></div>
 							<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
 							<label>
-								<button type="button" class="btn btn-sm" id="show-gene-info">Show Gene Info
+								<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info
 									Dialog</button>
 							</label>
 						</li>

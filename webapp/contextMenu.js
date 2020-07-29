@@ -1,5 +1,3 @@
-import './contextMenu.css';
-
 const contextMenuActive = "context-menu--active";
 
 let current;
