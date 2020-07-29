@@ -46,7 +46,6 @@ struct SLDataPoint
 	float ref_fcpv[4];
 	int sense, sense_normalized;
 	int antisense, antisense_normalized;
-	float sense_ratio, ref_sense_ratio;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -207,6 +206,11 @@ class IPScreenData : public ScreenData
 
 // --------------------------------------------------------------------
 
+struct InsertionCount
+{
+	size_t sense, antiSense;
+};
+
 class SLScreenData : public ScreenData
 {
   public:
@@ -216,15 +220,18 @@ class SLScreenData : public ScreenData
 
 	void addFile(std::filesystem::path file);
 
+	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly, unsigned readLength,
+		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize);
+
+  private:
+
+	std::vector<InsertionCount> normalize(const std::vector<InsertionCount>& counts,
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
+
 	void count_insertions(int replicate, const std::string& assembly, unsigned readLength,
-		const std::vector<Transcript>& transcripts, std::vector<Insertions>& insertions);
-
-	// std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
-	// 	insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
-
-	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+		const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const;
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
-		const std::vector<Insertions>& insertions, const std::array<std::vector<Insertions>,4>& controlInsertions);
+		const std::vector<InsertionCount>& insertions,
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 };

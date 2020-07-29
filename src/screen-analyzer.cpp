@@ -465,64 +465,37 @@ or txEnd to have the start at the cdsEnd e.g.
 		return d < 0;
 	});
 
-	// -----------------------------------------------------------------------
-
-	std::thread ct[4];
-	std::array<std::vector<Insertions>,4> controlInsertions;
-
-	for (int i = 0; i < 4; ++i)
-	{
-		ct[i] = std::thread([replicate = i + 1, &insertions = controlInsertions[i], &controlData,
-			&assembly, trimLength, &transcripts]()
-		{
-			controlData.count_insertions(replicate, assembly, trimLength, transcripts, insertions);
-		});
-	}
-
-	int replicate = 1;
+	// --------------------------------------------------------------------
+	
+	unsigned replicate = 1;
 	if (vm.count("replicate"))
 		replicate = vm["replicate"].as<unsigned short>();
 
-	std::vector<Insertions> insertions;
-
-	screenData.count_insertions(replicate, assembly, trimLength, transcripts, insertions);
-
-	for (auto& t: ct)
-		t.join();
-
-	long senseCount = 0, antiSenseCount = 0;
-	for (auto& i: insertions)
-	{
-		senseCount += i.sense.size();
-		antiSenseCount += i.antiSense.size();
-	}
+	unsigned groupSize = 500;
+	if (vm.count("group-size"))
+		groupSize = vm["group-size"].as<unsigned short>();
 
 	// -----------------------------------------------------------------------
-	
-	std::cerr << std::endl
-			<< std::string(get_terminal_width(), '-') << std::endl
-			<< " sense      : " << std::setw(10) << senseCount << std::endl
-			<< " anti sense : " << std::setw(10) << antiSenseCount << std::endl;
 
-	for (auto& dp: screenData.dataPoints(transcripts, insertions, controlInsertions))
+	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize))
 	{
 		std::cout << dp.geneName << '\t'
-				<< dp.sense << '\t'
-				<< dp.antisense << '\t'
-				<< dp.pv << '\t'
-				<< dp.fcpv << '\t'
-				<< dp.sense_normalized << '\t'
-				<< dp.antisense_normalized << '\t'
-				<< dp.ref_fcpv[0] << '\t'
-				<< dp.ref_pv[0] << '\t'
-				<< dp.ref_fcpv[1] << '\t'
-				<< dp.ref_pv[1] << '\t'
-				<< dp.ref_fcpv[2] << '\t'
-				<< dp.ref_pv[2] << '\t'
-				<< dp.ref_fcpv[3] << '\t'
-				<< dp.ref_pv[3] << '\t'
-				<< (dp.sense + dp.antisense) << '\t'
-				<< dp.sense_ratio << std::endl;
+				  << dp.sense << '\t'
+				  << dp.antisense << '\t'
+				  << dp.pv << '\t'
+				  << dp.fcpv << '\t'
+				  << dp.sense_normalized << '\t'
+				  << dp.antisense_normalized << '\t'
+				  << dp.ref_fcpv[0] << '\t'
+				  << dp.ref_pv[0] << '\t'
+				  << dp.ref_fcpv[1] << '\t'
+				  << dp.ref_pv[1] << '\t'
+				  << dp.ref_fcpv[2] << '\t'
+				  << dp.ref_pv[2] << '\t'
+				  << dp.ref_fcpv[3] << '\t'
+				  << dp.ref_pv[3] << '\t'
+				  << (dp.sense + dp.antisense) << '\t'
+				  << ((dp.sense_normalized + 1.0f) / (dp.sense_normalized + dp.antisense_normalized + 2.0f)) << std::endl;
 	}
 
 	return 0;
@@ -541,9 +514,10 @@ int main_analyze(int argc, char* const argv[])
 			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 
 			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
+			{ "group-size",	po::value<unsigned short>(),"The group size to use for normalizing insertions counts in SL, default is 500"},
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
-
+			
 			{ "output",		po::value<std::string>(),	"Output file" }
 		}, { "screen-name", "assembly" });
 
