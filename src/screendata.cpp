@@ -17,6 +17,8 @@
 
 #include <zeep/value-serializer.hpp>
 
+#include "sq/squeeze.hpp"
+
 #include "screendata.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
@@ -121,46 +123,166 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	}
 }
 
-void ScreenData::correct_map(const std::string& assembly, unsigned readLength, int32_t offset)
+// --------------------------------------------------------------------
+
+std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const
 {
-	for (fs::directory_iterator iter(mDataDir / assembly / std::to_string(readLength)); iter != fs::directory_iterator(); ++iter)
+	fs::path p = mDataDir / assembly / std::to_string(readLength) / file;
+
+	bool compressed = p.extension() == ".sq";
+	if (not compressed)	// see if a compressed version exists
 	{
-		auto size = fs::file_size(*iter);
+		auto psq = p.parent_path() / (p.filename().string() + ".sq");
+		if (fs::exists(psq))
+		{
+			compressed = true;
+			p = psq;
+		}
+	}
+
+	if (not fs::exists(p))
+		throw std::runtime_error("File does not exist: " + p.string());
+
+	std::ifstream infile(p, std::ios::binary);
+	if (not infile.is_open())
+		throw std::runtime_error("Could not open " + p.string() + " file");
+
+	auto size = fs::file_size(p);
+
+	std::vector<Insertion> result;
+
+	if (compressed)
+	{
+		std::vector<uint8_t> bits(size);
+
+		infile.read(reinterpret_cast<char*>(bits.data()), size);
+
+		sq::ibitstream ibs(bits);
+		size_t N = read_gamma(ibs);
+
+		result.reserve(N);
+
+		for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
+		{
+			// plus and minus are stored separatedly, but we don't want to sort everything, so be smart
+
+			std::vector<uint32_t> pos_plus, pos_negative;
+
+			if (ibs())
+				pos_plus = sq::read_array(ibs);
+			
+			if (ibs())
+				pos_negative = sq::read_array(ibs);
+			
+			auto pi = pos_plus.begin(),		epi = pos_plus.end();
+			auto ni = pos_negative.begin(),	eni = pos_negative.end();
+
+			while (pi != epi or ni != eni)
+			{
+				if (ni == eni)
+				{
+					result.push_back(Insertion{ chr, '+', static_cast<int32_t>(*pi++) });
+					continue;
+				}
+
+				if (pi == epi)
+				{
+					result.push_back(Insertion{ chr, '-', static_cast<int32_t>(*ni++) });
+					continue;
+				}
+
+				if (*pi <= *ni)
+					result.push_back(Insertion{ chr, '+', static_cast<int32_t>(*pi++) });
+				else
+					result.push_back(Insertion{ chr, '-', static_cast<int32_t>(*ni++) });
+			}
+		}
+	}
+	else
+	{
 		auto N = size / sizeof(Insertion);
 
-		std::vector<Insertion> bwt(N);
-
-		std::ifstream infile(iter->path(), std::ios::binary);
-		if (not infile.is_open())
-			throw std::runtime_error("Could not open " + iter->path().string() + " file");
-		
-		infile.read(reinterpret_cast<char*>(bwt.data()), size);
-
-		for (auto&& [chr, strand, pos]: bwt)
-		{
-			assert(chr != CHROM::INVALID);
-			if (strand == '-')
-				pos += offset;
-		}
-
-		infile.close();
-
-		auto backup = iter->path();
-		backup = backup.parent_path() / (backup.filename().string() + "-backup");
-		fs::rename(iter->path(), backup);
-
-		std::ofstream outfile(iter->path(), std::ios::binary);
-		if (not outfile.is_open())
-			throw std::runtime_error("Could not open new " + iter->path().string() + " file");
-		
-		const char* data = reinterpret_cast<const char*>(bwt.data());
-		outfile.write(data, size);
+		result.resize(N);
+		infile.read(reinterpret_cast<char*>(result.data()), size);
 	}
+
+	infile.close();
+
+	return result;
+}
+
+void ScreenData::write_insertions(const std::string& assembly, unsigned readLength, const std::string& file,
+	std::vector<Insertion>& insertions)
+{
+	std::sort(insertions.begin(), insertions.end(), [](const Insertion& a, const Insertion& b)
+	{
+		int d = a.chr - b.chr;
+		if (d == 0)
+			d = a.strand - b.strand;
+		if (d == 0)
+			d = a.pos - b.pos;
+		return d < 0;
+	});
+
+	std::vector<uint8_t> bits;
+	sq::obitstream obs(bits);
+
+	write_gamma(obs, insertions.size());
+
+	size_t i = 0;
+
+	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
+	{
+		for (char str: { '+', '-' })
+		{
+			std::vector<uint32_t> pos;
+			
+			while (i < insertions.size())
+			{
+				auto& ins = insertions[i];
+				if (ins.chr != chr or ins.strand != str)
+					break;
+
+				pos.push_back(ins.pos);
+
+				++i;
+			}
+
+			obs << not pos.empty();
+			if (not pos.empty())
+				sq::write_array(obs, pos);
+		}
+	}
+
+	assert(i == insertions.size());
+
+	obs.sync();
+
+	fs::path p = mDataDir / assembly / std::to_string(readLength) / (file + ".sq");
+	std::ofstream outfile(p, std::ios::binary | std::ios::trunc);
+	if (not outfile.is_open())
+		throw std::runtime_error("Could not open " + p.string() + " file");
+	
+	outfile.write(reinterpret_cast<char*>(bits.data()), bits.size());
+	outfile.close();
 }
 
 // --------------------------------------------------------------------
 
 void ScreenData::dump_map(const std::string& assembly, unsigned readLength, const std::string& file)
+{
+	auto bwt = read_insertions(assembly, readLength, file);
+
+	for (auto&& [chr, strand, pos]: bwt)
+	{
+		assert(chr != CHROM::INVALID);
+		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << std::endl;
+	}
+}
+
+// --------------------------------------------------------------------
+
+void ScreenData::compress_map(const std::string& assembly, unsigned readLength, const std::string& file)
 {
 	fs::path p = mDataDir / assembly / std::to_string(readLength) / file;
 
@@ -179,11 +301,57 @@ void ScreenData::dump_map(const std::string& assembly, unsigned readLength, cons
 	infile.read(reinterpret_cast<char*>(bwt.data()), size);
 	infile.close();
 
-	for (auto&& [chr, strand, pos]: bwt)
+	std::sort(bwt.begin(), bwt.end(), [](const Insertion& a, const Insertion& b)
 	{
-		assert(chr != CHROM::INVALID);
-		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << std::endl;
+		int d = a.chr - b.chr;
+		if (d == 0)
+			d = a.strand - b.strand;
+		if (d == 0)
+			d = a.pos - b.pos;
+		return d < 0;
+	});
+
+	std::vector<uint8_t> bits;
+	sq::obitstream obs(bits);
+
+	write_gamma(obs, bwt.size());
+
+	size_t i = 0;
+
+	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
+	{
+		for (char str: { '+', '-' })
+		{
+			std::vector<uint32_t> pos;
+			
+			while (i < bwt.size())
+			{
+				auto& ins = bwt[i];
+				if (ins.chr != chr or ins.strand != str)
+					break;
+
+				pos.push_back(ins.pos);
+
+				++i;
+			}
+
+			obs << not pos.empty();
+			if (not pos.empty())
+				sq::write_array(obs, pos);
+		}
 	}
+
+	assert(i == bwt.size());
+
+	obs.sync();
+
+	p = p.parent_path() / (p.filename().string() + ".sq");
+	std::ofstream outfile(p, std::ios::binary | std::ios::trunc);
+	if (not outfile.is_open())
+		throw std::runtime_error("Could not open " + p.string() + " file");
+	
+	outfile.write(reinterpret_cast<char*>(bits.data()), bits.size());
+	outfile.close();
 }
 
 // --------------------------------------------------------------------
@@ -248,23 +416,10 @@ void IPScreenData::analyze(const std::string& assembly, unsigned readLength, std
 #endif
 			try
 			{
-				auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
-				if (not fs::exists(infile))
-					throw std::runtime_error("Missing " + lh + " file, did you run map already?");
+				auto bwt = read_insertions(assembly, readLength, lh);
 
 				std::vector<Insertions> insertions(transcripts.size());
 
-				auto size = fs::file_size(infile);
-				auto N = size / sizeof(Insertion);
-
-				std::vector<Insertion> bwt(N);
-
-				std::ifstream file(infile, std::ios::binary);
-				if (not file.is_open())
-					throw std::runtime_error("Could not open " + lh + " file, did you run map already?");
-				
-				file.read(reinterpret_cast<char*>(bwt.data()), size);
-			
 				auto ts = transcripts.begin();
 
 				for (const auto& [chr, strand, pos]: bwt)
@@ -339,23 +494,10 @@ IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t star
 		{
 			try
 			{
-				auto infile = mDataDir / assembly / std::to_string(readLength) / lh;
-				if (not fs::exists(infile))
-					throw std::runtime_error("Missing " + lh + " file, did you run map already?");
-
 				std::vector<uint32_t>& insP = lh == "low" ? lowP : highP;
 				std::vector<uint32_t>& insM = lh == "low" ? lowM : highM;
 
-				auto size = fs::file_size(infile);
-				auto N = size / sizeof(Insertion);
-
-				std::vector<Insertion> bwt(N);
-
-				std::ifstream file(infile, std::ios::binary);
-				if (not file.is_open())
-					throw std::runtime_error("Could not open " + lh + " file, did you run map already?");
-				
-				file.read(reinterpret_cast<char*>(bwt.data()), size);
+				auto bwt = read_insertions(assembly, readLength, lh);
 			
 				for (auto&& [chr, strand, pos]: bwt)
 				{
@@ -710,17 +852,7 @@ void SLScreenData::count_insertions(int replicate, const std::string& assembly, 
 
 	insertions.resize(transcripts.size());
 
-	auto size = fs::file_size(infile);
-	auto N = size / sizeof(Insertion);
-
-	std::vector<Insertion> bwt(N);
-
-	std::ifstream file(infile, std::ios::binary);
-	if (not file.is_open())
-		throw std::runtime_error("Could not open " + rn + " file, did you run map already?");
-	
-	file.read(reinterpret_cast<char*>(bwt.data()), size);
-
+	auto bwt = read_insertions(assembly, trimLength, infile);
 	auto ts = transcripts.begin();
 
 	for (const auto& [chr, strand, pos]: bwt)

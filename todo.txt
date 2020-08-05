@@ -1,0 +1,7 @@
+- enforce security (group access to screens)
+- gene-finder
+- find similar
+- compare screens
+- admin interface
+- uniqueness
+- manifest

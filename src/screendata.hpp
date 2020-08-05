@@ -190,10 +190,14 @@ class ScreenData
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 		unsigned threads);
 
-	void correct_map(const std::string& assembly, unsigned readLength, int32_t offset);
 	void dump_map(const std::string& assembly, unsigned readLength, const std::string& file);
+	void compress_map(const std::string& assembly, unsigned readLength, const std::string& file);
 
   protected:
+
+	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
+	void write_insertions(const std::string& assembly, unsigned readLength, const std::string& file,
+		std::vector<Insertion>& insertions);
 
 	ScreenData(std::filesystem::path dir);
 

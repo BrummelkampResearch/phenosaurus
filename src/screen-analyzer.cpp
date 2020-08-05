@@ -19,6 +19,7 @@
 
 #include <zeep/http/daemon.hpp>
 #include <zeep/crypto.hpp>
+#include <zeep/streambuf.hpp>
 
 #include "refseq.hpp"
 #include "fisher.hpp"
@@ -765,15 +766,15 @@ Command should be either:
 
 // --------------------------------------------------------------------
 
-int main_correct(int argc, char* const argv[])
+int main_compress(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( correct screen-name assembly offset [options])",
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( dump screen-name assembly file [options])",
 		{
-			{ "offset", po::value<int>(),	"The offset to correct the - strand with" }
+			{ "file", po::value<std::string>(),	"The file to dump" }
 		},
-		{ "screen-name", "assembly", "offset" });
+		{ "screen-name", "assembly", "file" });
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
@@ -786,9 +787,9 @@ int main_correct(int argc, char* const argv[])
 	if (vm.count("trim-length"))
 		trimLength = vm["trim-length"].as<unsigned>();
 	
-	int offset = vm["offset"].as<int>();
+	auto file = vm["file"].as<std::string>();
 
-	data->correct_map(assembly, trimLength, offset);
+	data->compress_map(assembly, trimLength, file);
 
 	return result;
 }
@@ -884,8 +885,8 @@ int main(int argc, char* const argv[])
 			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
-		else if (command == "correct")
-			result = main_correct(argc - 1, argv + 1);
+		else if (command == "compress")
+			result = main_compress(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
 		else if (command == "help")
