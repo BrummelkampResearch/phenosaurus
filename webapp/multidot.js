@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import { highlightedGenes, radius } from './screenPlot';
+import { highlightedGenes, radius, neutral } from './screenPlot';
 import {gene} from "./geneInfo";
 
 // --------------------------------------------------------------------

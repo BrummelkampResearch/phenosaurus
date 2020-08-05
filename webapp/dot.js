@@ -16,6 +16,9 @@ export default class Dot {
 
         this.subdot = false;
         this.multidot = this.values.length > 1;
+
+        this.x = this.insertions;
+        this.y = this.log2mi;
     }
 
     highlight() {

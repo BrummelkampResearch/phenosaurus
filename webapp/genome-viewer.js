@@ -2,6 +2,8 @@ import * as d3 from "d3";
 import ContextMenu from './context-menu';
 import Tooltip from "./tooltip";
 
+/*global context_name */
+
 // --------------------------------------------------------------------
 
 const tooltip = new Tooltip();
@@ -87,9 +89,9 @@ export default class GenomveViewer {
 		}, false);
 
 
-		const viewerContainer = $(this.svg.node());
-		const bBoxWidth = viewerContainer.width();
-		const bBoxHeight = viewerContainer.height();
+		const viewerContainer = this.svg.node();
+		const bBoxWidth = viewerContainer.clientWidth;
+		const bBoxHeight = viewerContainer.clientWidth;
 
 		this.margin = {top: 0, right: 50, bottom: 30, left: 50};
 		this.width = bBoxWidth - this.margin.left - this.margin.right;
@@ -217,8 +219,6 @@ export default class GenomveViewer {
 		{
 			this.plotData.attr('transform', d3.event.transform);
 	
-			const k = d3.event.transform.k;
-	
 			const x = d3.event.transform.rescaleX(this.x);
 	
 			this.insertionsData.selectAll("rect.ins")
@@ -226,7 +226,7 @@ export default class GenomveViewer {
 
 			this.gX.call(this.xAxis.scale(x));
 		}
-	};
+	}
 
 	setGene(data) {
 		this.createSVG(data.genes.length);
@@ -350,7 +350,7 @@ export default class GenomveViewer {
 			{ low: true, y: 14, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
 			{ low: true, y: 21, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
 		].forEach(ii => {
-			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
+			this.insertionsData.selectAll(`rect.${ii.n}`)
 				.attr("fill", d => {
 					let color = "#888";
 					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense))
@@ -382,7 +382,7 @@ export default class GenomveViewer {
 
 		// // adjust current dots for new(?) axes
 		// this.plotData.selectAll("g.dot")
-		// 	.attr("transform", d => `translate(${x(d.insertions)},${y(d.log2mi)})`);
+		// 	.attr("transform", d => `translate(${x(d.x)},${y(d.y)})`);
 
 		return x;
 	}
@@ -394,9 +394,9 @@ export default class GenomveViewer {
 		let source = serializer.serializeToString(svg);
 
 		//add name spaces.
-		if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/))
+		if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/))
 			source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-		if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/))
+		if (!source.match(/^<svg[^>]+"http:\/\/www\.w3\.org\/1999\/xlink"/))
 			source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
 
 		//add xml declaration

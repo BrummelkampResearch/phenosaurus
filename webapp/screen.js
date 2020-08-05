@@ -44,7 +44,7 @@ class ScreenPlotRegular extends ScreenPlot {
 			const colors = d.values
 				.map(d => {
 					if (d.fcpv >= this.pvCutOff && highlightedGenes.has(d.geneName))
-						return "#b3ff3e";
+						return "highlight";
 
 					switch (this.graphType) {
 						case 'regular':

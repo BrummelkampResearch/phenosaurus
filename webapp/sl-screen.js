@@ -1,5 +1,5 @@
 import 'chosen-js/chosen.jquery';
-import ScreenPlot from './screenPlot';
+import ScreenPlot, { neutral, highlight } from './screenPlot';
 
 import * as d3 from 'd3';
 
@@ -8,7 +8,10 @@ import SLDot from './sl-dot';
 
 const radius = 5;
 const screenReplicatesMap = new Map();
-const neutral = "#bbb", highlightColor = "#b3ff3e";
+
+export let significantGenes = new Set();
+
+/*global context_name, screenReplicates, selectedGene, selectedReplicate, selectedScreen, $ */
 
 // --------------------------------------------------------------------
 
@@ -19,27 +22,22 @@ class ColorMap {
 
 		this.geneColorMap = new Map();
 		this.type = 'raw';
-		this.significantGenes = new Set();
 	}
 
 	getColor(d) {
 		const mapped = this.geneColorMap.get(d.geneID);
 
 		if (mapped == null || mapped.binom_fdr == null || mapped.binom_fdr >= pvCutOff)
-			return highlightedGenes.has(d.geneName) ? highlightColor : neutral;
-
-		// if (mapped == null || mapped.binom_fdr == null || mapped.binom_fdr >= pvCutOff)
-		// 	return neutral;
-		//
-		// if (/*d.binom_fdr > pvCutOff && */highlightedGenes.has(d.geneName))
-		// 	return highlightColor;
+			return highlightedGenes.has(d.geneName) ? highlight : neutral;
 
 		switch (this.type) {
 			case 'raw':
 				return this.scale(mapped.diff);
 			case 'significant':
-				if (d.significant)
+				if (significantGenes.has(d.geneName))
 					return this.scale(mapped.diff);
+				else if (highlightedGenes.has(d.geneName))
+					return highlight;
 				else
 					return neutral;
 		}
@@ -78,7 +76,7 @@ class ColorMap {
 	}
 
 	setSignificantGenes(genes) {
-		this.significantGenes = new Set(genes);
+		significantGenes = new Set(genes);
 
 		if (this.type === 'significant') {
 			const btns = document.getElementById("graphColorBtns");
@@ -183,7 +181,8 @@ class SLScreenPlot extends ScreenPlot {
 					plotTitle.classList.add("plot-status-failed");
 					console.log(err);
 					if (err === "invalid-credentials")
-						showLoginDialog(null, () => this.loadScreen(this.name, this.id));
+						alert('session timeout, please login again');
+						// showLoginDialog(null, () => this.loadScreen(this.name, this.id));
 					else reject(err);
 				});
 		});
@@ -207,7 +206,7 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	process(data) {
-		console.log(data);
+		this.screens.set(0, data);
 
 		this.updateColorMap(data);
 
@@ -223,7 +222,16 @@ class SLScreenPlot extends ScreenPlot {
 		const yRange = [0, 1];
 		const [x, y] = this.adjustAxes(xRange, yRange);
 
-		const dots = this.plotData.selectAll("g.dot")
+		const screenPlotID = 'plot-0';
+		let screenPlot = this.plotData.select(`#${screenPlotID}`);
+		if (screenPlot === null || screenPlot.empty())
+		{
+			screenPlot = this.plotData.append("g")
+				.classed("screen-plot", true)
+				.attr("id", screenPlotID);
+		}
+
+		const dots = screenPlot.selectAll("g.dot")
 			.data(this.dotData, d => d.key);
 
 		dots.exit()
@@ -232,7 +240,7 @@ class SLScreenPlot extends ScreenPlot {
 		let gs = dots.enter()
 			.append("g")
 			.attr("class", "dot")
-			.attr("transform", d => `translate(${x(d.insertions)},${y(d.senseratio)})`);
+			.attr("transform", d => `translate(${x(d.x)},${y(d.y)})`);
 
 		gs.append("circle")
 			.attr("r", radius)
@@ -294,31 +302,39 @@ class SLScreenPlot extends ScreenPlot {
 
 	updateSignificantTable(data) {
 		const table = document.getElementById("significantGenesTable");
-		$("tr", table).remove();
+		[...table.querySelectorAll("tr")].forEach(tr => tr.remove());
 		const fmt = d3.format(".3g");
 
 		data
 			.filter(d => d.significant)
 			.forEach(d => {
-				let row = $("<tr/>");
-				$("<td/>").text(d.geneName).appendTo(row);
-				$("<td/>").text(d.senseratio).appendTo(row);
-				$("<td/>").text(d.insertions).appendTo(row);
-				$("<td/>").text(fmt(d.binom_fdr)).appendTo(row);
-				$("<td/>").text(fmt(d.ref_fcpv[0])).appendTo(row);
-				$("<td/>").text(fmt(d.ref_fcpv[1])).appendTo(row);
-				$("<td/>").text(fmt(d.ref_fcpv[2])).appendTo(row);
-				$("<td/>").text(fmt(d.ref_fcpv[3])).appendTo(row);
-				row.appendTo(table);
+				const row = document.createElement("tr");
+				const col = (text) => {
+					const td = document.createElement("td");
+					td.textContent = text;
+					row.appendChild(td);
+				};
 
-				row[0].onclick = () => {
+				col(d.geneName);
+				col(d.senseratio);
+				col(d.insertions);
+				col(fmt(d.binom_fdr));
+				col(fmt(d.ref_fcpv[0]));
+				col(fmt(d.ref_fcpv[1]));
+				col(fmt(d.ref_fcpv[2]));
+				col(fmt(d.ref_fcpv[3]));
+
+				table.appendChild(row);
+				// row.appendTo(table);
+
+				row.addEventListener('click', () => {
 					this.highlightGene(d.geneName);
 					this.control.highlightGene(d.geneName);
-				};
+				});
 			});
 			
 		this.plotData.selectAll("g.dot")
-			.filter(d => d.significantGene(colorMap.significantGenes))
+			.filter(d => d.significantGene())
 			.raise();
 	}
 }
@@ -338,21 +354,20 @@ class SLControlScreenPlot extends SLScreenPlot {
 		this.loadScreen("ControlData-HAP1", 1);
 	}
 
-	getColor() {
-		return (d) => {
-			const colors = d.values
-				.map(d => colorMap.getColor(d))
-				.reduce((a, b) => {
-					if (a.indexOf(b) === -1)
-						return [...a, b];
-					return a;
-				}, []);
-
-			if (colors.length === 1) {
-				return colors[0];
-			}
-			return this.getPattern(colors[0], colors[colors.length - 1]);
+	updateColors() {
+		if (this.dotData !== undefined) {
+			this.dotData
+				.forEach(d => {
+					d.values.forEach(v => v.significant = significantGenes.has(v.geneName));
+				});
 		}
+		
+		this.plotData
+			.selectAll("g.dot")
+			.filter(d => d.significantGene())
+			.raise();
+
+		super.updateColors();
 	}
 }
 

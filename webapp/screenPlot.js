@@ -5,7 +5,7 @@ import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
 
 export const radius = 5;
-const neutral = "#aaa";
+export const neutral = "#aaa", highlight = "#b3ff3e";
 
 const colorMap = new ScreenColorMap();
 export const highlightedGenes = new Set();
@@ -224,8 +224,7 @@ export default class ScreenPlot {
 				const screenPlotData = this.plotData.select(`#plot-${sn}`);
 	
 				screenPlotData.selectAll("g.dot")
-					// .select("circle")
-					.attr('transform', d => `translate(${x(d.insertions)},${y(d.log2mi)}) scale(${1/k})`);
+					.attr('transform', d => `translate(${x(d.x)},${y(d.y)}) scale(${1/k})`);
 			});
 	
 			this.gX.call(this.xAxis.scale(d3.event.transform.rescaleX(this.x)));
@@ -240,7 +239,7 @@ export default class ScreenPlot {
 				.map(d =>
 					d.fcpv >= this.pvCutOff
 						? highlightedGenes.has(d.geneName)
-							? "#b3ff3e" 
+							? highlight 
 							: neutral
 						: color)
 				.reduce((a, b) => {
@@ -294,7 +293,7 @@ export default class ScreenPlot {
 		let gs = dots.enter()
 			.append("g")
 			.attr("class", "dot")
-			.attr("transform", d => `translate(${x(d.insertions)},${y(d.log2mi)})`);
+			.attr("transform", d => `translate(${x(d.x)},${y(d.y)})`);
 
 		gs.append("circle")
 			.attr("r", radius)
@@ -340,7 +339,7 @@ export default class ScreenPlot {
 		return handled;
 	}
 
-	dblClickGenes(d, screenNr) {
+	dblClickGenes(d) {
 		const evt = d3.event.sourceEvent;
 		if (evt != null) {
 			evt.stopPropagation();
@@ -355,12 +354,12 @@ export default class ScreenPlot {
 			window.open("./screen-query/?screenType=IP&gene=" + geneNames, "_blank");
 	}
 
-	mouseOver(d, screenNr) {
+	mouseOver(d) {
 		if (d.multiDot === undefined)
 			gene.set(d.values);
 	}
 
-	mouseOut(d, screenNr) {
+	mouseOut(d) {
 		if (d.multiDot === undefined)
 			gene.set([]);
 	}
@@ -404,7 +403,7 @@ export default class ScreenPlot {
 
 		// adjust current dots for new(?) axes
 		this.plotData.selectAll("g.dot")
-			.attr("transform", d => `translate(${x(d.insertions)},${y(d.log2mi)})`);
+			.attr("transform", d => `translate(${x(d.x)},${y(d.y)})`);
 
 		return [x, y];
 	}
@@ -501,8 +500,12 @@ export default class ScreenPlot {
 		.remove();
 	}
 
-	highlightGene() {
-		const geneNames = $("#highlightGene").val()
+	highlightGene(geneName) {
+		if (geneName === undefined) {
+			geneName = document.getElementById('highlightGene').value;
+		}
+
+		const geneNames = geneName
 			.split(/[ \t\r\n,;]+/)
 			.filter(id => id.length > 0);
 
