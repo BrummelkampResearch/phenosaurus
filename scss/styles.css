@@ -154,27 +154,20 @@ table.heatmap td.screen-status, table.dotplot td.screen-status {
 }
 
 text.label {
-	display: none;
+	font-size: x-small;
 	fill: black;
 	pointer-events: none;
+}
+
+svg.presentation text.label {
+	font-size: medium;
+	font-weight: 600;
 }
 
 text.axis-label {
 	fill: black;
 	font-size: xx-small;
 }
-
-svg.show-labels text.significant {
-	display: unset;
-}
-
-g.highlight	text {
-	display: unset;
-}
-
-/*g.sub-highlight text.sub-dot {*/
-	/*display: unset;*/
-/*}*/
 
 g.dot.link circle {
 	radius: 7;

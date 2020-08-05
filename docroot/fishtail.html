@@ -158,13 +158,26 @@
 						</ul>
 					</form>
 
-					<button class="btn btn-secondary btn-sm" id="reload-btn">Reload</button>
+					<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
 
 					<hr />
 					<h6>highlight</h6>
 					<ul class="option-group">
 						<li>
-							<div class="input-group input-group-sm mb-3">
+
+							<div class="input-group input-group-sm">
+								<input type="text" id="highlightGene" size="5"
+									placeholder="Enter genename..."
+									z:value="${selectedGene?:''}"
+									class="form-control form-control-sm"/>
+			
+								<div class="input-group-append" id="button-addon4">
+									<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+									<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
+								</div>
+							</div>	
+				
+							<!-- <div class="input-group input-group-sm mb-3">
 								<div class="input-group-prepend">
 									<span class="input-group-text" id="startLabel" style="min-width: 4em;">Gene</span>
 								</div>
@@ -175,7 +188,7 @@
 
 							<button type="button" class="btn btn-sm" id="btn-highlight-gene">Highlight</button>
 							<button type="button" class="btn btn-sm" id="btn-clear-highlight">Clear</button>
-
+ -->
 						</li>
 
 						<li>

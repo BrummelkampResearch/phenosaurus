@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import { pvCutOff } from "./screenPlot";
+import Dot from "./dot";
 
 export default class ScreenData {
 
@@ -45,7 +45,6 @@ export default class ScreenData {
 	process(data) {
 		let minMI = 0, maxMI = 0, maxInsertions = 0;
 		data.forEach(d => {
-
 			d.insertions = d.low + d.high;
 			d.log2mi = Math.log2(d.mi);
 
@@ -59,26 +58,20 @@ export default class ScreenData {
 				this.maxRank = d.rank;
 		});
 
-		this.data = data;
-
 		maxInsertions = Math.ceil(Math.pow(10, Math.log10(maxInsertions) + 0.1));
 
 		this.xRange = [1, maxInsertions];
 		this.yRange = [Math.floor(minMI), Math.ceil(maxMI)];
 
-		// create dot data
+		this.data = data;
+
 		this.dotData = d3.nest()
-			.key(d => [this.screenID, d.mi, d.insertions].join(":"))
-			.entries(data);
-		this.dotData
-			.forEach(d => {
-				d.mi = d.values[0].mi;
-				d.log2mi = d.values[0].log2mi;
-				d.insertions = d.values[0].insertions;
-			});
+			.key(d => [this.screenID, d.mi, d.low + d.high].join(':'))
+			.entries(data)
+			.map(d => new Dot(d.key, d.values));
 	}
 
-	loadUnique() {
+	loadUnique(pvCutOff) {
 		return new Promise((resolve, reject) => {
 			if (this.geneColours != null) {
 				resolve(null);

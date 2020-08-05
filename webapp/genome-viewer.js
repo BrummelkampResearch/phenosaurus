@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import ContextMenu from './contextMenu';
+import ContextMenu from './context-menu';
 import Tooltip from "./tooltip";
 
 // --------------------------------------------------------------------
