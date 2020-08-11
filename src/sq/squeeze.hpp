@@ -161,8 +161,114 @@ inline ibitstream& operator>>(ibitstream& bs, bool& bit)
     return bs;
 }
 
+// --------------------------------------------------------------------
+//	Basic routines for reading/writing numbers in bit streams
+//
+//	Binary mode writes a fixed bitcount number of bits for a value
+//
+
+/// \brief Read a value from \a bits with \a bit_count width
+///
+/// Simply reads \a bit_count bits and returns that as the result
+/// \param bits			The bitstream containing the compressed data
+/// \param bit_count	The number of bits to read
+/// \result				The result cast to a uint32_t
+inline uint32_t read_binary(ibitstream& bits, size_t bit_count)
+{
+	assert(bit_count <= sizeof(uint32_t) * 8);
+	assert(bit_count > 0);
+
+	return bits.read(bit_count);
+}
+
+/// \brief Write \a value to \a bits with \a bit_count width
+///
+/// Simply writes the lower \a bit_count bits from \a value into \a bits
+/// \param bits			The bitstream containing the compressed data
+/// \param bit_count	The number of bits to write
+/// \param value		The value whose bits to write
+inline void write_binary(obitstream& bits, size_t bit_count, uint32_t value)
+{
+	assert(bit_count <= 64);
+	assert(bit_count > 0);
+
+	while (bit_count-- > 0)
+		bits << (value & (1ULL << bit_count));
+}
+
+///	Gamma mode writes a variable number of bits for a value, optimal for small numbers.
+/// The algorithm writes out as many 1 bits as the width needed to store the value v
+/// followed by a 0 bit to indicate the end. This number of 1 bits is called e.
+/// Now take the value v1 = (1 << e) and subtract this from v resulting in v2.
+/// This v2 is then written out in e bits.
+
+/// \brief Read a value of at most 32 bits wide from \a bits
+///
+/// See explanation above, reads a value from \a bits and returns the result
+/// \param bits		The bits stream
+/// \result			The value read cast to a uint32_t
+
+inline uint32_t read_gamma(ibitstream& bits)
+{
+	uint32_t v1 = 1;
+	int32_t e = 0;
+
+	while (bits() and v1 != 0)
+	{
+		v1 <<= 1;
+		++e;
+	}
+
+	assert(v1 != 0);
+
+	uint32_t v2 = 0;
+	while (e-- > 0)
+		v2 = (v2 << 1) | bits();
+
+	return v1 + v2;
+}
+
+/// \brief Write \a value to \a bits
+///
+/// See explanation above, reads a value from \a bits and returns the result
+/// \param bits		The bits stream
+/// \param value	The value to write
+
+inline void write_gamma(obitstream& bits, uint32_t value)
+{
+	assert(value > 0);
+
+	uint32_t v = value;
+	int32_t e = 0;
+
+	while (v > 1)
+	{
+		v >>= 1;
+		++e;
+		bits << 1;
+	}
+	bits << 0;
+
+	uint64_t b = 1ULL << e;
+	while (e-- > 0)
+	{
+		b >>= 1;
+		bits << (value & b);
+	}
+}
+
+// --------------------------------------------------------------------
+
 namespace detail
 {
+
+/// The algorithm for storing compressed arrays uses the selector based
+/// algorithm. Sorry, I lost the source of the original idea.
+/// --------------------------------------------------------------------
+/// The idea is to use a selector code of 4 bits and a state of the
+/// current width to use. Based on the selector code, the next 1 to 4
+/// values are stored with the adjusted width. Selector 0 indicates a
+/// widening of the width to max_width.
 
 struct selector
 {
@@ -284,75 +390,6 @@ inline void compress_simple_array_selector(obitstream& bits, const std::vector<u
 }
 
 // --------------------------------------------------------------------
-//	Basic routines for reading/writing numbers in bit streams
-//
-//	Binary mode writes a fixed bitcount number of bits for a value
-//
-
-inline uint32_t read_binary(ibitstream& bits, size_t bit_count)
-{
-	assert(bit_count <= sizeof(uint32_t) * 8);
-	assert(bit_count > 0);
-
-	return bits.read(bit_count);
-}
-
-inline void write_binary(obitstream& bits, size_t bit_count, uint32_t value)
-{
-	assert(bit_count <= 64);
-	assert(bit_count > 0);
-
-	while (bit_count-- > 0)
-		bits << (value & (1ULL << bit_count));
-}
-
-//
-//	Gamma mode writes a variable number of bits for a value, optimal for small numbers
-//
-inline uint32_t read_gamma(ibitstream& bits)
-{
-	uint32_t v1 = 1;
-	int32_t e = 0;
-
-	while (bits() and v1 != 0)
-	{
-		v1 <<= 1;
-		++e;
-	}
-
-	assert(v1 != 0);
-
-	uint32_t v2 = 0;
-	while (e-- > 0)
-		v2 = (v2 << 1) | bits();
-
-	return v1 + v2;
-}
-
-inline void write_gamma(obitstream& bits, uint32_t value)
-{
-	assert(value > 0);
-
-	uint32_t v = value;
-	int32_t e = 0;
-
-	while (v > 1)
-	{
-		v >>= 1;
-		++e;
-		bits << 1;
-	}
-	bits << 0;
-
-	uint64_t b = 1ULL << e;
-	while (e-- > 0)
-	{
-		b >>= 1;
-		bits << (value & b);
-	}
-}
-
-// --------------------------------------------------------------------
 //	Arrays are a bit more complex
 
 /// \brief Read an array of delta values from a compressed bit stream
@@ -464,9 +501,4 @@ inline void write_array(obitstream& bits, const std::vector<uint32_t>& arr)
 	write_delta_array(bits, deltas);
 }
 
-
-
 }
-
-
-
