@@ -19,6 +19,48 @@
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
 
+// --------------------------------------------------------------------
+// This should be moved elsewhere, one day
+
+class sa_strings_object : public zh::expression_utility_object<sa_strings_object>
+{
+  public:
+
+	static constexpr const char* name() { return "strings"; }
+
+	virtual zh::object evaluate(const zh::scope& scope, const std::string& methodName,
+		const std::vector<zh::object>& parameters) const
+	{
+		zh::object result;
+
+		if (methodName == "listJoin" and parameters.size() == 2)
+		{
+			auto list = parameters[0];
+			auto separator = parameters[1].as<std::string>();
+
+			std::ostringstream s;
+
+			if (list.is_array())
+			{
+				auto n = list.size();
+				for (auto& e: list)
+				{
+					s << e.as<std::string>();
+					if (--n > 0)
+						s << separator;
+				}
+			}
+			else
+				s << list;
+			
+			result = s.str();
+		}
+
+		return result;
+	}
+	
+} s_post_expression_instance;
+
 // -----------------------------------------------------------------------
 
 class IPScreenRestController : public zh::rest_controller

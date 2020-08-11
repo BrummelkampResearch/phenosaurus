@@ -81,6 +81,28 @@ std::vector<user> user_service::get_all_users()
 	return users;
 }
 
+std::vector<group> user_service::get_all_groups()
+{
+	pqxx::transaction tx(db_connection::instance());
+
+	std::vector<group> groups;
+
+	for (auto const& [id, name, member]:
+		tx.stream<uint32_t, std::string, std::optional<std::string>>(
+			"SELECT g.id, g.name, u.username FROM auth.groups g LEFT JOIN auth.members m ON g.id = m.group_id LEFT JOIN auth.users u ON m.user_id = u.id ORDER BY g.name"))
+	{
+		if (groups.empty() or groups.back().id != id)
+			groups.emplace_back(group{id, name});
+
+		if (member)
+			groups.back().members.push_back(*member);
+	}
+
+	tx.commit();
+
+	return groups;
+}
+
 bool user_service::user_exists(const std::string& username)
 {
 	pqxx::transaction tx(db_connection::instance());
@@ -182,6 +204,112 @@ void user_service::delete_user(uint32_t id)
 
 // --------------------------------------------------------------------
 
+uint32_t user_service::create_group(const group& group)
+{
+	pqxx::transaction tx1(db_connection::instance());
+
+	auto r = tx1.exec1(
+		"INSERT INTO auth.groups (name) "
+	 	"VALUES(" + tx1.quote(group.name) + ") "
+		"RETURNING id");
+
+	uint32_t group_id = r[0].as<uint32_t>();
+	tx1.commit();
+
+	for (auto& m: group.members)
+	{
+		pqxx::transaction tx(db_connection::instance());
+		tx.exec0(
+			"INSERT INTO auth.members (group_id, user_id) "
+			"VALUES(" + std::to_string(group_id) + ", " +
+						"(SELECT id FROM auth.users WHERE username = " + tx.quote(m) + "))");
+		tx.commit();
+	}
+
+	return group_id;
+}
+
+group user_service::retrieve_group(uint32_t id)
+{
+	pqxx::transaction tx(db_connection::instance());
+
+	auto row = tx.exec1("SELECT * FROM auth.groups WHERE id = " + std::to_string(id));
+	tx.commit();
+
+	group group;
+
+	group.name = row.at("name").as<std::string>();
+	group.id = id;
+
+	pqxx::transaction tx2(db_connection::instance());
+	for (const auto& [member]: tx2.stream<std::string>(
+		"SELECT u.username FROM auth.members m JOIN auth.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+	{
+		group.members.push_back(member);
+	}
+
+	return group;
+}
+
+void user_service::update_group(uint32_t id, group group)
+{
+	auto current = retrieve_group(id);
+
+	if (current.name != group.name)
+	{
+		pqxx::transaction tx(db_connection::instance());
+		tx.exec0("UPDATE auth.groups SET name = " + tx.quote(group.name) + " WHERE id = " + std::to_string(id));
+		tx.commit();
+	}
+
+	if (current.members != group.members)
+	{
+		std::sort(group.members.begin(), group.members.end());
+		std::sort(current.members.begin(), current.members.end());
+
+		std::vector<std::string> diff;
+		std::set_difference(
+			group.members.begin(), group.members.end(),
+			current.members.begin(), current.members.end(),
+			std::back_inserter(diff));
+		
+		for (auto& member: diff)
+		{
+			pqxx::transaction tx(db_connection::instance());
+			tx.exec0(
+				"INSERT INTO auth.members (group_id, user_id) "
+				"VALUES(" + std::to_string(id) + ", " +
+							"(SELECT id FROM auth.users WHERE username = " + tx.quote(member) + "))");
+			tx.commit();
+		}
+
+		diff.clear();
+
+		std::set_difference(
+			current.members.begin(), current.members.end(),
+			group.members.begin(), group.members.end(),
+			std::back_inserter(diff));
+
+		for (auto& member: diff)
+		{
+			pqxx::transaction tx(db_connection::instance());
+			tx.exec0(
+				"DELETE FROM auth.members WHERE group_id = " + tx.quote(id) +
+					" AND user_id = (SELECT id FROM auth.users WHERE username = " + tx.quote(member) + ")");
+			tx.commit();
+		}
+	}
+}
+
+void user_service::delete_group(uint32_t id)
+{
+	pqxx::transaction tx(db_connection::instance());
+	tx.exec0("DELETE FROM auth.groups WHERE id = " + std::to_string(id));
+	tx.commit();
+}
+
+// --------------------------------------------------------------------
+
 bool user_service::isValidUsername(const std::string& name)
 {
 	std::regex rx("^[a-z0-9_]{4,30}$", std::regex::icase);
@@ -218,6 +346,7 @@ user_admin_html_controller::user_admin_html_controller()
 	: zeep::http::html_controller("/admin")
 {
 	mount("users", &user_admin_html_controller::handle_user_admin);
+	mount("groups", &user_admin_html_controller::handle_group_admin);
 }
 
 void user_admin_html_controller::handle_user_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
@@ -232,6 +361,23 @@ void user_admin_html_controller::handle_user_admin(const zeep::http::request& re
 	get_template_processor().create_reply_from_template("admin-users.html", sub, reply);
 }
 
+void user_admin_html_controller::handle_group_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	zeep::http::scope sub(scope);
+
+	zeep::json::element users;
+	auto u = user_service::instance().get_all_users();
+	to_element(users, u);
+	sub.put("users", users);
+
+	zeep::json::element groups;
+	auto g = user_service::instance().get_all_groups();
+	to_element(groups, g);
+	sub.put("groups", groups);
+
+	get_template_processor().create_reply_from_template("admin-groups.html", sub, reply);
+}
+
 // --------------------------------------------------------------------
 
 user_admin_rest_controller::user_admin_rest_controller()
@@ -241,6 +387,11 @@ user_admin_rest_controller::user_admin_rest_controller()
 	map_get_request("user/{id}", &user_admin_rest_controller::retrieve_user, "id");
 	map_put_request("user/{id}", &user_admin_rest_controller::update_user, "id", "user");
 	map_delete_request("user/{id}", &user_admin_rest_controller::delete_user, "id");
+
+	map_post_request("group", &user_admin_rest_controller::create_group, "group");
+	map_get_request("group/{id}", &user_admin_rest_controller::retrieve_group, "id");
+	map_put_request("group/{id}", &user_admin_rest_controller::update_group, "id", "group");
+	map_delete_request("group/{id}", &user_admin_rest_controller::delete_group, "id");
 }
 
 uint32_t user_admin_rest_controller::create_user(const user& user)
@@ -261,5 +412,25 @@ void user_admin_rest_controller::update_user(uint32_t id, const user& user)
 void user_admin_rest_controller::delete_user(uint32_t id)
 {
 	user_service::instance().delete_user(id);
+}
+
+uint32_t user_admin_rest_controller::create_group(const group& group)
+{
+	return user_service::instance().create_group(group);
+}
+
+group user_admin_rest_controller::retrieve_group(uint32_t id)
+{
+	return user_service::instance().retrieve_group(id);
+}
+
+void user_admin_rest_controller::update_group(uint32_t id, const group& group)
+{
+	user_service::instance().update_group(id, group);
+}
+
+void user_admin_rest_controller::delete_group(uint32_t id)
+{
+	user_service::instance().delete_group(id);
 }
 

@@ -16,12 +16,16 @@
 
 struct group
 {
+	uint32_t id;
 	std::string name;
+	std::vector<std::string> members;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
 	{
-		ar & zeep::name_value_pair("name", name);
+		ar & zeep::name_value_pair("id", id)
+		   & zeep::name_value_pair("name", name)
+		   & zeep::name_value_pair("members", members);
 	}
 };
 
@@ -72,11 +76,17 @@ class user_service : public zeep::http::user_service
 
 	bool user_exists(const std::string& username);
 	std::vector<user> get_all_users();
+	std::vector<group> get_all_groups();
 
 	uint32_t create_user(const user& user);
 	user retrieve_user(uint32_t id);
 	void update_user(uint32_t id, const user& user);
 	void delete_user(uint32_t id);
+
+	uint32_t create_group(const group& group);
+	group retrieve_group(uint32_t id);
+	void update_group(uint32_t id, group group);
+	void delete_group(uint32_t id);
 
 	static bool isValidUsername(const std::string& name);
 	static bool isValidPassword(const std::string& password);
@@ -94,6 +104,7 @@ class user_admin_html_controller : public zeep::http::html_controller
 	user_admin_html_controller();
 
 	void handle_user_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
+	void handle_group_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
 };
 
 // --------------------------------------------------------------------
@@ -107,4 +118,9 @@ class user_admin_rest_controller : public zeep::http::rest_controller
 	user retrieve_user(uint32_t id);
 	void update_user(uint32_t id, const user& user);
 	void delete_user(uint32_t id);
+
+	uint32_t create_group(const group& group);
+	group retrieve_group(uint32_t id);
+	void update_group(uint32_t id, const group& group);
+	void delete_group(uint32_t id);
 };
