@@ -586,6 +586,7 @@ class ScreenHtmlController : public zh::html_controller
 	{
 		mount("{,index,index.html}", &ScreenHtmlController::welcome);
 		mount("{css,scripts,fonts,images}/", &ScreenHtmlController::handle_file);
+		mount("favicon.ico", &ScreenHtmlController::handle_file);
 	}
 
 	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
