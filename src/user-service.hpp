@@ -9,27 +9,48 @@
 
 #include <zeep/http/security.hpp>
 #include <zeep/nvp.hpp>
+#include <zeep/http/html-controller.hpp>
+#include <zeep/http/rest-controller.hpp>
+
+// --------------------------------------------------------------------
+
+struct group
+{
+	std::string name;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long version)
+	{
+		ar & zeep::name_value_pair("name", name);
+	}
+};
 
 // --------------------------------------------------------------------
 
 struct user
 {
+	uint32_t id;
 	std::string username;
 	std::string firstname;
 	std::string lastname;
 	std::string email;
+	std::optional<std::string> password;
 	bool active;
 	bool admin;
+	std::vector<group> groups;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
 	{
-		ar & zeep::name_value_pair("username", username)
+		ar & zeep::name_value_pair("id", id)
+		   & zeep::name_value_pair("username", username)
 		   & zeep::name_value_pair("firstname", firstname)
 		   & zeep::name_value_pair("lastname", lastname)
 		   & zeep::name_value_pair("email", email)
 		   & zeep::name_value_pair("active", active)
-		   & zeep::name_value_pair("admin", admin);
+		   & zeep::name_value_pair("password", password)
+		   & zeep::name_value_pair("admin", admin)
+		   & zeep::name_value_pair("groups", groups);
 	}
 };
 
@@ -51,19 +72,39 @@ class user_service : public zeep::http::user_service
 
 	bool user_exists(const std::string& username);
 	std::vector<user> get_all_users();
-	user get_user(const std::string& username);
 
-	void create_user(const std::string& username, const std::string& firstname, const std::string& lastname,
-		const std::string& email, const std::string& password, bool active, bool admin);
-	void update_user(const std::string& username, const std::string& firstname, const std::string& lastname,
-		const std::string& email, const std::string& password, bool active, bool admin);
-	void delete_user(const std::string& username);
+	uint32_t create_user(const user& user);
+	user retrieve_user(uint32_t id);
+	void update_user(uint32_t id, const user& user);
+	void delete_user(uint32_t id);
 
 	static bool isValidUsername(const std::string& name);
 	static bool isValidPassword(const std::string& password);
 	static bool isValidEmail(const std::string& email);
 
   private:
-
 	user_service();
+};
+
+// --------------------------------------------------------------------
+
+class user_admin_html_controller : public zeep::http::html_controller
+{
+  public:
+	user_admin_html_controller();
+
+	void handle_user_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
+};
+
+// --------------------------------------------------------------------
+
+class user_admin_rest_controller : public zeep::http::rest_controller
+{
+  public:
+	user_admin_rest_controller();
+
+	uint32_t create_user(const user& user);
+	user retrieve_user(uint32_t id);
+	void update_user(uint32_t id, const user& user);
+	void delete_user(uint32_t id);
 };

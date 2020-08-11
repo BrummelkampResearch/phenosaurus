@@ -7,6 +7,7 @@
 
 #include <zeep/nvp.hpp>
 
+#include "screen-service.hpp"
 #include "bowtie.hpp"
 
 // --------------------------------------------------------------------
@@ -151,20 +152,6 @@ struct Region
 enum class Direction
 {
 	Sense, AntiSense, Both
-};
-
-// --------------------------------------------------------------------
-
-enum class ScreenType
-{
-	Unspecified,
-
-	IntracellularPhenotype,
-	SyntheticLethal,
-
-	// abreviated synonyms
-	IP = IntracellularPhenotype,
-	SL = SyntheticLethal
 };
 
 // --------------------------------------------------------------------

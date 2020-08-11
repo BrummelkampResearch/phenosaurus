@@ -81,6 +81,7 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(OBJDIR)/screen-analyzer.o \
 	$(OBJDIR)/screendata.o \
 	$(OBJDIR)/screenserver.o \
+	$(OBJDIR)/screen-service.o \
 	$(OBJDIR)/user-service.o \
 	$(OBJDIR)/utils.o
 	

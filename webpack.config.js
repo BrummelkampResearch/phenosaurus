@@ -20,7 +20,7 @@ module.exports = {
 		// 'compare2': SCRIPTS + "compare2.js",
 		// 'compare-sbs': SCRIPTS + "compare-sbs.js",
 
-		// 'admin-user': SCRIPTS + "admin-user.js",
+		'admin-user': SCRIPTS + "admin-user.js",
 		// 'admin-group': SCRIPTS + "admin-group.js",
 		// 'admin-genome': SCRIPTS + "admin-genome.js",
 		// 'admin-screen': SCRIPTS + "admin-screen.js",

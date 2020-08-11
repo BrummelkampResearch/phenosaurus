@@ -592,5 +592,9 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	server->add_controller(new SLScreenRestController(screenDir));
 	server->add_controller(new SLScreenHtmlController(screenDir));
 
+	// admin
+	server->add_controller(new user_admin_rest_controller());
+	server->add_controller(new user_admin_html_controller());
+
 	return server;
 }
