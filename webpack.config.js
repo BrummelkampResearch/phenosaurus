@@ -92,7 +92,7 @@ module.exports = {
 				'css/**/*',
 				'scripts/**/*',
 				'fonts/**/*',
-				'images/*'
+				'!images'
 			]
 		}),
 		new webpack.ProvidePlugin({

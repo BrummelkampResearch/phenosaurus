@@ -1,7 +1,6 @@
 node_modules
 docroot/css/
 docroot/fonts/
-docroot/images/
 docroot/scripts/
 make.config
 screen-analyzer
