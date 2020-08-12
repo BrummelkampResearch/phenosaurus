@@ -32,14 +32,14 @@ enum class ScreenType
 
 struct screen
 {
-    std::string name;
-    ScreenType type;
+	std::string name;
+	ScreenType type;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
 	{
 		ar & zeep::name_value_pair("name", name)
-           & zeep::name_value_pair("type", type);
+					 & zeep::name_value_pair("type", type);
 	}
 };
 
@@ -48,13 +48,13 @@ struct screen
 class screen_service
 {
   public:
-    static screen_service& instance();
+	static screen_service& instance();
 
-    std::vector<screen> get_all_screens() const;
-    std::vector<screen> get_all_screens_for_type(ScreenType type) const;
-    std::vector<screen> get_all_screens_for_user(const user& user) const;
-    std::vector<screen> get_all_screens_for_user_and_type(const user& user, ScreenType type) const;
+	std::vector<screen> get_all_screens() const;
+	std::vector<screen> get_all_screens_for_type(ScreenType type) const;
+	std::vector<screen> get_all_screens_for_user(const user& user) const;
+	std::vector<screen> get_all_screens_for_user_and_type(const user& user, ScreenType type) const;
 
   private:
-    screen_service();
+	screen_service();
 };

@@ -77,8 +77,8 @@ module.exports = {
 					{
 						loader: 'file-loader',
 						options: {
-							outputPath: "images",
-							publicPath: "../images/"
+							outputPath: "css/images",
+							publicPath: "images/"
 						},
 					},
 				]
@@ -88,11 +88,12 @@ module.exports = {
 
 	plugins: [
 		new CleanWebpackPlugin({
+			dry: true,
 			cleanOnceBeforeBuildPatterns: [
 				'css/**/*',
+				'css/*',
 				'scripts/**/*',
-				'fonts/**/*',
-				'!images'
+				'fonts/**/*'
 			]
 		}),
 		new webpack.ProvidePlugin({

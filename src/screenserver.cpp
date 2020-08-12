@@ -238,7 +238,7 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 	sub.put("page", "fishtail");
 
 	using json = zeep::json::element;
-	json screens, screenInfo;
+	json screens;
 
 	std::vector<std::string> screenNames;
 	for (auto i = fs::directory_iterator(mScreenDir); i != fs::directory_iterator(); ++i)
@@ -247,18 +247,6 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 			continue;
 		
 		screenNames.push_back(i->path().filename().string());
-
-		json info;
-
-		for (auto a = fs::directory_iterator(i->path()); a != fs::directory_iterator(); ++a)
-		{
-			if (not a->is_directory())
-				continue;
-			
-			info["assembly"].push_back(a->path().filename().string());
-		}
-
-		screenInfo[screenNames.back()] = info;
 	}
 
 	std::sort(screenNames.begin(), screenNames.end(), [](auto& a, auto& b) -> bool
@@ -287,7 +275,6 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 	}
 
 	sub.put("screens", screens);
-	sub.put("screenInfo", screenInfo);
 
 	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
 }
@@ -572,7 +559,6 @@ void SLScreenHtmlController::screen(const zh::request& request, const zh::scope&
 	// }
 
 	sub.put("screenReplicates", screens);
-	// sub.put("screenInfo", screenInfo);
 
 	get_template_processor().create_reply_from_template("sl-screen.html", sub, reply);
 }
