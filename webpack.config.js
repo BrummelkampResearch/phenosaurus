@@ -24,7 +24,7 @@ module.exports = {
 		'admin-group': SCRIPTS + "admin-group.js",
 		'admin-screen': SCRIPTS + "admin-screen.js",
 		// 'admin-genome': SCRIPTS + "admin-genome.js",
-		// 'user-screen': SCRIPTS + "user-screen.js"
+		'user-screen': SCRIPTS + "user-screen.js"
 	},
 
 	output: {

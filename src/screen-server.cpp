@@ -518,14 +518,53 @@ class ScreenHtmlController : public zh::html_controller
 		mount("{,index,index.html}", &ScreenHtmlController::welcome);
 		mount("{css,scripts,fonts,images}/", &ScreenHtmlController::handle_file);
 		mount("favicon.ico", &ScreenHtmlController::handle_file);
+		mount("screens", &ScreenHtmlController::screens);
 	}
 
 	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void screens(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 };
 
 void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
 	return get_template_processor().create_reply_from_template("index", scope, reply);
+}
+
+void ScreenHtmlController::screens(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	auto credentials = get_credentials();
+	auto username = credentials["username"].as<std::string>();
+
+	using json = zeep::json::element;
+	json screens;
+
+	auto s = screen_service::instance().get_all_screens();
+	s.erase(std::remove_if(s.begin(), s.end(), [username](auto& si) { return si.scientist != username; }), s.end());
+
+	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+	{
+		std::string& a = sa.name;
+		std::string& b = sb.name;
+
+		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+		bool result;
+		if (r.first == a.end() and r.second == b.end())
+			result = false;
+		else if (r.first == a.end())
+			result = true;
+		else if (r.second == b.end())
+			result = false;
+		else
+			result = std::tolower(*r.first) < std::tolower(*r.second);
+		return result;
+	});
+
+	to_element(screens, s);
+
+	zh::scope sub(scope);
+	sub.put("screens", screens);
+
+	return get_template_processor().create_reply_from_template("user-screens", sub, reply);
 }
 
 // --------------------------------------------------------------------
