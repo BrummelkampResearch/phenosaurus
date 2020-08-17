@@ -92,6 +92,9 @@ class IPScreenRestController : public zh::rest_controller
 std::vector<IPDataPoint> IPScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
+	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
 	fs::path screenDir = mScreenDir / screen;
 
 	if (not fs::is_directory(screenDir))
@@ -112,6 +115,9 @@ std::vector<IPDataPoint> IPScreenRestController::screenDataEx(const std::string&
 Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
+	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
 	const int kWindowSize = 4000;
 
 	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
@@ -327,6 +333,9 @@ std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& s
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, uint16_t replicate,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
+	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
 	fs::path screenDir = mScreenDir / screen;
 
 	if (not fs::is_directory(screenDir))
@@ -370,6 +379,9 @@ std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& s
 Region SLScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
+	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
 	// const int kWindowSize = 4000;
 
 	// auto transcripts = loadTranscripts(assembly, gene, kWindowSize);

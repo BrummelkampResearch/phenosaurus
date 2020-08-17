@@ -125,6 +125,8 @@ ScreenData::ScreenData(const fs::path& dir, const screen& info)
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
+#pragma warning "store bowtie version in manifest, along with parameters"
+
 	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(trimLength);
 	if (not fs::exists(assemblyDataPath))
 		fs::create_directories(assemblyDataPath);
