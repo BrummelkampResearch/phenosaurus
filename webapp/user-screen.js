@@ -1,8 +1,10 @@
 import ScreenEditor from './screen-editor';
 
+/* global context_name */
+
 window.addEventListener("load", () => {
 
-	const editor = new ScreenEditor('ajax/screen');
+	const editor = new ScreenEditor(`${context_name}/screen`);
 
 	Array.from(document.getElementsByClassName("edit-screen-btn"))
 		.forEach(btn => btn.addEventListener("click", () => editor.editScreen(btn.dataset.id)));

@@ -187,3 +187,99 @@ void screen_admin_rest_controller::delete_screen(const std::string& name)
 {
 	screen_service::instance().delete_screen(name);
 }
+
+
+// --------------------------------------------------------------------
+
+screen_user_html_controller::screen_user_html_controller()
+	: zeep::http::html_controller("/")
+{
+	mount("screens", &screen_user_html_controller::handle_screen_user);
+}
+
+void screen_user_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	zeep::http::scope sub(scope);
+
+	zeep::json::element users;
+	auto u = user_service::instance().get_all_users();
+	to_element(users, u);
+	sub.put("users", users);
+
+	zeep::json::element groups;
+	auto g = user_service::instance().get_all_groups();
+	to_element(groups, g);
+	sub.put("groups", groups);
+
+	auto credentials = get_credentials();
+	auto username = credentials["username"].as<std::string>();
+
+	using json = zeep::json::element;
+	json screens;
+
+	auto s = screen_service::instance().get_all_screens();
+	s.erase(std::remove_if(s.begin(), s.end(), [username](auto& si) { return si.scientist != username; }), s.end());
+
+	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+	{
+		std::string& a = sa.name;
+		std::string& b = sb.name;
+
+		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+		bool result;
+		if (r.first == a.end() and r.second == b.end())
+			result = false;
+		else if (r.first == a.end())
+			result = true;
+		else if (r.second == b.end())
+			result = false;
+		else
+			result = std::tolower(*r.first) < std::tolower(*r.second);
+		return result;
+	});
+
+	to_element(screens, s);
+	sub.put("screens", screens);
+
+	get_template_processor().create_reply_from_template("user-screens.html", sub, reply);
+}
+
+// --------------------------------------------------------------------
+
+screen_user_rest_controller::screen_user_rest_controller()
+	: zeep::http::rest_controller("/")
+{
+	// map_post_request("screen", &screen_user_rest_controller::create_screen, "screen");
+	map_get_request("screen/{id}", &screen_user_rest_controller::retrieve_screen, "id");
+	map_put_request("screen/{id}", &screen_user_rest_controller::update_screen, "id", "screen");
+	map_delete_request("screen/{id}", &screen_user_rest_controller::delete_screen, "id");
+}
+
+// uint32_t screen_user_rest_controller::create_screen(const screen& screen)
+// {
+// 	return screen_service::instance().create_screen(screen);
+// }
+
+screen screen_user_rest_controller::retrieve_screen(const std::string& name)
+{
+	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
+	return screen_service::instance().retrieve_screen(name);
+}
+
+void screen_user_rest_controller::update_screen(const std::string& name, const screen& screen)
+{
+	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
+	screen_service::instance().update_screen(name, screen);
+}
+
+void screen_user_rest_controller::delete_screen(const std::string& name)
+{
+	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
+	screen_service::instance().delete_screen(name);
+}

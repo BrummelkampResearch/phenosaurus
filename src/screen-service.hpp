@@ -66,3 +66,26 @@ class screen_admin_rest_controller : public zeep::http::rest_controller
 	void update_screen(const std::string& name, const screen& screen);
 	void delete_screen(const std::string& name);
 };
+
+// --------------------------------------------------------------------
+
+class screen_user_html_controller : public zeep::http::html_controller
+{
+  public:
+	screen_user_html_controller();
+
+	void handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
+};
+
+// --------------------------------------------------------------------
+
+class screen_user_rest_controller : public zeep::http::rest_controller
+{
+  public:
+	screen_user_rest_controller();
+
+	// uint32_t create_screen(const screen& screen);
+	screen retrieve_screen(const std::string& name);
+	void update_screen(const std::string& name, const screen& screen);
+	void delete_screen(const std::string& name);
+};
