@@ -78,6 +78,15 @@ class user_service : public zeep::http::user_service
 	std::vector<user> get_all_users();
 	std::vector<group> get_all_groups();
 
+	// --------------------------------------------------------------------
+	
+	std::vector<std::string> get_groups_for_screen(const std::string& screen_name);
+	void set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups);
+	// std::vector<std::string> screens_for_user(const )
+	bool allow_screen_for_user(const std::string& screen, const std::string& user);
+
+	// --------------------------------------------------------------------
+	
 	uint32_t create_user(const user& user);
 	user retrieve_user(uint32_t id);
 	void update_user(uint32_t id, const user& user);

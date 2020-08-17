@@ -26,6 +26,19 @@ enum class ScreenType
 
 // --------------------------------------------------------------------
 
+struct screen_file
+{
+	std::string name;
+	std::string source;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long version)
+	{
+		ar & zeep::name_value_pair("name", name)
+		   & zeep::name_value_pair("source", source);
+	}
+};
+
 struct screen
 {
 	std::string name;
@@ -36,6 +49,8 @@ struct screen
 	bool induced, knockout, ignore;
 	std::string scientist;
 	boost::posix_time::ptime created;
+	std::vector<std::string> groups;
+	std::vector<screen_file> files;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -49,7 +64,9 @@ struct screen
 		   & zeep::name_value_pair("knockout", knockout)
 		   & zeep::name_value_pair("ignore", ignore)
 		   & zeep::name_value_pair("scientist", scientist)
-		   & zeep::name_value_pair("created", created);
+		   & zeep::name_value_pair("groups", groups)
+		   & zeep::name_value_pair("created", created)
+		   & zeep::name_value_pair("files", files);
 	}
 };
 

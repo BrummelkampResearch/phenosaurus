@@ -31,7 +31,41 @@ db_connection::db_connection(const std::string& connectionString)
 
 pqxx::connection& db_connection::get_connection()
 {
+	static std::mutex sLock;
+	std::unique_lock lock(sLock);
+
 	if (not s_connection)
+	{
 		s_connection.reset(new pqxx::connection(m_connection_string));
+
+		for (auto& psf: m_prepared_statement_factories)
+			psf(*s_connection);
+	}
+
 	return *s_connection;
+}
+
+void db_connection::reset()
+{
+	s_connection.reset();
+}
+
+// --------------------------------------------------------------------
+
+bool db_error_handler::create_error_reply(const zeep::http::request& req, std::exception_ptr eptr, zeep::http::reply& reply)
+{
+	try
+	{
+		std::rethrow_exception(eptr);
+	}
+	catch (pqxx::broken_connection& ex)
+	{
+		std::cerr << ex.what() << std::endl;
+		db_connection::instance().reset();
+	}
+	catch (...)
+	{
+	}
+	
+	return false;
 }

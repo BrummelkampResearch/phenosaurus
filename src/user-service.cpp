@@ -26,6 +26,20 @@ user_service& user_service::instance()
 
 user_service::user_service()
 {
+	db_connection::instance().register_prepared_statement_factory([](pqxx::connection& connection)
+	{
+		connection.prepare("screen-is-allowed-for-user",
+			R"(
+				SELECT 1 FROM auth.users a, screens b
+				 WHERE b.name = $1 and a.username = $2
+				   AND (b.scientist_id = a.id OR EXISTS
+				   	(SELECT * FROM auth.screen_permissions p
+					  WHERE p.screen_id = b.id AND p.group_id IN
+					   (SELECT group_id FROM auth.members WHERE user_id = a.id
+					     UNION
+						SELECT id FROM auth.groups WHERE name = 'public')))
+		)");
+	});
 }
 
 zeep::http::user_details user_service::load_user(const std::string& username) const
@@ -111,6 +125,89 @@ bool user_service::user_exists(const std::string& username)
 
 	return row[0].as<int>() == 1;
 }
+
+// --------------------------------------------------------------------
+
+std::vector<std::string> user_service::get_groups_for_screen(const std::string& screen_name)
+{
+	pqxx::transaction tx(db_connection::instance());
+
+	std::vector<std::string> groups;
+
+	for (auto const& [name]: tx.stream<std::string>(
+		"SELECT g.name as name FROM auth.groups g LEFT JOIN auth.screen_permissions p ON g.id = p.group_id WHERE p.screen_id = (SELECT id FROM screens WHERE name = " + tx.quote(screen_name) + ")"))
+	{
+		groups.emplace_back(name);
+	}
+
+	tx.commit();
+
+	return groups;
+}
+
+void user_service::set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups)
+{
+	auto current = get_groups_for_screen(screen_name);
+
+	uint32_t screenID;
+
+	{
+		pqxx::transaction tx(db_connection::instance());
+		screenID = tx.query_value<uint32_t>("SELECT id FROM screens WHERE name = " + tx.quote(screen_name));
+		tx.commit();
+	}
+
+	if (current != groups)
+	{
+		std::sort(groups.begin(), groups.end());
+		std::sort(current.begin(), current.end());
+
+		std::vector<std::string> diff;
+		std::set_difference(
+			groups.begin(), groups.end(),
+			current.begin(), current.end(),
+			std::back_inserter(diff));
+		
+		for (auto& group: diff)
+		{
+			pqxx::transaction tx(db_connection::instance());
+			tx.exec0(
+				"INSERT INTO auth.screen_permissions (screen_id, group_id) "
+				"VALUES(" + std::to_string(screenID) + ", " +
+							"(SELECT id FROM auth.groups WHERE name = " + tx.quote(group) + "))");
+			tx.commit();
+		}
+
+		diff.clear();
+
+		std::set_difference(
+			current.begin(), current.end(),
+			groups.begin(), groups.end(),
+			std::back_inserter(diff));
+
+		for (auto& group: diff)
+		{
+			pqxx::transaction tx(db_connection::instance());
+			tx.exec0(
+				"DELETE FROM auth.screen_permissions WHERE screen_id = " + tx.quote(screenID) +
+					" AND group_id = (SELECT id FROM auth.groups WHERE name = " + tx.quote(group) + ")");
+			tx.commit();
+		}
+	}
+}
+
+bool user_service::allow_screen_for_user(const std::string& screen, const std::string& user)
+{
+	pqxx::transaction tx(db_connection::instance());
+	auto r = tx.exec_prepared("screen-is-allowed-for-user", screen, user);
+
+	bool allowed = r.empty() == false;
+	tx.commit();
+
+	return allowed;
+}
+
+// --------------------------------------------------------------------
 
 user user_service::retrieve_user(uint32_t id)
 {

@@ -1,0 +1,176 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat" [
+<!ENTITY nbsp "&#160;">
+]>
+<html lang="en" xmlns:th="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head>
+	<meta name="generator" content="HTML Tidy for HTML5 for Linux version 5.6.0" />
+	<title></title>
+</head>
+
+<body>
+	<div th:fragment="screens(admin)">
+		<div class="container-fluid">
+			<div class="container-fluid row mt-3 mb-3">
+				<div class="col">
+					<h1>Screens</h1>
+				</div>
+				<div class="col-1"><button id="add-screen-btn" class="btn btn-primary">Add&nbsp;Screen</button></div>
+			</div>
+			<table class="table table-sm table-striped">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Description</th>
+						<th>Cell line</th>
+						<th style="text-align: center">Induced</th>
+						<th style="text-align: center">Knockout</th>
+						<th style="text-align: center">Ignored</th>
+						<th colspan="2">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:each="screen: ${screens}">
+						<td th:text="${screen.name}"></td>
+						<td th:text="${screen.type}"></td>
+						<td th:text="${screen.description}"></td>
+						<td th:text="${screen.cell_line}"></td>
+						<td style="text-align: center"><i th:if="${screen.induced}" class="fa fa-check"></i></td>
+						<td style="text-align: center"><i th:if="${screen.knockout}" class="fa fa-check"></i></td>
+						<td style="text-align: center"><i th:if="${screen.ignored}" class="fa fa-check"></i></td>
+						<td class="edit-screen-btn" th:attr="data-id=${screen.name}">
+							<i class="fa fa-edit"></i></td>
+						<td><span class="delete-screen-btn" th:attr="data-id=${screen.name},data-name=${screen.name}"
+								th:if="${admin or screen.scientist == user.id}"><i class="fa fa-trash"></i></span></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+		<!-- The screen editor dialog: -->
+		<div id="screen-dialog" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="dialog-label">
+			<div class="modal-dialog modal-lg" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="dialog-label">Screen editor</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+								aria-hidden="true">×</span></button>
+					</div>
+					<div class="modal-body">
+						<form id="screen-edit-form" th:action="@{/admin-ajax/screen}" method="post"
+							enctype="multipart/form-data" name="screen-edit-form"><input type="hidden" name="id"
+								value="" />
+							<div class="form-row">
+								<div class="col-sm-6">
+									<div class="form-row">
+										<div class="form-group col-sm-12"><label for="name">Name</label>
+											<input class="form-control" id="name" maxlength="254" name="name"
+												placeholder="Name" type="text" required="" /></div>
+										<div class="form-group col-sm-12"><label for="screen-type">Screen
+												Type</label> <select class="form-control" id="screen-type">
+												<option value="ip">Intracellular Phenotype</option>
+												<option value="sl">Synthetic Lethal</option>
+												<!-- <option value="ps">Positive Selection</option> -->
+											</select></div>
+										<div class="form-group col-sm-12"><label for="cell-line">Cell
+												line</label> <input class="form-control" id="cell-line" maxlength="254"
+												name="cell-line" placeholder="Cell line" type="text" required="" />
+										</div>
+										<div class="form-group col-sm-12"><label for="genome">Reference
+												Genome</label> <select class="form-control" id="genome">
+												<option th:each="genome: ${genomes}" th:value="${genome.id}"
+													th:text="${genome.name}"></option>
+											</select></div>
+										<div class="col-sm-12">
+											<div class="form-group row col-sm-12">
+												<div class="form-check col-sm-4"><input class="form-check-input"
+														id="id-induced" name="induced" type="checkbox" /> <label
+														for="id-induced">Induced</label></div>
+												<div class="form-check col-sm-4"><input class="form-check-input"
+														id="knockout" name="knockout" type="checkbox" /> <label
+														for="knockout">Knockout</label></div>
+												<div class="form-check col-sm-4"><input class="form-check-input"
+														id="id-ignored" name="ignored" type="checkbox" /> <label
+														for="id-ignored">Inactive</label></div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="col-sm-6">
+									<div th:switch="${admin}">
+										<div th:case="${true}" class="form-group col-sm-12"><label
+												for="scientist">Scientist</label> <select class="form-control"
+												id="scientist">
+												<option th:each="user: ${users}" th:value="${user.username}"
+													th:text="${user.username}"></option>
+											</select></div>
+										<div th:case="${false}" class="form-group col-sm-12"><label
+												for="scientist2">Scientist</label> <input type="text"
+												disabled="disabled" class="form-control" id="scientist2"
+												th:value="${user.username}" /></div>
+									</div>
+									<div class="form-group col-sm-12"><label for="selected-groups">Groups</label>
+										<div class="border" style="height: 16em; overflow-y: auto">
+											<table class="table table-sm" id="selected-groups">
+												<tbody>
+													<tr th:each="group: ${groups}">
+														<td><input type="checkbox" th:name="${group.name}"
+																class="group-checkbox"
+																th:id="${'grp-' + group.name}" />
+															<label class="mb-0 ml-1"
+																th:text="${group.name}"
+																th:for="${'grp-' + group.name}"></label></td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="form-group"><label for="description">Description</label>
+								<textarea class="form-control" id="description" maxlength="254" name="description"
+									placeholder="Description" rows="2" form="screen-edit-form" required=""></textarea>
+							</div>
+							<div class="form-group"><label for="long-description">Long
+									Description</label>
+								<textarea class="form-control" id="long-description" maxlength="254"
+									name="long-description" placeholder="Description" rows="3" form="screen-edit-form"
+									required=""></textarea></div>
+							<div class="form-group"><label for="sequence-ids">Sequence
+									IDs</label>
+								<textarea class="form-control" id="sequence-ids" maxlength="254" name="sequence-ids"
+									placeholder="Sequence IDs" rows="2" form="screen-edit-form" required=""></textarea>
+							</div>
+							<div class="form-group"><label for="directory">Directory</label>
+								<input class="form-control" id="directory" maxlength="254" name="directory"
+									placeholder="Directory" type="text" required="" /></div>
+							<div class="form-group border-light" id="data-file-block">
+								<div class="row col-sm-12"><label for="data-file">Data file</label>
+									<input type="file" id="data-file" class="form-control-file col" name="dataFile"
+										required="" /> <button id="upload-datafile-btn"
+										class="btn btn-primary float-right" type="button">Upload</button></div>
+								<div class="form-row mt-3 col-sm-12">
+									<table id="uploadedFilesTbl" class="table table-sm" style="display: none">
+										<thead>
+											<tr>
+												<th>Nr</th>
+												<th>File</th>
+												<th>Data points</th>
+												<th></th>
+											</tr>
+										</thead>
+										<tbody></tbody>
+									</table>
+								</div>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer"><button id="submit-btn" type="submit" form="screen-edit-form"
+							class="btn btn-primary">Save</button></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

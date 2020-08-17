@@ -384,6 +384,8 @@ int main_update_manifests(int argc, char* const argv[])
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 
+	screen_service::init(screenDir);
+
 	// --------------------------------------------------------------------
 	
 	std::vector<std::string> vConn;
@@ -399,10 +401,36 @@ int main_update_manifests(int argc, char* const argv[])
 
 	// --------------------------------------------------------------------
 
-    auto screens = screen_service::instance().get_all_screens();
+    pqxx::work tx(db_connection::instance());
 
-    for (auto& screen: screens)
+    const zeep::value_serializer<ScreenType> s;
+
+    for (const auto[name, type, cell_line, description, long_description, ignore, scientist, created ]:
+            tx.stream<std::string, std::string, std::string, std::string, std::string, bool, std::string, std::optional<std::string>>(
+        R"(SELECT name, screen_type, cell_line, description, long_description, ignored,
+            (SELECT username FROM auth.users WHERE id = scientist_id), trim(both '"' from to_json(screen_date)::text) AS created FROM screens)"))
     {
+        screen screen;
+
+        if (type == "IP")
+            screen.type = ScreenType::IntracellularPhenotype;
+        else if (type == "SL")
+            screen.type = ScreenType::SyntheticLethal;
+        else
+            continue;
+
+        screen.name = name;
+	    screen.cell_line = cell_line;
+	    screen.description = description;
+	    screen.long_description = long_description;
+	    screen.ignore = ignore;
+	    screen.scientist = scientist;
+
+        if (created)
+    	    screen.created = zeep::value_serializer<boost::posix_time::ptime>::from_string(*created);
+		else
+			screen.created = boost::posix_time::second_clock::local_time();
+
 		fs::path sdir = screenDir / screen.name;
 		if (not fs::is_directory(sdir))
 		{
@@ -416,16 +444,28 @@ int main_update_manifests(int argc, char* const argv[])
 			continue;
 		}
 
+		for (auto di = fs::directory_iterator(sdir); di != fs::directory_iterator(); ++di)
+		{
+			if (di->is_directory())
+				continue;
+			
+			auto name = di->path().filename();
+			if (name.extension() == ".gz")
+				name = name.stem();
+			if (name.extension() != ".fastq")
+				continue;
+			
+			std::error_code ec;
+			auto cp = fs::canonical(di->path(), ec);
+			if (ec)
+				cp = di->path();
+
+			screen.files.emplace_back(screen_file{name.stem(), cp });
+		}
+
         try
         {
-			std::ofstream manifest(sdir / "manifest.json");
-			if (not manifest.is_open())
-				throw std::runtime_error("Could not create manifest file in " + sdir.string());
-
-			zeep::json::element jInfo;
-			zeep::json::to_element(jInfo, screen);
-			manifest << jInfo;
-			manifest.close();
+			screen_service::instance().update_screen(screen.name, screen);
 
             std::cout << "Updated " << screen.name << std::endl;
         }

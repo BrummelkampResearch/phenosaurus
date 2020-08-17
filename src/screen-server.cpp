@@ -12,9 +12,11 @@
 
 #include "screen-server.hpp"
 #include "screen-data.hpp"
+#include "screen-service.hpp"
 #include "fisher.hpp"
 #include "utils.hpp"
 #include "user-service.hpp"
+#include "db-connection.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -215,11 +217,56 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 
 // --------------------------------------------------------------------
 
-class IPScreenHtmlController : public zh::html_controller
+class ScreenHtmlControllerBase : public zh::html_controller
+{
+  protected:
+	ScreenHtmlControllerBase(const std::string& path, ScreenType type)
+		: zh::html_controller(path), mType(type) {}
+	
+	void init_scope(zh::scope& scope)
+	{
+		auto credentials = get_credentials();
+
+		using json = zeep::json::element;
+		json screens;
+
+		auto s = has_role("ADMIN") ?
+			screen_service::instance().get_all_screens_for_type(mType) :
+			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
+
+		std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+		{
+			std::string& a = sa.name;
+			std::string& b = sb.name;
+
+			auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+			bool result;
+			if (r.first == a.end() and r.second == b.end())
+				result = false;
+			else if (r.first == a.end())
+				result = true;
+			else if (r.second == b.end())
+				result = false;
+			else
+				result = std::tolower(*r.first) < std::tolower(*r.second);
+			return result;
+		});
+
+		to_element(screens, s);
+		scope.put("screens", screens);
+	}
+
+	ScreenType mType;
+};
+
+// --------------------------------------------------------------------
+
+
+class IPScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
 	IPScreenHtmlController(const fs::path& screenDir)
-		: zh::html_controller("ip")
+		: ScreenHtmlControllerBase("ip", ScreenType::IntracellularPhenotype)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &IPScreenHtmlController::fishtail);
@@ -234,48 +281,7 @@ class IPScreenHtmlController : public zh::html_controller
 void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
 	zh::scope sub(scope);
-
 	sub.put("page", "fishtail");
-
-	using json = zeep::json::element;
-	json screens;
-
-	std::vector<std::string> screenNames;
-	for (auto i = fs::directory_iterator(mScreenDir); i != fs::directory_iterator(); ++i)
-	{
-		if (not i->is_directory())
-			continue;
-		
-		screenNames.push_back(i->path().filename().string());
-	}
-
-	std::sort(screenNames.begin(), screenNames.end(), [](auto& a, auto& b) -> bool
-	{
-		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
-		bool result;
-		if (r.first == a.end() and r.second == b.end())
-			result = false;
-		else if (r.first == a.end())
-			result = true;
-		else if (r.second == b.end())
-			result = false;
-		else
-			result = std::tolower(*r.first) < std::tolower(*r.second);
-		return result;
-	});
-
-	for (auto& name: screenNames)
-	{
-		json screen{
-			{ "id", name },
-			{ "name", name }
-		};
-
-		screens.push_back(screen);
-	}
-
-	sub.put("screens", screens);
-
 	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
 }
 
@@ -469,11 +475,11 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 }
 
 
-class SLScreenHtmlController : public zh::html_controller
+class SLScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
 	SLScreenHtmlController(const fs::path& screenDir)
-		: zh::html_controller("sl")
+		: ScreenHtmlControllerBase("sl", ScreenType::SyntheticLethal)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &SLScreenHtmlController::screen);
@@ -487,80 +493,7 @@ class SLScreenHtmlController : public zh::html_controller
 
 void SLScreenHtmlController::screen(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	const std::regex rx(R"(replicate-(\d)\.fastq(?:\.gz)?)");
-
-	zh::scope sub(scope);
-
-	using json = zeep::json::element;
-	json screens;
-
-	std::vector<std::string> screenNames;
-	for (auto i = fs::directory_iterator(mScreenDir); i != fs::directory_iterator(); ++i)
-	{
-		if (not i->is_directory())
-			continue;
-		
-		auto sd = ScreenData::load(i->path());
-		if (sd->get_type() != ScreenType::SyntheticLethal)
-			continue;
-		
-		auto screenName = i->path().filename().string();
-
-		json info{
-			{ "id", screens.size() + 1 },
-			{ "name", screenName }
-		};
-
-		std::vector<int> replicates;
-
-		for (auto a = fs::directory_iterator(i->path()); a != fs::directory_iterator(); ++a)
-		{
-			if (a->is_directory())
-				continue;
-			
-			std::smatch m;
-			std::string filename = a->path().filename().string();
-			if (not std::regex_match(filename, m, rx))
-				continue;
-			
-			replicates.push_back(std::stoi(m[1].str()));
-		}
-
-		std::sort(replicates.begin(), replicates.end());
-		
-		info["replicates"] = replicates;
-
-		screens.push_back(std::move(info));
-	}
-
-	// std::sort(screenNames.begin(), screenNames.end(), [](auto& a, auto& b) -> bool
-	// {
-	// 	auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
-	// 	bool result;
-	// 	if (r.first == a.end() and r.second == b.end())
-	// 		result = false;
-	// 	else if (r.first == a.end())
-	// 		result = true;
-	// 	else if (r.second == b.end())
-	// 		result = false;
-	// 	else
-	// 		result = std::tolower(*r.first) < std::tolower(*r.second);
-	// 	return result;
-	// });
-
-	// for (auto& name: screenNames)
-	// {
-	// 	json screen{
-	// 		{ "id", name },
-	// 		{ "name", name }
-	// 	};
-
-	// 	screens.push_back(screen);
-	// }
-
-	sub.put("screenReplicates", screens);
-
-	get_template_processor().create_reply_from_template("sl-screen.html", sub, reply);
+	get_template_processor().create_reply_from_template("sl-screen.html", scope, reply);
 }
 
 // --------------------------------------------------------------------
@@ -603,6 +536,9 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 		{ Direction::Both, 		"both" }
 	});
 
+	// init screen_service
+	screen_service::init(screenDir);
+
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });
@@ -610,6 +546,8 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	sc->add_rule("/", {});
 
 	auto server = new zh::server(sc, docroot);
+
+	server->add_error_handler(new db_error_handler());
 
 	server->set_context_name(context_name);
 
@@ -624,6 +562,8 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	// admin
 	server->add_controller(new user_admin_rest_controller());
 	server->add_controller(new user_admin_html_controller());
+	server->add_controller(new screen_admin_rest_controller());
+	server->add_controller(new screen_admin_html_controller());
 
 	return server;
 }

@@ -205,6 +205,14 @@ class SLScreenPlot extends ScreenPlot {
 		}
 	}
 
+	getOpacity() {
+		return (d) => {
+			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.geneName)) >= 0) return 1;
+			if (d.significant(this.pvCutOff)) return this.presentationMode ? 1 : 0.66;
+			return 0.16;
+		};
+	}
+
 	process(data) {
 		this.screens.set(0, data);
 
@@ -372,7 +380,12 @@ class SLControlScreenPlot extends SLScreenPlot {
 }
 
 window.addEventListener('load', () => {
-	screenReplicates.forEach(o => screenReplicatesMap.set(o.name, o.replicates));
+	screenReplicates.forEach(o => {
+		const replicates = o.files
+			.filter(f => f.name.startsWith('replicate-'))
+			.map(f => f.name.substr('replicate-'.length, 1));
+		screenReplicatesMap.set(o.name, replicates)
+	});
 
 	const svg = d3.select("#plot-screen");
 	const plot = new SLScreenPlot(svg);
