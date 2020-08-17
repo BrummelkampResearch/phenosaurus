@@ -1,7 +1,5 @@
-- enforce security (group access to screens)
 - gene-finder
 - find similar
 - compare screens
-- admin interface
 - uniqueness
-- manifest
+- manifest -- expand with bowtie/map info
