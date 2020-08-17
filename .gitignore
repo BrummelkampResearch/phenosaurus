@@ -17,3 +17,5 @@ GNUmakefile
 src/config.hpp
 config.status
 config.log
+*.csv
+

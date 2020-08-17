@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 
+#include <pwd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -121,6 +122,20 @@ void showVersionInfo()
 {
 	std::cout << "Version: " << gVersionNr << ", Date: " << gVersionDate << std::endl;
 }
+
+// --------------------------------------------------------------------
+
+std::string get_user_name()
+{
+	struct passwd pwd;
+	struct passwd *result;
+	char buf[16384];
+	
+	int s = getpwuid_r(getuid(), &pwd, buf, sizeof(buf), &result);
+
+	return result ? result->pw_name : "";
+}
+
 // --------------------------------------------------------------------
 
 struct progress_impl

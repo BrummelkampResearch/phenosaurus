@@ -16,10 +16,11 @@
 #include <boost/thread.hpp>
 
 #include <zeep/value-serializer.hpp>
+#include <zeep/json/parser.hpp>
 
 #include "sq/squeeze.hpp"
 
-#include "screendata.hpp"
+#include "screen-data.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
 #include "binom.hpp"
@@ -83,11 +84,42 @@ void checkIsFastQ(fs::path infile)
 
 // --------------------------------------------------------------------
 
-ScreenData::ScreenData(std::filesystem::path dir)
+ScreenData::ScreenData(const fs::path& dir)
 	: mDataDir(dir)
 {
 	if (not fs::exists(dir))
 		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
+	
+	fs::path manifest = dir / "manifest.json";
+	if (not fs::exists(manifest))
+		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
+
+	std::ifstream manifestFile(manifest);
+	if (not manifestFile.is_open())
+		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
+
+	zeep::json::element jInfo;
+	zeep::json::parse_json(manifestFile, jInfo);
+
+	zeep::json::from_element(jInfo, mInfo);
+}
+
+ScreenData::ScreenData(const fs::path& dir, const screen& info)
+	: mDataDir(dir), mInfo(info)
+{
+	if (fs::exists(dir))
+		throw std::runtime_error("Screen already exists");
+
+	fs::create_directories(dir);
+
+	std::ofstream manifest(dir / "manifest.json");
+	if (not manifest.is_open())
+		throw std::runtime_error("Could not create manifest file in " + dir.string());
+
+	zeep::json::element jInfo;
+	zeep::json::to_element(jInfo, info);
+	manifest << jInfo;
+	manifest.close();
 }
 
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
@@ -97,7 +129,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	if (not fs::exists(assemblyDataPath))
 		fs::create_directories(assemblyDataPath);
 	
-	for (auto fi = std::filesystem::directory_iterator(mDataDir); fi != std::filesystem::directory_iterator(); ++fi)
+	for (auto fi = fs::directory_iterator(mDataDir); fi != fs::directory_iterator(); ++fi)
 	{
 		if (fi->is_directory())
 			continue;
@@ -351,12 +383,19 @@ void ScreenData::compress_map(const std::string& assembly, unsigned readLength, 
 
 // --------------------------------------------------------------------
 
-IPScreenData::IPScreenData(std::filesystem::path dir)
+IPScreenData::IPScreenData(const fs::path& dir)
 	: ScreenData(dir)
+{
+	if (mInfo.type != screen_type)
+		throw std::runtime_error("This screen is not of the specified type");
+}
+
+IPScreenData::IPScreenData(const fs::path& dir, const screen& info)
+	: ScreenData(dir, info)
 {
 }
 
-void IPScreenData::addFiles(std::filesystem::path low, std::filesystem::path high)
+void IPScreenData::addFiles(fs::path low, fs::path high)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(low))
@@ -628,12 +667,19 @@ std::vector<IPDataPoint> IPScreenData::dataPoints(const std::vector<Transcript>&
 
 // --------------------------------------------------------------------
 
-SLScreenData::SLScreenData(std::filesystem::path dir)
+SLScreenData::SLScreenData(const fs::path& dir)
 	: ScreenData(dir)
+{
+	if (mInfo.type != screen_type)
+		throw std::runtime_error("This screen is not of the specified type");
+}
+
+SLScreenData::SLScreenData(const fs::path& dir, const screen& info)
+	: ScreenData(dir, info)
 {
 }
 
-void SLScreenData::addFile(std::filesystem::path file)
+void SLScreenData::addFile(fs::path file)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(file))
@@ -658,7 +704,7 @@ void SLScreenData::addFile(std::filesystem::path file)
 			continue;
 		}
 
-		std::filesystem::path to;
+		fs::path to;
 		if (ext == ".gz" or ext == ".bz2")
 			to = mDataDir / (name + ext.string());
 		else
@@ -979,64 +1025,63 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 // --------------------------------------------------------------------
 
-ScreenData* ScreenData::create(ScreenType type, std::filesystem::path dir)
+std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 {
-	if (fs::exists(dir))
-		throw std::runtime_error("Screen already exists");
+	if (not fs::exists(dir))
+		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
+	
+	fs::path manifest = dir / "manifest.json";
+	if (not fs::exists(manifest))
+		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
 
-	fs::create_directories(dir);
+	std::ifstream manifestFile(manifest);
+	if (not manifestFile.is_open())
+		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
 
-	switch (type)
+	zeep::json::element jInfo;
+	zeep::json::parse_json(manifestFile, jInfo);
+
+	screen info;
+	zeep::json::from_element(jInfo, info);
+
+	switch (info.type)
 	{
 		case ScreenType::IntracellularPhenotype:
-			return new IPScreenData(dir);
+			return std::make_unique<IPScreenData>(dir);
 		
 		case ScreenType::SyntheticLethal:
-			return new SLScreenData(dir);
+			return std::make_unique<SLScreenData>(dir);
 		
-		case ScreenType::Unspecified:
+		default:
 			throw std::logic_error("should not be called with unspecified");
 	}
 }
 
-std::tuple<std::unique_ptr<ScreenData>,ScreenType> ScreenData::create(std::filesystem::path dir)
-{
-	// perhaps we should improve this...
+	// // perhaps we should improve this...
 
-	bool hasLow = false, hasHigh = false, hasRepl[4] = {};
+	// bool hasLow = false, hasHigh = false, hasRepl[4] = {};
 
-	for (std::filesystem::directory_iterator iter(dir); iter != std::filesystem::directory_iterator(); ++iter)
-	{
-		if (iter->is_directory())
-			continue;
+	// for (fs::directory_iterator iter(dir); iter != fs::directory_iterator(); ++iter)
+	// {
+	// 	if (iter->is_directory())
+	// 		continue;
 		
-		auto name = iter->path().filename();
-		if (name.extension() == ".gz")
-			name = name.stem();
-		if (name.extension() != ".fastq")
-			continue;
+	// 	auto name = iter->path().filename();
+	// 	if (name.extension() == ".gz")
+	// 		name = name.stem();
+	// 	if (name.extension() != ".fastq")
+	// 		continue;
 		
-		name = name.stem();
+	// 	name = name.stem();
 		
-		if (name == "low")
-			hasLow = true;
-		else if (name == "high")
-			hasHigh = true;
-		else if (name.string().length() == 11 and name.string().compare(0, 10, "replicate-") == 0)
-		{
-			char d = name.string().back();
-			if (d >= '1' and d <= '4')
-				hasRepl[d - '1'] = true;
-		}
-	}
-
-	if (hasLow and hasHigh)
-		return { std::unique_ptr<ScreenData>(new IPScreenData(dir)), ScreenType::IntracellularPhenotype };
-	
-	if (hasRepl[0])
-		return { std::unique_ptr<ScreenData>(new SLScreenData(dir)), ScreenType::SyntheticLethal };
-	
-	return { std::unique_ptr<ScreenData>{}, ScreenType::Unspecified };
-
-	// throw std::runtime_error("Incomplete screen, missing data files");
-}
+	// 	if (name == "low")
+	// 		hasLow = true;
+	// 	else if (name == "high")
+	// 		hasHigh = true;
+	// 	else if (name.string().length() == 11 and name.string().compare(0, 10, "replicate-") == 0)
+	// 	{
+	// 		char d = name.string().back();
+	// 		if (d >= '1' and d <= '4')
+	// 			hasRepl[d - '1'] = true;
+	// 	}
+	// }

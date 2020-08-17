@@ -6,9 +6,52 @@
 #include <filesystem>
 
 #include <zeep/nvp.hpp>
+#include <zeep/json/element.hpp> 
 
-#include "screen-service.hpp"
 #include "bowtie.hpp"
+
+// --------------------------------------------------------------------
+
+enum class ScreenType
+{
+	Unspecified,
+
+	IntracellularPhenotype,
+	SyntheticLethal,
+
+	// abreviated synonyms
+	IP = IntracellularPhenotype,
+	SL = SyntheticLethal
+};
+
+// --------------------------------------------------------------------
+
+struct screen
+{
+	std::string name;
+	ScreenType type;
+	std::string cell_line;
+	std::string description;
+	std::string long_description;
+	bool induced, knockout, ignore;
+	std::string scientist;
+	boost::posix_time::ptime created;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long version)
+	{
+		ar & zeep::name_value_pair("name", name)
+		   & zeep::name_value_pair("type", type)
+		   & zeep::name_value_pair("cell_line", cell_line)
+		   & zeep::name_value_pair("description", description)
+		   & zeep::name_value_pair("long_description", long_description)
+		   & zeep::name_value_pair("induced", induced)
+		   & zeep::name_value_pair("knockout", knockout)
+		   & zeep::name_value_pair("ignore", ignore)
+		   & zeep::name_value_pair("scientist", scientist)
+		   & zeep::name_value_pair("created", created);
+	}
+};
 
 // --------------------------------------------------------------------
 
@@ -163,15 +206,7 @@ class ScreenData
 	ScreenData& operator=(const ScreenData&) = delete;
 	virtual ~ScreenData() = default;
 
-	template<typename Type>
-	static Type* create(std::filesystem::path dir)
-	{
-		return static_cast<Type*>(create(Type::screen_type, dir));
-	}
-
-	static ScreenData* create(ScreenType type, std::filesystem::path dir);
-
-	static std::tuple<std::unique_ptr<ScreenData>,ScreenType> create(std::filesystem::path dir);
+	static std::unique_ptr<ScreenData> load(const std::filesystem::path& dir);
 
 	virtual void map(const std::string& assembly, unsigned readLength,
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
@@ -180,15 +215,19 @@ class ScreenData
 	void dump_map(const std::string& assembly, unsigned readLength, const std::string& file);
 	void compress_map(const std::string& assembly, unsigned readLength, const std::string& file);
 
+	ScreenType get_type() const					{ return mInfo.type; }
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
 	void write_insertions(const std::string& assembly, unsigned readLength, const std::string& file,
 		std::vector<Insertion>& insertions);
 
-	ScreenData(std::filesystem::path dir);
+	ScreenData(const std::filesystem::path& dir);
+	ScreenData(const std::filesystem::path& dir, const screen& info);
 
 	std::filesystem::path	mDataDir;
+	screen mInfo;
 };
 
 // --------------------------------------------------------------------
@@ -198,7 +237,10 @@ class IPScreenData : public ScreenData
   public:
 	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotype;
 
-	IPScreenData(std::filesystem::path dir);
+	IPScreenData(const std::filesystem::path& dir);
+	IPScreenData(const std::filesystem::path& dir, const screen& info);
+
+	static std::unique_ptr<IPScreenData> create(const screen& info, const std::filesystem::path& dir);
 
 	void addFiles(std::filesystem::path low, std::filesystem::path high);
 
@@ -231,7 +273,10 @@ class SLScreenData : public ScreenData
   public:
 	static constexpr ScreenType screen_type = ScreenType::SyntheticLethal;
 
-	SLScreenData(std::filesystem::path dir);
+	SLScreenData(const std::filesystem::path& dir);
+	SLScreenData(const std::filesystem::path& dir, const screen& info);
+
+	static std::unique_ptr<IPScreenData> create(const screen& info, const std::filesystem::path& dir);
 
 	void addFile(std::filesystem::path file);
 

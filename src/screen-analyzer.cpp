@@ -25,8 +25,11 @@
 #include "fisher.hpp"
 #include "bowtie.hpp"
 #include "utils.hpp"
-#include "screendata.hpp"
-#include "screenserver.hpp"
+#include "screen-analyzer.hpp"
+#include "screen-creator.hpp"
+#include "screen-data.hpp"
+#include "screen-server.hpp"
+#include "screen-service.hpp"
 #include "db-connection.hpp"
 
 #include "mrsrc.h"
@@ -111,8 +114,8 @@ int usage()
 
 po::variables_map load_options(int argc, char* const argv[], const char* description,
 	std::initializer_list<po::option_description> options,
-	std::initializer_list<std::string> required = {},
-	std::initializer_list<std::string> positional = { "screen-name" })
+	std::initializer_list<std::string> required,
+	std::initializer_list<std::string> positional)
 {
 	po::options_description visible(description);
 	visible.add_options()
@@ -203,459 +206,6 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 
 // --------------------------------------------------------------------
 
-int main_create(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( create screen-name --type <screen-type> [options])",
-		{
-			{ "type", po::value<std::string>(),		"The screen type to create, should be one of 'ip' or 'sl'" },
-			{ "low", po::value<std::string>(),		"The path to the LOW FastQ file" },
-			{ "high", po::value<std::string>(),		"The path to the HIGH FastQ file" },
-			{ "replicate", po::value<std::vector<std::string>>(),
-													"The replicate file, can be specified multiple times"},
-			{ "force", new po::untyped_value(true),	"By default a screen is only created if it not already exists, use this flag to delete the old screen before creating a new." }
-		},
-		{ "screen-name", "screen-dir", "type" });
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
-
-	if (fs::exists(screenDir))
-	{
-		if (vm.count("force"))
-			fs::remove_all(screenDir);
-		else
-			throw std::runtime_error("Screen already exists, use --force to delete old screen");
-	}
-
-	auto type = zeep::value_serializer<ScreenType>::from_string(vm["type"].as<std::string>());
-	switch (type)
-	{
-		case ScreenType::IntracellularPhenotype:
-		{
-			if (not (vm.count("low") and vm.count("high")))
-				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
-
-			std::unique_ptr<IPScreenData> data(ScreenData::create<IPScreenData>(screenDir));
-
-			data->addFiles(vm["low"].as<std::string>(), vm["high"].as<std::string>());
-			break;
-		}
-
-		case ScreenType::SyntheticLethal:
-		{
-			if (vm.count("replicate") < 1)
-				throw std::runtime_error("For IP screens you should provide at least one replicate fastq file");
-
-			std::unique_ptr<SLScreenData> data(ScreenData::create<SLScreenData>(screenDir));
-
-			for (auto& replicate: vm["replicate"].as<std::vector<std::string>>())
-				data->addFile(replicate);
-			break;
-		}
-	}
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
-int main_map(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( map screen-name assembly [options])",
-		{
-			{ "bowtie-index", po::value<std::string>(),	"Bowtie index filename stem for the assembly" },
-			{ "force",	new po::untyped_value(true),	"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping." }
-		},
-		{ "screen-name", "assembly" });
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
-
-	const auto& [ data, type ] = ScreenData::create(screenDir);
-
-	if (vm.count("bowtie") == 0)
-		throw std::runtime_error("Bowtie executable not specified");
-	fs::path bowtie = vm["bowtie"].as<std::string>();
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	fs::path bowtieIndex;
-	if (vm.count("bowtie-index") != 0)
-		bowtieIndex = vm["bowtie-index"].as<std::string>();
-	else
-	{
-		if (vm.count("bowtie-index-" + assembly) == 0)
-			throw std::runtime_error("Bowtie index for assembly " + assembly + " not known and bowtie-index parameter not specified");
-		bowtieIndex = vm["bowtie-index-" + assembly].as<std::string>();
-	}
-
-	unsigned trimLength = 50;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
-	unsigned threads = 1;
-	if (vm.count("threads"))
-		threads = vm["threads"].as<unsigned>();
-
-	data->map(assembly, trimLength, bowtie, bowtieIndex, threads);
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
-int analyze_ip(po::variables_map& vm, IPScreenData& screenData)
-{
-	if (vm.count("assembly") == 0 or
-		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
-		vm.count("start") == 0 or vm.count("end") == 0 or
-		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
-	{
-		std::cerr << R"(
-Mode longest means take the longest transcript for each gene
-
-Mode collapse means, for each gene take the region between the first 
-start and last end.
-
-Start and end should be either 'cds' or 'tx' with an optional offset 
-appended. Optionally you can also specify cdsStart, cdsEnd, txStart
-or txEnd to have the start at the cdsEnd e.g.
-
-Overlap: in case of both, all genes will be added, in case of neither
-the parts with overlap will be left out.
-
-Examples:
-
-    --mode=longest --start=cds-100 --end=cds
-
-        For each gene take the longest transcript. For these we take the 
-        cdsStart minus 100 basepairs as start and cdsEnd as end. This means
-        no  3' UTR and whatever fits in the 100 basepairs of the 5' UTR.
-
-    --mode=collapse --start=tx --end=tx+1000
-
-        For each gene take the minimum txStart of all transcripts as start
-        and the maximum txEnd plus 1000 basepairs as end. This obviously
-        includes both 5' UTR and 3' UTR.
-
-)"				<< std::endl;
-		exit(vm.count("help") ? 0 : 1);
-	}
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	unsigned trimLength = 0;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
-	// -----------------------------------------------------------------------
-
-	bool cutOverlap = true;
-	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
-		cutOverlap = false;
-	
-	Mode mode;
-	if (vm["mode"].as<std::string>() == "collapse")
-		mode = Mode::Collapse;
-	else // if (vm["mode"].as<std::string>() == "longest")
-		mode = Mode::Longest;
-
-	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
-
-	// -----------------------------------------------------------------------
-
-	std::vector<Insertions> lowInsertions, highInsertions;
-
-	screenData.analyze(assembly, trimLength, transcripts, lowInsertions, highInsertions);
-
-	long lowSenseCount = 0, lowAntiSenseCount = 0;
-	for (auto& i: lowInsertions)
-	{
-		lowSenseCount += i.sense.size();
-		lowAntiSenseCount += i.antiSense.size();
-	}
-
-	long highSenseCount = 0, highAntiSenseCount = 0;
-	for (auto& i: highInsertions)
-	{
-		highSenseCount += i.sense.size();
-		highAntiSenseCount += i.antiSense.size();
-	}
-
-	// -----------------------------------------------------------------------
-	
-	std::cerr << std::endl
-			<< std::string(get_terminal_width(), '-') << std::endl
-			<< "Low: " << std::endl
-			<< " sense      : " << std::setw(10) << lowSenseCount << std::endl
-			<< " anti sense : " << std::setw(10) << lowAntiSenseCount << std::endl
-			<< "High: " << std::endl
-			<< " sense      : " << std::setw(10) << highSenseCount << std::endl
-			<< " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
-
-	Direction direction = Direction::Sense;
-	if (vm.count("direction"))
-	{
-		if (vm["direction"].as<std::string>() == "sense")
-			direction = Direction::Sense;
-		else if (vm["direction"].as<std::string>() == "antisense" or vm["direction"].as<std::string>() == "anti-sense")
-			direction = Direction::AntiSense;
-		else if (vm["direction"].as<std::string>() == "both")
-			direction = Direction::Both;
-		else
-		{
-			std::cerr << "invalid direction" << std::endl;
-			exit(1);
-		}
-	}
-
-	for (auto& dp: screenData.dataPoints(transcripts, lowInsertions, highInsertions, direction))
-	{
-		std::cout << dp.geneName << '\t'
-				<< dp.low << '\t'
-				<< dp.high << '\t'
-				<< dp.pv << '\t'
-				<< dp.fcpv << '\t'
-				<< std::log2(dp.mi) << std::endl;
-	}
-
-	return 0;
-}
-
-int analyze_sl(po::variables_map& vm, SLScreenData& screenData, SLScreenData& controlData)
-{
-	if (vm.count("assembly") == 0 or vm.count("control") == 0 or
-		((vm.count("start") == 0 or vm.count("end") == 0) and vm.count("gene-bed-file") == 0))
-	{
-		std::cerr << R"(
-Start and end should be either 'cds' or 'tx' with an optional offset 
-appended. Optionally you can also specify cdsStart, cdsEnd, txStart
-or txEnd to have the start at the cdsEnd e.g.
-)"				<< std::endl;
-		exit(vm.count("help") ? 0 : 1);
-	}
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	unsigned trimLength = 0;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
-	// -----------------------------------------------------------------------
-
-	std::vector<Transcript> transcripts;
-
-	if (vm.count("gene-bed-file"))
-		transcripts = loadTranscripts(vm["gene-bed-file"].as<std::string>());
-	else
-	{
-		transcripts = loadTranscripts(assembly, Mode::Longest, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
-		filterOutExons(transcripts);
-	}
-
-	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-	{
-		int d = a.chrom - b.chrom;
-		if (d == 0)
-			d = a.start() - b.start();
-		return d < 0;
-	});
-
-	// --------------------------------------------------------------------
-	
-	unsigned replicate = 1;
-	if (vm.count("replicate"))
-		replicate = vm["replicate"].as<unsigned short>();
-
-	unsigned groupSize = 500;
-	if (vm.count("group-size"))
-		groupSize = vm["group-size"].as<unsigned short>();
-
-#warning "make options"
-	float pvCutOff = 0.05f;
-	float binom_fdrCutOff = 0.05f;
-	float effectSize = 0.2f;
-
-	// -----------------------------------------------------------------------
-
-	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
-	{
-		std::cout << dp.geneName << '\t'
-				  << dp.sense << '\t'
-				  << dp.antisense << '\t'
-				  << dp.pv << '\t'
-				  << dp.fcpv << '\t'
-				  << dp.sense_normalized << '\t'
-				  << dp.antisense_normalized << '\t'
-				  << dp.ref_fcpv[0] << '\t'
-				  << dp.ref_pv[0] << '\t'
-				  << dp.ref_fcpv[1] << '\t'
-				  << dp.ref_pv[1] << '\t'
-				  << dp.ref_fcpv[2] << '\t'
-				  << dp.ref_pv[2] << '\t'
-				  << dp.ref_fcpv[3] << '\t'
-				  << dp.ref_pv[3] << '\t'
-				  << (dp.sense + dp.antisense) << '\t'
-				  << ((dp.sense_normalized + 1.0f) / (dp.sense_normalized + dp.antisense_normalized + 2.0f)) << std::endl;
-	}
-
-	return 0;
-}
-
-int main_analyze(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
-		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
-			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
-
-			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
-			{ "group-size",	po::value<unsigned short>(),"The group size to use for normalizing insertions counts in SL, default is 500"},
-
-			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
-			
-			{ "output",		po::value<std::string>(),	"Output file" }
-		}, { "screen-name", "assembly" });
-
-	// fail early
-	std::ofstream out;
-	if (vm.count("output"))
-	{
-		out.open(vm["output"].as<std::string>());
-		if (not out.is_open())
-			throw std::runtime_error("Could not open output file");
-	}
-
-	std::streambuf* sb = nullptr;
-	if (out.is_open())
-		sb = std::cout.rdbuf(out.rdbuf());
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-
-	const auto& [ data, type ] = ScreenData::create(screenDir / vm["screen-name"].as<std::string>());
-
-	switch (type)
-	{
-		case ScreenType::IntracellularPhenotype:
-			result = analyze_ip(vm, *static_cast<IPScreenData*>(data.get()));
-			break;
-
-		case ScreenType::SyntheticLethal:
-		{
-			SLScreenData controlScreen(screenDir / vm["control"].as<std::string>());
-			result = analyze_sl(vm, *static_cast<SLScreenData*>(data.get()), controlScreen);
-			break;
-		}
-	}
-
-	if (sb)
-		std::cout.rdbuf(sb);
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-// Write out the resulting genes as a BED file
-
-int main_refseq(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
-		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
-			// { "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
-			{ "no-exons",	new po::untyped_value(true),"Leave out exons" },
-			{ "sort",		po::value<std::string>(),	"Sort result by 'name' or 'position'"},
-			{ "output",		po::value<std::string>(),	"Output file" }
-		}, { "assembly" });
-
-	if (vm.count("assembly") == 0 or
-		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
-		vm.count("start") == 0 or vm.count("end") == 0 or
-		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
-	{
-		std::cerr << R"(
-Mode longest means take the longest transcript for each gene
-
-Mode collapse means, for each gene take the region between the first 
-start and last end.
-
-Overlap: in case of both, all genes will be added, in case of neither
-the parts with overlap will be left out.
-)"				<< std::endl;
-		exit(vm.count("help") ? 0 : 1);
-	}
-
-	// fail early
-	std::ofstream out;
-	if (vm.count("output"))
-	{
-		out.open(vm["output"].as<std::string>());
-		if (not out.is_open())
-			throw std::runtime_error("Could not open output file");
-	}
-
-	bool cutOverlap = true;
-	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
-		cutOverlap = false;
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	Mode mode;
-	if (vm["mode"].as<std::string>() == "collapse")
-		mode = Mode::Collapse;
-	else // if (vm["mode"].as<std::string>() == "longest")
-		mode = Mode::Longest;
-
-	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
-	if (vm.count("no-exons"))
-		filterOutExons(transcripts);
-	
-	if (vm.count("sort") and vm["sort"].as<std::string>() == "name")
-		std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b) { return a.name < b.name; });
-
-	std::streambuf* sb = nullptr;
-	if (out.is_open())
-		sb = std::cout.rdbuf(out.rdbuf());
-
-	for (auto& transcript: transcripts)
-	{
-		for (auto& range: transcript.ranges)
-		{
-			std::cout
-				<< transcript.chrom << '\t'
-				<< range.start << '\t'
-				<< range.end << '\t'
-				<< transcript.geneName << '\t'
-				<< 0 << '\t'
-				<< transcript.strand << std::endl;
-		}
-	}
-
-	if (sb)
-		std::cout.rdbuf(sb);
-
-	return result;
-
-	return 0;
-}
-
-// --------------------------------------------------------------------
-
 int main_server(int argc, char* const argv[])
 {
 	int result = 0;
@@ -730,7 +280,7 @@ Command should be either:
 	if (vm.count("user") != 0)
 		user = vm["user"].as<std::string>();
 	
-	std::string address = "0.0.0.0";
+	std::string address = "127.0.0.1";
 	if (vm.count("address"))
 		address = vm["address"].as<std::string>();
 
@@ -742,7 +292,7 @@ Command should be either:
 
 	if (command == "start")
 	{
-		std::cout << "starting server at " << address << ':' << port << std::endl;
+		std::cout << "starting server at http://" << address << ':' << port << '/' << std::endl;
 
 		if (vm.count("no-daemon"))
 			result = server.run_foreground(address, port);
@@ -779,7 +329,7 @@ int main_compress(int argc, char* const argv[])
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
-	const auto& [ data, type ] = ScreenData::create(screenDir);
+	auto data = ScreenData::load(screenDir);
 
 	std::string assembly = vm["assembly"].as<std::string>();
 
@@ -809,7 +359,7 @@ int main_dump(int argc, char* const argv[])
 	fs::path screenDir = vm["screen-dir"].as<std::string>();
 	screenDir /= vm["screen-name"].as<std::string>();
 
-	const auto& [ data, type ] = ScreenData::create(screenDir);
+	auto data = ScreenData::load(screenDir);
 
 	std::string assembly = vm["assembly"].as<std::string>();
 
@@ -820,6 +370,70 @@ int main_dump(int argc, char* const argv[])
 	auto file = vm["file"].as<std::string>();
 
 	data->dump_map(assembly, trimLength, file);
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
+int main_update_manifests(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( update-manifests [options])", {});
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+
+	// --------------------------------------------------------------------
+	
+	std::vector<std::string> vConn;
+	for (std::string opt: { "db-host", "db-port", "db-dbname", "db-user", "db-password" })
+	{
+		if (vm.count(opt) == 0)
+			continue;
+		
+		vConn.push_back(opt.substr(3) + "=" + vm[opt].as<std::string>());
+	}
+
+	db_connection::init(ba::join(vConn, " "));
+
+	// --------------------------------------------------------------------
+
+    auto screens = screen_service::instance().get_all_screens();
+
+    for (auto& screen: screens)
+    {
+		fs::path sdir = screenDir / screen.name;
+		if (not fs::is_directory(sdir))
+		{
+			std::cout << "Screen " << screen.name << " does not exist" << std::endl;
+			continue;
+		}
+		
+		if (fs::exists(sdir / "manifest.json"))
+		{
+			std::cout << "Manifest for " << screen.name << " already exists" << std::endl;
+			continue;
+		}
+
+        try
+        {
+			std::ofstream manifest(sdir / "manifest.json");
+			if (not manifest.is_open())
+				throw std::runtime_error("Could not create manifest file in " + sdir.string());
+
+			zeep::json::element jInfo;
+			zeep::json::to_element(jInfo, screen);
+			manifest << jInfo;
+			manifest.close();
+
+            std::cout << "Updated " << screen.name << std::endl;
+        }
+        catch (const std::exception& ex)
+        {
+            std::cerr << ex.what() << std::endl;
+        }
+    }
 
 	return result;
 }
@@ -889,8 +503,12 @@ int main(int argc, char* const argv[])
 			result = main_compress(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
-		else if (command == "help")
+		else if (command == "update-manifest")
+			result = main_update_manifests(argc - 1, argv + 1);
+		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
 			usage();
+		else if (command == "version" or command == "-v" or command == "--version")
+			showVersionInfo();
 		else
 			result = usage();
 	}

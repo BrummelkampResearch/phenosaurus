@@ -10,8 +10,8 @@
 #include <zeep/http/rest-controller.hpp>
 #include <zeep/http/login-controller.hpp>
 
-#include "screenserver.hpp"
-#include "screendata.hpp"
+#include "screen-server.hpp"
+#include "screen-data.hpp"
 #include "fisher.hpp"
 #include "utils.hpp"
 #include "user-service.hpp"
@@ -95,11 +95,11 @@ std::vector<IPDataPoint> IPScreenRestController::screenDataEx(const std::string&
 	if (not fs::is_directory(screenDir))
 		throw std::runtime_error("No such screen: " + screen);
 
-	std::unique_ptr<IPScreenData> data(new IPScreenData(screenDir));
+	IPScreenData data(screenDir);
 	
 	// -----------------------------------------------------------------------
 
-	return data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
+	return data.dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
 }
 
 // std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen)
@@ -184,7 +184,7 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	if (not fs::is_directory(screenDir))
 		throw std::runtime_error("No such screen: " + screen);
 
-	std::unique_ptr<IPScreenData> data(new IPScreenData(screenDir));
+	IPScreenData data(screenDir);
 	
 	result.insertions.assign({
 		{ "+", "high" },
@@ -194,7 +194,7 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	});
 
 	std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) = 
-		data->insertions(assembly, result.chrom, result.start, result.end);
+		data.insertions(assembly, result.chrom, result.start, result.end);
 
 	// filter
 	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
@@ -500,8 +500,8 @@ void SLScreenHtmlController::screen(const zh::request& request, const zh::scope&
 		if (not i->is_directory())
 			continue;
 		
-		const auto& [sd, type] = ScreenData::create(i->path());
-		if (type != ScreenType::SyntheticLethal)
+		auto sd = ScreenData::load(i->path());
+		if (sd->get_type() != ScreenType::SyntheticLethal)
 			continue;
 		
 		auto screenName = i->path().filename().string();

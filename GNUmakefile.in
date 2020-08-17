@@ -79,8 +79,9 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(OBJDIR)/fisher.o \
 	$(OBJDIR)/refseq.o \
 	$(OBJDIR)/screen-analyzer.o \
-	$(OBJDIR)/screendata.o \
-	$(OBJDIR)/screenserver.o \
+	$(OBJDIR)/screen-creator.o \
+	$(OBJDIR)/screen-data.o \
+	$(OBJDIR)/screen-server.o \
 	$(OBJDIR)/screen-service.o \
 	$(OBJDIR)/user-service.o \
 	$(OBJDIR)/utils.o

@@ -10,38 +10,11 @@
 #include <zeep/http/security.hpp>
 #include <zeep/nvp.hpp>
 
+#include "screen-data.hpp"
+
 // --------------------------------------------------------------------
 
 struct user;
-
-// --------------------------------------------------------------------
-
-enum class ScreenType
-{
-	Unspecified,
-
-	IntracellularPhenotype,
-	SyntheticLethal,
-
-	// abreviated synonyms
-	IP = IntracellularPhenotype,
-	SL = SyntheticLethal
-};
-
-// --------------------------------------------------------------------
-
-struct screen
-{
-	std::string name;
-	ScreenType type;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long version)
-	{
-		ar & zeep::name_value_pair("name", name)
-					 & zeep::name_value_pair("type", type);
-	}
-};
 
 // --------------------------------------------------------------------
 
