@@ -19,26 +19,31 @@
 <body>
 	<nav z:replace="~{menu :: menu}"></nav>
 
-	<input type="hidden" class="screen-id" z:each="screen: ${screens}"
-		z:attr="data-id=${screen.id}, data-name=${screen.name}" /> <input type="hidden" class="gene-id"
-		z:each="geneName: ${geneNames}" z:attr="data-id=${geneName}" />
+	<input type="hidden" class="screen-id" z:each="screen: ${screens}" z:attr="data-id=${screen.id}, data-name=${screen.name}" />
+	<input type="hidden" class="gene-id" z:each="geneName: ${geneNames}" z:attr="data-id=${geneName}" />
 
 	<div class="container-fluid mt-3">
-		<div class="missing-genes alert alert-warning alert-dismissible" z:if="${missing}"><button type="button"
-				class="close" data-dismiss="alert">×</button> <strong>Warning</strong> The
-			following gene<span z:if="${missing.size() &gt; 1}">s</span> could
-			not be found: <span z:each="gene, i: ${missing}"><span z:text="${gene + (i.last ? '.' : ', ')}"
-					z:remove="tag">.</span></span></div>
-		<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphTypeBtns"><label
-				class="btn btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off"
-					checked="checked" /> Heatmap</label>
-			<label class="btn btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off" />
-				Dotplot</label>
-			<label class="btn btn-secondary"><input type="radio" name="graphType" id="fishtail" autocomplete="off" />
-				Fishtail</label></div>
-		<br />
-		<br />
-		<div class="row">
+		<div class="missing-genes alert alert-warning alert-dismissible" z:if="${missing}">
+			<button type="button" class="close" data-dismiss="alert">&times;</button>
+			<strong>Warning</strong> The following gene<span z:if="${missing.size() &gt; 1}">s</span> could not be found:
+				<span z:each="gene, i: ${missing}"><span z:text="${gene + (i.last ? '.' : ', ')}" z:remove="tag">.</span>
+			</span>
+		</div>
+
+		<div class="row mt-3">
+			<div class="col">
+				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphTypeBtns"><label
+						class="btn btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off"
+							checked="checked" /> Heatmap</label>
+					<label class="btn btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off" />
+						Dotplot</label>
+					<label class="btn btn-secondary"><input type="radio" name="graphType" id="fishtail" autocomplete="off" />
+						Fishtail</label></div>
+			</div>
+			<div class="col" z:insert="~{gene-selection::gene-selection-dialog}"></div>
+		</div>
+
+		<div class="row mt-5">
 			<div class="col">
 				<ul id="controls">
 					<li><a href="#" id="add-gene-line"><i class="fa fa-plus"></i></a></li>

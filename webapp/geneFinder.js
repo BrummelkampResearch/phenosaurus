@@ -1,9 +1,6 @@
 import 'bootstrap';
 import 'bootstrap/js/dist/modal'
-import 'bootstrap/dist/css/bootstrap.min.css';
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'chosen-js/chosen.jquery';
-import 'bootstrap4c-chosen/dist/css/component-chosen.min.css';
 
 import $ from 'jquery';
 
@@ -14,6 +11,7 @@ import {readMyFile} from "./script";
 import ScreenPlot from "./screenPlot";
 import ScreenData from "./screenData";
 // import {showLoginDialog} from "./index";
+import {geneSelectionEditor} from './gene-selection';
 
 /* global screenType, context_name */
 
@@ -441,9 +439,12 @@ class GeneLine {
 			const geneID = geneIDs[0];
 			this.input.val(geneID);
 
+			const options = geneSelectionEditor.getOptions();
+
 			fetch(`${context_name}/${screenType}/finder/${geneID}`, {
 				method: 'post',
-				credentials: "include"
+				credentials: "include",
+				body: options
 			}).then(data => {
 				return data.json();
 			}).then(data => {

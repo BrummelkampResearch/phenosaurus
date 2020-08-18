@@ -4,82 +4,121 @@
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <body>
 
-	<div z:fragment="geneselection">
-		<h6>gene selection</h6>
-		<form name="geneSelectionForm">
-			<ul class="option-group">
-				<li>
-		
-					<div class="input-group input-group-sm mb-3">
-						<div class="input-group-prepend">
-							<span class="input-group-text" style="min-width: 4em;">Assembly</span>
+    <!-- The gene selection dialog: -->
+	<div z:fragment="gene-selection-dialog">
+		<script z:src="@{/scripts/gene-selection.js}" src="/scripts/gene-selection.js"></script>
+
+		<button class="btn btn-sm btn-secondary show-gene-selection-btn" id="show-gene-selection-btn">Select Genes</button>
+
+		<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="dialog-label" id="gene-selection-dialog">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="dialog-label">Gene selection editor</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<div z:fragment="geneselection">
+							<h6>gene selection</h6>
+							<form name="geneSelectionForm">
+								<ul class="option-group">
+									<li>
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text" style="min-width: 4em;">Assembly</span>
+											</div>
+							
+											<select class="custom-select custom-select-sm" name="assembly">
+												<option value="hg19">HG19</option>
+												<option value="hg38" selected="selected">HG38</option>
+											</select>
+										</div>
+							
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text">Mode</span>
+											</div>
+							
+											<select class="custom-select custom-select-sm" name="mode">
+												<option value="collapse" selected="selected">Collapse</option>
+												<option value="longest">Longest</option>
+											</select>
+										</div>
+							
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text">
+													<input type="checkbox" name="cut-overlap" checked="checked" />
+												</span>
+											</div>
+											<input type="text" class="form-control form-control-sm"
+												value="Remove overlapped regions" />
+										</div>
+							
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text" id="StartLabel" style="min-width: 4em;">Start</span>
+											</div>
+							
+											<select class="custom-select custom-select-sm" id="geneStartType">
+												<option value="txStart" selected="selected">tx-start</option>
+												<option value="txEnd">tx-end</option>
+												<option value="cdsStart">cds-start</option>
+												<option value="cdsEnd">cds-end</option>
+											</select>
+							
+											<input type="text" class="form-control" aria-label="Start of gene"
+												aria-describedby="StartLabel" id="geneStartOffset"
+												placeholder="offset..." />
+										</div>
+
+
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text" id="EndLabel" style="min-width: 4em;">End</span>
+											</div>
+							
+											<select class="custom-select custom-select-sm" id="geneEndType">
+												<option value="txStart">tx-start</option>
+												<option value="txEnd">tx-end</option>
+												<option value="cdsStart">cds-start</option>
+												<option value="cdsEnd" selected="selected">cds-end</option>
+											</select>
+							
+											<input type="text" class="form-control" aria-label="End of gene"
+												aria-describedby="EndLabel" id="geneEndOffset"
+												placeholder="offset..." />
+										</div>
+							
+										<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
+											<label class="btn btn-secondary active">
+												<input type="radio" name="direction" autocomplete="off"
+													value="sense" checked="checked"/>Sense
+											</label>
+							
+											<label class="btn btn-secondary">
+												<input type="radio" name="direction" value="antisense"
+													autocomplete="off"/>AntiSense
+											</label>
+							
+											<label class="btn btn-secondary">
+												<input type="radio" name="direction" value="both" autocomplete="off"/>Both
+											</label>
+										</div>
+							
+							
+									</li>
+								</ul>
+							</form>
 						</div>
-		
-						<select class="custom-select custom-select-sm" name="assembly">
-							<option value="hg19">HG19</option>
-							<option value="hg38" selected="selected">HG38</option>
-						</select>
 					</div>
-		
-					<div class="input-group input-group-sm mb-3">
-						<div class="input-group-prepend">
-							<span class="input-group-text">Mode</span>
-						</div>
-		
-						<select class="custom-select custom-select-sm" name="mode">
-							<option value="collapse" selected="selected">Collapse</option>
-							<option value="longest">Longest</option>
-						</select>
-					</div>
-		
-					<div class="input-group input-group-sm mb-3">
-						<div class="input-group-prepend">
-							<span class="input-group-text">
-								<input type="checkbox" name="cut-overlap" checked="checked" />
-							</span>
-						</div>
-						<input type="text" class="form-control form-control-sm"
-							value="Remove overlapped regions" />
-					</div>
-		
-					<div class="input-group input-group-sm mb-3" z:each="se: ${{'Start', 'End'}}">
-						<div class="input-group-prepend">
-							<span class="input-group-text" z:id="|${se}Label|" style="min-width: 4em;"
-								z:text="${se}"></span>
-						</div>
-		
-						<select class="custom-select custom-select-sm" z:id="|gene${se}Type|">
-							<option value="txStart" z:selected="${se == 'Start'}">tx-start</option>
-							<option value="txEnd">tx-end</option>
-							<option value="cdsStart">cds-start</option>
-							<option value="cdsEnd" z:selected="${se == 'End'}">cds-end</option>
-						</select>
-		
-						<input type="text" class="form-control" z:aria-label="|${se} of gene|"
-							z:aria-describedby="|${se}Label|" z:id="|gene${se}Offset|"
-							placeholder="offset..." />
-					</div>
-		
-					<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
-						<label class="btn btn-secondary active">
-							<input type="radio" name="direction" autocomplete="off"
-								   value="sense" checked="checked"/>Sense
-						</label>
-		
-						<label class="btn btn-secondary">
-							<input type="radio" name="direction" value="antisense"
-								   autocomplete="off"/>AntiSense
-						</label>
-		
-						<label class="btn btn-secondary">
-							<input type="radio" name="direction" value="both" autocomplete="off"/>Both
-						</label>
-					</div>
-		
-		
-				</li>
-			</ul>
-		</form>
+					<!-- <div class="modal-footer">
+						<button type="submit" form="geneSelectionForm" class="btn btn-primary">Set</button></div> -->
+				</div>
+			</div>
+		</div>
 	</div>
 
 </body>
