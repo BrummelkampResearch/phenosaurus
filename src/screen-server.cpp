@@ -78,6 +78,9 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
 			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
+		map_post_request("similar/{gene}", &IPScreenRestController::find_similar,
+			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off", "zscore-cut-off");
+
 		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
 
@@ -91,6 +94,10 @@ class IPScreenRestController : public zh::rest_controller
 	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
+
+	std::vector<similar_data_point> find_similar(const std::string& gene, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+		float pvCutOff, float zscoreCutOff);
 
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
@@ -127,6 +134,14 @@ std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std:
 {
 	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_gene(gene);
+}
+
+std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string& gene, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+	float pvCutOff, float zscoreCutOff)
+{
+	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->find_similar(gene, pvCutOff, zscoreCutOff);
 }
 
 // std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,

@@ -7,7 +7,7 @@ import * as d3 from 'd3';
 
 import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
-import ScreenPlot, { highlightedGenes } from "./screenPlot";
+import ScreenPlot, { pvCutOff, highlightedGenes } from "./screenPlot";
 
 const neutral = "#aaa", positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;
@@ -36,7 +36,7 @@ class ScreenPlotRegular extends ScreenPlot {
 		if (this.graphType === 'unique')
 		{
 			const options = this.getOptions();
-			options.append("pv-cut-off", this.pvCutOff);
+			options.append("pv-cut-off", pvCutOff);
 			data.loadUnique(options)
 				.then(() => {
 					this.recolorGenes(this.uniqueScale);
@@ -52,18 +52,18 @@ class ScreenPlotRegular extends ScreenPlot {
 		return (d) => {
 			const colors = d.values
 				.map(d => {
-					if (d.fcpv >= this.pvCutOff && highlightedGenes.has(d.geneName))
+					if (d.fcpv >= pvCutOff && highlightedGenes.has(d.geneName))
 						return "highlight";
 
 					switch (this.graphType) {
 						case 'regular':
-							return d.fcpv >= this.pvCutOff ? neutral : d.mi < 1 ? negative : positive;
+							return d.fcpv >= pvCutOff ? neutral : d.mi < 1 ? negative : positive;
 						case 'high':
-							return d.rank >= this.rankRange[1] - cutOff ? high : (d.fcpv >= this.pvCutOff ? neutral : notHighLow);
+							return d.rank >= this.rankRange[1] - cutOff ? high : (d.fcpv >= pvCutOff ? neutral : notHighLow);
 						case 'low':
-							return d.rank <= /*this.rankRange[0] +*/ cutOff ? low : (d.fcpv >= this.pvCutOff ? neutral : notHighLow);
+							return d.rank <= /*this.rankRange[0] +*/ cutOff ? low : (d.fcpv >= pvCutOff ? neutral : notHighLow);
 						case 'unique':
-							return d.fcpv >= (this.pvCutOff || this.uniqueScale == null) ? neutral : this.uniqueScale(d.unique);
+							return d.fcpv >= (pvCutOff || this.uniqueScale == null) ? neutral : this.uniqueScale(d.unique);
 					}
 				})
 				.sort()
@@ -86,7 +86,7 @@ class ScreenPlotRegular extends ScreenPlot {
 			const data = this.screens.values().next().value;
 
 			const options = this.getOptions();
-			options.append("pv-cut-off", this.pvCutOff);
+			options.append("pv-cut-off", pvCutOff);
 			await data.loadUnique(options);
 		}
 
@@ -157,8 +157,8 @@ class ScreenPlotRegular extends ScreenPlot {
 						});
 					};
 
-					fillTable($("#positive-regulators"), data.filter(d => d.fcpv < this.pvCutOff && d.mi < 1).sort((a, b) => a.mi - b.mi));
-					fillTable($("#negative-regulators"), data.filter(d => d.fcpv < this.pvCutOff && d.mi > 1).sort((a, b) => b.mi - a.mi));
+					fillTable($("#positive-regulators"), data.filter(d => d.fcpv < pvCutOff && d.mi < 1).sort((a, b) => a.mi - b.mi));
+					fillTable($("#negative-regulators"), data.filter(d => d.fcpv < pvCutOff && d.mi > 1).sort((a, b) => b.mi - a.mi));
 
 					plotTitle.removeClass("plot-status-loading").addClass("plot-status-loaded");
 

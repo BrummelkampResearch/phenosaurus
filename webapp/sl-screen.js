@@ -206,7 +206,7 @@ class SLScreenPlot extends ScreenPlot {
 	getOpacity() {
 		return (d) => {
 			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.geneName)) >= 0) return 1;
-			if (d.significant(this.pvCutOff)) return this.presentationMode ? 1 : 0.66;
+			if (d.significant(pvCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
 	}

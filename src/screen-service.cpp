@@ -163,6 +163,186 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 	return {};
 }
 
+std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff)
+{
+	size_t geneCount = m_transcripts.size(), screenCount = m_screens.size(), dataCount = geneCount * screenCount;
+
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	if (gi == m_transcripts.end())
+		return {};
+
+	size_t queryGeneIx = gi - m_transcripts.begin();
+
+	std::vector<similar_data_point> result;
+
+	for (auto negative: { false, true })
+	{
+		auto distance = [&](int geneIx)
+		{
+			size_t a_ix = queryGeneIx;
+			const auto* a = &m_data[a_ix];
+			size_t b_ix = geneIx;
+			const auto* b = &m_data[b_ix];
+
+			long double sum = 0;
+			for (size_t i = 0; i < screenCount; ++i)
+			{
+				float miQ, miT;
+
+				miQ = a[i * geneCount].mi;
+				miT = b[i * geneCount].mi;
+
+				if (negative)
+					sum += (miQ + miT) * (miQ + miT);
+				else
+					sum += (miQ - miT) * (miQ - miT);
+			}
+
+			return static_cast<double>(sqrt(sum));
+		};
+
+		std::vector<similar_data_point> hits;
+		hits.reserve(geneCount);
+		
+		double distanceSum = 0;
+
+		for (size_t g_ix = 0; g_ix < geneCount; ++g_ix)
+		{
+			double d = distance(g_ix);
+
+			hits.push_back(similar_data_point{ m_transcripts[g_ix].geneName, static_cast<float>(d), 0.f, negative });
+
+			distanceSum += d;
+		}
+
+		double averageDistance = distanceSum / geneCount;
+		double sumSq = accumulate(hits.begin(), hits.end(), 0.0, [averageDistance](double s, auto& h) { return s + (h.distance - averageDistance) * (h.distance - averageDistance); });
+		double stddev = sqrt(sumSq / (geneCount - 1));
+
+		for (auto& hit: hits)
+			hit.zscore = (averageDistance - hit.distance) / stddev;
+
+		hits.erase(remove_if(hits.begin(), hits.end(),
+			[zscoreCutOff, averageDistance](auto hit) { return hit.distance > averageDistance or hit.zscore < zscoreCutOff; }),
+			hits.end());
+
+		sort(hits.begin(), hits.end());
+
+		result.insert(result.end(), hits.begin(), hits.end());
+	}
+
+	return result;
+}
+
+// vector<GeneQuery::hit> GeneQuery::find_similar(const string& gene, const string& genome, float pvCutOff, float zscoreCutOff)
+// {
+// 	int genomeID = get_genome_id(genome);
+// 	int geneID = get_gene_id(gene, genomeID);
+
+// 	vector<int> gene_detail_ids, screen_ids, geneIndex, screenIndex;
+// 	tie(gene_detail_ids, screen_ids, geneIndex, screenIndex) = load_data(genomeID, pvCutOff);
+
+// 	if (geneID >= geneIndex.size())
+// 		throw runtime_error("gene ID " + to_string(geneID) + " is out of range");
+// 	auto queryGeneIx = geneIndex[geneID];
+
+// 	pqxx::transaction<> tx(m_connection);
+
+// 	// load mutational index data
+// 	size_t geneCount = gene_detail_ids.size(), screenCount = screen_ids.size(), dataCount = geneCount * screenCount;
+// 	vector<float> data(dataCount);
+
+// 	size_t n = 0;
+
+// 	for (auto r: tx.exec(
+// 		"SELECT a.screen_id, a.gene_details_id, a.mi"
+// 		" FROM ips_data_points a"
+// 		" LEFT JOIN gene_details b ON a.gene_details_id = b.id"
+// 		" LEFT JOIN screens c ON a.screen_id = c.id"
+// 		" WHERE a.fcpv <= " + to_string(pvCutOff) +
+// 		" AND b.genome_id = " + to_string(genomeID) +
+// 		" AND c.ignored = FALSE"
+// 		))
+// 	{
+// 		int s_ix = screenIndex[r[0].as<int>()];
+// 		int g_ix = geneIndex[r[1].as<int>()];
+
+// 		int ix = g_ix * screenCount + s_ix;
+// 		assert(static_cast<size_t>(ix) < data.size());
+
+// 		float mi = log2(r[2].as<float>());
+
+// 		data[ix] = mi;
+
+// 		++n;
+// 	}
+// 	tx.commit();
+
+// 	vector<hit> result;
+
+// 	for (auto negative: { false, true })
+// 	{
+// 		auto distance = [&](int geneIx)
+// 		{
+// 			size_t a_ix = queryGeneIx * screenCount;
+// 			const auto* a = &data[a_ix];
+// 			size_t b_ix = geneIx * screenCount;
+// 			const auto* b = &data[b_ix];
+
+// 			long double sum = 0;
+// 			for (size_t i = 0; i < screenCount; ++i)
+// 			{
+// 				float miQ, miT;
+
+// 				miQ = a[i];
+// 				miT = b[i];
+
+// 				if (negative)
+// 					sum += (miQ + miT) * (miQ + miT);
+// 				else
+// 					sum += (miQ - miT) * (miQ - miT);
+// 			}
+
+// 			return static_cast<double>(sqrt(sum));
+// 		};
+
+// 		vector<hit> hits;
+// 		hits.reserve(geneCount);
+		
+// 		double distanceSum = 0;
+
+// 		for (size_t g_ix = 0; g_ix < geneCount; ++g_ix)
+// 		{
+// 			double d = distance(g_ix);
+
+// 			hits.push_back({ gene_detail_ids[g_ix], d, negative });
+
+// 			distanceSum += d;
+// 		}
+
+// 		double averageDistance = distanceSum / geneCount;
+// 		double sumSq = accumulate(hits.begin(), hits.end(), 0.0, [averageDistance](double s, auto& h) { return s + (h.dist - averageDistance) * (h.dist - averageDistance); });
+// 		double stddev = sqrt(sumSq / (geneCount - 1));
+
+// 		for (auto& hit: hits)
+// 			hit.zscore = (averageDistance - hit.dist) / stddev;
+
+// 		hits.erase(remove_if(hits.begin(), hits.end(),
+// 			[zscoreCutOff, averageDistance](auto hit) { return hit.dist > averageDistance or hit.zscore < zscoreCutOff; }),
+// 			hits.end());
+
+// 		sort(hits.begin(), hits.end());
+
+// 		result.insert(result.end(), hits.begin(), hits.end());
+// 	}
+
+// 	for (auto& hit: result)
+// 		hit.geneName = get_gene_name(hit.geneID);
+
+// 	return result;
+// }
+
+
 // --------------------------------------------------------------------
 
 std::unique_ptr<screen_service> screen_service::s_instance;

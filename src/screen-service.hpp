@@ -98,6 +98,25 @@ struct gene_finder_data_point
 	}
 };
 
+struct similar_data_point
+{
+	std::string gene;
+	float distance;
+	float zscore;
+	bool anti;
+
+	bool operator<(const similar_data_point& h) const { return distance < h.distance; }
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("gene", gene)
+		   & zeep::make_nvp("distance", distance)
+		   & zeep::make_nvp("zscore", zscore)
+		   & zeep::make_nvp("anti", anti);
+	}
+};
+
 class ip_screen_data_cache : public screen_data_cache
 {
   public:
@@ -116,6 +135,7 @@ class ip_screen_data_cache : public screen_data_cache
 	std::vector<ip_data_point> data_points(const std::string& screen);
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
 	std::vector<gene_finder_data_point> find_gene(const std::string& gene);
+	std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
 
   private:
 
