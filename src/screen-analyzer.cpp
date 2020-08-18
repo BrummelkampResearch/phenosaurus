@@ -468,6 +468,8 @@ int main_update_manifests(int argc, char* const argv[])
 		screens.push_back(screen);
 	}
 
+	tx.commit();
+
 	for (auto& screen: screens)
 	{
         try
