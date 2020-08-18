@@ -405,6 +405,8 @@ int main_update_manifests(int argc, char* const argv[])
 
     const zeep::value_serializer<ScreenType> s;
 
+	std::vector<screen_info> screens;
+
     for (const auto[name, type, cell_line, description, long_description, ignore, scientist, created ]:
             tx.stream<std::string, std::string, std::string, std::string, std::string, bool, std::string, std::optional<std::string>>(
         R"(SELECT name, screen_type, cell_line, description, long_description, ignored,
@@ -463,6 +465,11 @@ int main_update_manifests(int argc, char* const argv[])
 			screen.files.emplace_back(screen_file{name.stem(), cp });
 		}
 
+		screens.push_back(screen);
+	}
+
+	for (auto& screen: screens)
+	{
         try
         {
 			screen_service::instance().update_screen(screen.name, screen);
