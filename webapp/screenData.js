@@ -74,38 +74,30 @@ export default class ScreenData {
 			.map(d => new Dot(d.key, d.values));
 	}
 
-	loadUnique(pvCutOff) {
+	loadUnique(options) {
 		return new Promise((resolve, reject) => {
 			if (this.geneColours != null) {
 				resolve(null);
 				return;
 			}
 
-			$(".screen-name").text(this.screenName);
-			let plotTitle = $(".plot-title");
-			if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
-				reject('already loading');
-			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
-
-			fetch(`${context_name}ip/unique/${this.screenID}&pvCutOff=${pvCutOff}`, { credentials: "include" })
-				.then(data => {
-					if (data.ok)
-						return data.json();
-					if (data.status == 403)
-						throw "invalid-credentials";
-				})
-				.then(data => {
-
-					this.geneColours = new Map(data.map(d => [d.gene, d.colour]));
-					this.data.forEach(d => d.unique = this.geneColours.get(d.geneID));
-
-					plotTitle.removeClass("plot-status-loading").addClass("plot-status-loaded");
-					resolve(null);
-				})
-				.catch(err => {
-					plotTitle.removeClass("plot-status-loading").addClass("plot-status-failed");
-					return reject(err);
-				});
+			fetch(`${context_name}ip/unique/${this.screenID}`,
+			{
+				method: "post",
+				credentials: "include",
+				body: options
+			}).then(data => {
+				if (data.ok)
+					return data.json();
+				if (data.status == 403)
+					throw "invalid-credentials";
+			}).then(data => {
+				this.geneColours = new Map(data.map(d => [d.gene, d.colour]));
+				this.data.forEach(d => d.unique = this.geneColours.get(d.geneID));
+				resolve(null);
+			}).catch(err => {
+				return reject(err);
+			});
 		});
 	}
 }

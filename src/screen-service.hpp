@@ -19,15 +19,26 @@
 class screen_data_cache
 {
   public:
-	screen_data_cache(const std::string& assembly,
+	screen_data_cache(const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 	virtual ~screen_data_cache();
 
+	bool is_for(const std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd) const
+	{
+		return m_assembly == assembly and m_trim_length == trim_length and
+			m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
+	}
+
   protected:
 
-
+	std::string m_assembly;
+	short m_trim_length;
+	Mode m_mode;
+	bool m_cutOverlap;
+	std::string m_geneStart;
+	std::string m_geneEnd;
 	std::vector<Transcript> m_transcripts;
-
 };
 
 struct ip_data_point
@@ -39,7 +50,6 @@ struct ip_data_point
 	float mi;
 	int low;
 	int high;
-	int unique_color;
 	int rank;
 
 	template<typename Archive>
@@ -52,20 +62,58 @@ struct ip_data_point
 		   & zeep::make_nvp("mi", mi)
 		   & zeep::make_nvp("low", low)
 		   & zeep::make_nvp("high", high)
-		   & zeep::make_nvp("rank", rank)
-		   & zeep::make_nvp("uniqueColor", unique_color);
+		   & zeep::make_nvp("rank", rank);
 	}
 };
 
-class ip_screen_data_cache
+struct gene_uniqueness
+{
+	int gene_id;
+	int color;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("gene", gene_id)
+		   & zeep::make_nvp("colour", color);
+	}
+};
+
+
+class ip_screen_data_cache : public screen_data_cache
 {
   public:
-	ip_screen_data_cache(const std::string& assembly,
+	ip_screen_data_cache(const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
+	~ip_screen_data_cache();
+
+	bool is_for(std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		Direction direction) const
+	{
+		return screen_data_cache::is_for(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
+	}
 
 	std::vector<ip_data_point> data_points(const std::string& screen);
+	std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
 
+  private:
+
+	struct data_point
+	{
+		float		pv;
+		float		fcpv;
+		float		mi;
+		uint32_t	low;
+		uint32_t	high;
+	};
+
+	size_t index(size_t screen_nr, size_t transcript) const;
+
+	Direction m_direction;
+	data_point* m_data;
+	std::vector<std::string> m_screens;
 };
 
 // --------------------------------------------------------------------
@@ -77,6 +125,8 @@ class screen_service
 
 	static screen_service& instance();
 
+	const std::filesystem::path& get_screen_data_dir() const		{ return m_screen_data_dir; }
+
 	std::vector<screen_info> get_all_screens() const;
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
 	std::vector<screen_info> get_all_screens_for_user(const std::string& user) const;
@@ -86,7 +136,7 @@ class screen_service
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 
-	std::shared_ptr<ip_screen_data_cache> get_ip_screen_data(const std::string& assembly,
+	std::shared_ptr<ip_screen_data_cache> get_ip_screen_data(const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 

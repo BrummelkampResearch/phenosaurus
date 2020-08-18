@@ -1,6 +1,7 @@
 import 'bootstrap';
 import 'bootstrap/js/dist/modal'
 import 'chosen-js/chosen.jquery';
+import $ from 'jquery';
 
 import * as d3 from 'd3';
 
@@ -29,14 +30,22 @@ class ScreenPlotRegular extends ScreenPlot {
 		}
 	}
 
-	async add(data, screenNr) {
+	add(data, screenNr) {
+		const result = super.add(data, screenNr);
 
 		if (this.graphType === 'unique')
-			await data.loadUnique(this.pvCutOff);
+		{
+			const options = this.getOptions();
+			options.append("pv-cut-off", this.pvCutOff);
+			data.loadUnique(options)
+				.then(() => {
+					this.recolorGenes(this.uniqueScale);
+				});
+		}
 
 		this.rankRange = d3.extent(data.data.map(d => d.rank));
 
-		return super.add(data, screenNr);
+		return result;
 	}
 
 	getColor(/*screenNr*/) {
@@ -75,12 +84,42 @@ class ScreenPlotRegular extends ScreenPlot {
 
 		if (type === "unique") {
 			const data = this.screens.values().next().value;
-			await data.loadUnique(this.pvCutOff);
+
+			const options = this.getOptions();
+			options.append("pv-cut-off", this.pvCutOff);
+			await data.loadUnique(options);
 		}
 
 		this.plotData.selectAll("g.dot")
 			.select("circle")
 			.style("fill", this.getColor(0));
+	}
+
+	getOptions() {
+		const f = document.geneSelectionForm;
+		const fd = new FormData(f);
+
+		const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
+
+		let geneStart = document.getElementById("geneStartType").value;
+		if (geneStartOffset > 0)
+			geneStart += "+" + geneStartOffset;
+		else if (geneStartOffset < 0)
+			geneStart += geneStartOffset;
+
+		fd.append("gene-start", geneStart);
+
+		const geneEndOffset = parseInt(document.getElementById('geneEndOffset').value);
+
+		let geneEnd = document.getElementById("geneEndType").value;
+		if (geneEndOffset > 0)
+			geneEnd += "+" + geneEndOffset;
+		else if (geneEndOffset < 0)
+			geneEnd += geneEndOffset;
+
+		fd.append("gene-end", geneEnd);
+
+		return fd;
 	}
 
 	loadScreen(screenID, screenName) {
@@ -94,34 +133,7 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			const screenData = new ScreenData(screenName, screenID);
 
-			const f = document.geneSelectionForm;
-			const fd = new FormData(f);
-
-			// if (f["read-length"])
-			// 	fd.set("read-length", f["read-length"].value + 0);
-			// fd.set("read-length", 50);
-
-			const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
-
-			let geneStart = document.getElementById("geneStartType").value;
-			if (geneStartOffset > 0)
-				geneStart += "+" + geneStartOffset;
-			else if (geneStartOffset < 0)
-				geneStart += geneStartOffset;
-
-			fd.append("gene-start", geneStart);
-
-			const geneEndOffset = parseInt(document.getElementById('geneEndOffset').value);
-
-			let geneEnd = document.getElementById("geneEndType").value;
-			if (geneEndOffset > 0)
-				geneEnd += "+" + geneEndOffset;
-			else if (geneEndOffset < 0)
-				geneEnd += geneEndOffset;
-
-			fd.append("gene-end", geneEnd);
-
-			screenData.load(fd)
+			screenData.load(this.getOptions())
 				.then(() => {
 					this.add(screenData, 0);
 					// this.spinnerTD.classList.remove("loading");

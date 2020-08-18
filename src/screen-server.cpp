@@ -74,12 +74,23 @@ class IPScreenRestController : public zh::rest_controller
 	{
 		map_post_request("screenData/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
+
+		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
+
 		map_post_request("gene-info/{id}", &IPScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	std::vector<IPDataPoint> screenData(const std::string& screen, const std::string& assembly,
+	// std::vector<IPDataPoint> screenData(const std::string& screen, const std::string& assembly,
+	// 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	// 	Direction direction);
+	std::vector<ip_data_point> screenData(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
+
+	std::vector<gene_uniqueness> uniqueness(const std::string& screen, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		Direction direction, float pvCutOff);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -87,23 +98,43 @@ class IPScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
+std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	fs::path screenDir = mScreenDir / screen;
-
-	if (not fs::is_directory(screenDir))
-		throw std::runtime_error("No such screen: " + screen);
-
-	IPScreenData data(screenDir);
-	
-	// -----------------------------------------------------------------------
-
-	return data.dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->data_points(screen);
 }
+
+std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff)
+{
+	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+		throw zeep::http::forbidden;
+
+	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->uniqueness(screen, pvCutOff);
+}
+
+// std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
+// 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+// {
+// 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+// 		throw zeep::http::forbidden;
+
+// 	fs::path screenDir = mScreenDir / screen;
+
+// 	if (not fs::is_directory(screenDir))
+// 		throw std::runtime_error("No such screen: " + screen);
+
+// 	IPScreenData data(screenDir);
+	
+// 	// -----------------------------------------------------------------------
+
+// 	return data.dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
+// }
 
 Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)

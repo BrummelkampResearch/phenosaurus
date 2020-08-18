@@ -12,8 +12,151 @@
 #include "user-service.hpp"
 #include "screen-service.hpp"
 #include "db-connection.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
+
+// --------------------------------------------------------------------
+
+screen_data_cache::screen_data_cache(const std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+	: m_assembly(assembly), m_trim_length(trim_length), m_mode(mode), m_cutOverlap(cutOverlap)
+	, m_geneStart(geneStart), m_geneEnd(geneEnd)
+{
+	m_transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+}
+
+screen_data_cache::~screen_data_cache()
+{
+}
+
+// --------------------------------------------------------------------
+
+ip_screen_data_cache::ip_screen_data_cache(const std::string& assembly, short trim_length, Mode mode,
+		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+	: screen_data_cache(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd)
+	, m_direction(direction), m_data(nullptr)
+{
+	auto screens = screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype);
+	auto screenDataDir = screen_service::instance().get_screen_data_dir();
+
+	for (auto& screen: screens)
+	{
+		if (screen.ignore)
+			continue;
+		
+		m_screens.push_back(screen.name);
+	}
+
+	size_t N = m_transcripts.size();
+	size_t M = m_screens.size();
+	
+	m_data = new data_point[N * M];
+	memset(m_data, 0, N * M * sizeof(data_point));
+
+	for (size_t si = 0; si < m_screens.size(); ++si)
+	{
+		auto sd = m_data + si * m_transcripts.size();
+
+		fs::path screenDir = screenDataDir / m_screens[si];
+		IPScreenData data(screenDir);
+		
+		std::vector<Insertions> lowInsertions, highInsertions;
+
+		data.analyze(m_assembly, m_trim_length, m_transcripts, lowInsertions, highInsertions);
+
+		auto dp = data.dataPoints(m_transcripts, lowInsertions, highInsertions, m_direction);
+
+		for (auto& p: dp)
+		{
+			auto& d = sd[p.geneID];
+
+			d.pv = p.pv;
+			d.fcpv = p.fcpv;
+			d.mi = p.mi;
+			d.low = p.low;
+			d.high = p.high;
+		}
+	}
+}
+
+ip_screen_data_cache::~ip_screen_data_cache()
+{
+	delete [] m_data;
+}
+
+std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& screen)
+{
+	std::vector<ip_data_point> result;
+
+	auto si = std::find(m_screens.begin(), m_screens.end(), screen);
+	if (si == m_screens.end())
+		return {};
+	
+	size_t screenIx = si - m_screens.begin();
+	size_t N = m_transcripts.size();
+	auto data = m_data + screenIx * N;
+
+	for (size_t i = 0; i < m_transcripts.size(); ++i)
+	{
+		auto& dp = data[i];
+		if (dp.low == 0 and dp.high == 0)
+			continue;
+
+		ip_data_point p{};
+
+		p.gene_name = m_transcripts[i].geneName;
+		p.gene_id = i;
+
+		p.pv = dp.pv;
+		p.fcpv = dp.fcpv;
+		p.mi = dp.mi;
+		p.high = dp.high;
+		p.low = dp.low;
+		result.push_back(std::move(p));
+	}
+	
+	return result;
+}
+
+std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string& screen, float pvCutOff)
+{
+	auto si = std::find(m_screens.begin(), m_screens.end(), screen);
+	if (si == m_screens.end())
+		return {};
+
+	size_t screenIx = si - m_screens.begin();
+	size_t N = m_transcripts.size();
+	auto data = m_data + screenIx * N;
+
+	std::vector<gene_uniqueness> result;
+
+	double r = std::pow(m_screens.size(), 0.001) - 1;
+
+	for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
+	{
+		auto& dp = data[ti];
+
+		if (dp.fcpv > pvCutOff)
+			continue;
+		
+		size_t c = 0;
+		for (size_t si = 0; si < m_screens.size(); ++si)
+		{
+			auto& sp = m_data[si * N + ti];
+			if (sp.fcpv <= pvCutOff and (dp.mi < 1) == (sp.mi < 1))
+				++c;
+		}
+
+		double cd = std::pow(c, 0.001) - 1;
+
+		int colour = static_cast<int>(std::ceil(10 * cd / r));
+
+		result.emplace_back(gene_uniqueness{static_cast<int>(ti), colour});
+	}
+
+	return result;
+}
 
 // --------------------------------------------------------------------
 
@@ -125,6 +268,27 @@ void screen_service::update_screen(const std::string& name, const screen_info& s
 void screen_service::delete_screen(const std::string& name)
 {
 	fs::remove_all(m_screen_data_dir / name);
+}
+
+std::shared_ptr<ip_screen_data_cache> screen_service::get_ip_screen_data(const std::string& assembly, short trim_length,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+{
+	std::unique_lock lock(m_mutex);
+
+	auto i = std::find_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
+		std::bind(&ip_screen_data_cache::is_for, std::placeholders::_1, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction));
+
+	std::shared_ptr<ip_screen_data_cache> result;
+
+	if (i != m_ip_data_cache.end())
+		result = *i;
+	else
+	{
+		result = std::make_shared<ip_screen_data_cache>(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction);
+		m_ip_data_cache.emplace_back(result);
+	}
+	
+	return result;
 }
 
 // --------------------------------------------------------------------
