@@ -72,14 +72,12 @@ class IPScreenRestController : public zh::rest_controller
 		: zh::rest_controller("ip")
 		, mScreenDir(screenDir)
 	{
-		// map_get_request("screenData/{id}", &IPScreenRestController::screenData, "id");
-		map_post_request("screenData/{id}", &IPScreenRestController::screenDataEx,
+		map_post_request("screenData/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 		map_post_request("gene-info/{id}", &IPScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	// std::vector<IPDataPoint> screenData(const std::string& screen);
-	std::vector<IPDataPoint> screenDataEx(const std::string& screen, const std::string& assembly,
+	std::vector<IPDataPoint> screenData(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
@@ -89,7 +87,7 @@ class IPScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-std::vector<IPDataPoint> IPScreenRestController::screenDataEx(const std::string& screen, const std::string& assembly,
+std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
@@ -106,11 +104,6 @@ std::vector<IPDataPoint> IPScreenRestController::screenDataEx(const std::string&
 
 	return data.dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction);
 }
-
-// std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen)
-// {
-// 	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
-// }
 
 Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
@@ -373,7 +366,7 @@ std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& s
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)
 // {
-// 	return screenDataEx(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
+// 	return screenData(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
 // }
 
 Region SLScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,

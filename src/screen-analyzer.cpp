@@ -410,7 +410,7 @@ int main_update_manifests(int argc, char* const argv[])
         R"(SELECT name, screen_type, cell_line, description, long_description, ignored,
             (SELECT username FROM auth.users WHERE id = scientist_id), trim(both '"' from to_json(screen_date)::text) AS created FROM screens)"))
     {
-        screen screen;
+        screen_info screen;
 
         if (type == "IP")
             screen.type = ScreenType::IntracellularPhenotype;

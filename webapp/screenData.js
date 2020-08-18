@@ -1,5 +1,8 @@
 import * as d3 from "d3";
 import Dot from "./dot";
+import $ from 'jquery';
+
+/* global context_name */
 
 export default class ScreenData {
 

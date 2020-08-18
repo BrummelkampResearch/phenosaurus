@@ -38,9 +38,9 @@ screen_service::screen_service(const std::string& screen_data_dir)
 		throw std::runtime_error("Screen data directory " + screen_data_dir + " does not exist");
 }
 
-std::vector<screen> screen_service::get_all_screens() const
+std::vector<screen_info> screen_service::get_all_screens() const
 {
-	std::vector<screen> result;
+	std::vector<screen_info> result;
 
 	for (auto i = fs::directory_iterator(m_screen_data_dir); i != fs::directory_iterator(); ++i)
 	{
@@ -54,7 +54,7 @@ std::vector<screen> screen_service::get_all_screens() const
 		zeep::json::element info;
 		zeep::json::parse_json(manifest, info);
 
-		screen screen;
+		screen_info screen;
 		zeep::json::from_element(info, screen);
 		
 		result.push_back(screen);
@@ -63,14 +63,14 @@ std::vector<screen> screen_service::get_all_screens() const
 	return result;
 }
 
-std::vector<screen> screen_service::get_all_screens_for_type(ScreenType type) const
+std::vector<screen_info> screen_service::get_all_screens_for_type(ScreenType type) const
 {
 	auto screens = get_all_screens();
 	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& s) { return s.type != type; }), screens.end());
 	return screens;
 }
 
-std::vector<screen> screen_service::get_all_screens_for_user(const std::string& user) const
+std::vector<screen_info> screen_service::get_all_screens_for_user(const std::string& user) const
 {
 	auto screens = get_all_screens();
 
@@ -82,14 +82,14 @@ std::vector<screen> screen_service::get_all_screens_for_user(const std::string& 
 	return screens;
 }
 
-std::vector<screen> screen_service::get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const
+std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const
 {
 	auto screens = get_all_screens_for_user(user);
 	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& s) { return s.type != type; }), screens.end());
 	return screens;
 }
 
-screen screen_service::retrieve_screen(const std::string& name)
+screen_info screen_service::retrieve_screen(const std::string& name)
 {
 	std::ifstream manifest(m_screen_data_dir / name / "manifest.json");
 
@@ -99,7 +99,7 @@ screen screen_service::retrieve_screen(const std::string& name)
 	zeep::json::element info;
 	zeep::json::parse_json(manifest, info);
 
-	screen screen;
+	screen_info screen;
 	zeep::json::from_element(info, screen);
 
 	for (auto& group: user_service::instance().get_groups_for_screen(screen.name))
@@ -108,7 +108,7 @@ screen screen_service::retrieve_screen(const std::string& name)
 	return screen;
 }
 
-void screen_service::update_screen(const std::string& name, const screen& screen)
+void screen_service::update_screen(const std::string& name, const screen_info& screen)
 {
 	std::ofstream manifest(m_screen_data_dir / name / "manifest.json");
 	if (not manifest.is_open())
@@ -173,12 +173,12 @@ screen_admin_rest_controller::screen_admin_rest_controller()
 // 	return screen_service::instance().create_screen(screen);
 // }
 
-screen screen_admin_rest_controller::retrieve_screen(const std::string& name)
+screen_info screen_admin_rest_controller::retrieve_screen(const std::string& name)
 {
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_admin_rest_controller::update_screen(const std::string& name, const screen& screen)
+void screen_admin_rest_controller::update_screen(const std::string& name, const screen_info& screen)
 {
 	screen_service::instance().update_screen(name, screen);
 }
@@ -260,7 +260,7 @@ screen_user_rest_controller::screen_user_rest_controller()
 // 	return screen_service::instance().create_screen(screen);
 // }
 
-screen screen_user_rest_controller::retrieve_screen(const std::string& name)
+screen_info screen_user_rest_controller::retrieve_screen(const std::string& name)
 {
 	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -268,7 +268,7 @@ screen screen_user_rest_controller::retrieve_screen(const std::string& name)
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_user_rest_controller::update_screen(const std::string& name, const screen& screen)
+void screen_user_rest_controller::update_screen(const std::string& name, const screen_info& screen)
 {
 	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;

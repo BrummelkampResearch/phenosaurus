@@ -104,7 +104,7 @@ ScreenData::ScreenData(const fs::path& dir)
 	zeep::json::from_element(jInfo, mInfo);
 }
 
-ScreenData::ScreenData(const fs::path& dir, const screen& info)
+ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 	: mDataDir(dir), mInfo(info)
 {
 	if (fs::exists(dir))
@@ -392,12 +392,8 @@ IPScreenData::IPScreenData(const fs::path& dir)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-IPScreenData::IPScreenData(const fs::path& dir, const screen& info)
+IPScreenData::IPScreenData(const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
 	: ScreenData(dir, info)
-{
-}
-
-void IPScreenData::addFiles(fs::path low, fs::path high)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(low))
@@ -676,7 +672,7 @@ SLScreenData::SLScreenData(const fs::path& dir)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-SLScreenData::SLScreenData(const fs::path& dir, const screen& info)
+SLScreenData::SLScreenData(const fs::path& dir, const screen_info& info)
 	: ScreenData(dir, info)
 {
 }
@@ -1043,7 +1039,7 @@ std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 	zeep::json::element jInfo;
 	zeep::json::parse_json(manifestFile, jInfo);
 
-	screen info;
+	screen_info info;
 	zeep::json::from_element(jInfo, info);
 
 	switch (info.type)

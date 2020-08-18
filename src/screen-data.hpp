@@ -39,7 +39,7 @@ struct screen_file
 	}
 };
 
-struct screen
+struct screen_info
 {
 	std::string name;
 	ScreenType type;
@@ -241,10 +241,10 @@ class ScreenData
 		std::vector<Insertion>& insertions);
 
 	ScreenData(const std::filesystem::path& dir);
-	ScreenData(const std::filesystem::path& dir, const screen& info);
+	ScreenData(const std::filesystem::path& dir, const screen_info& info);
 
 	std::filesystem::path	mDataDir;
-	screen mInfo;
+	screen_info mInfo;
 };
 
 // --------------------------------------------------------------------
@@ -255,11 +255,10 @@ class IPScreenData : public ScreenData
 	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotype;
 
 	IPScreenData(const std::filesystem::path& dir);
-	IPScreenData(const std::filesystem::path& dir, const screen& info);
+	IPScreenData(const std::filesystem::path& dir, const screen_info& info,
+		std::filesystem::path low, std::filesystem::path high);
 
-	static std::unique_ptr<IPScreenData> create(const screen& info, const std::filesystem::path& dir);
-
-	void addFiles(std::filesystem::path low, std::filesystem::path high);
+	static std::unique_ptr<IPScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
 	// note: will reorder transcripts!
 	void analyze(const std::string& assembly, unsigned readLength,
@@ -291,9 +290,9 @@ class SLScreenData : public ScreenData
 	static constexpr ScreenType screen_type = ScreenType::SyntheticLethal;
 
 	SLScreenData(const std::filesystem::path& dir);
-	SLScreenData(const std::filesystem::path& dir, const screen& info);
+	SLScreenData(const std::filesystem::path& dir, const screen_info& info);
 
-	static std::unique_ptr<IPScreenData> create(const screen& info, const std::filesystem::path& dir);
+	static std::unique_ptr<IPScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
 	void addFile(std::filesystem::path file);
 

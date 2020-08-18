@@ -117,7 +117,7 @@ int main_create(int argc, char* const argv[])
 		},
 		{ "screen-dir" });
 
-	screen screen;
+	screen_info screen;
 
 	if (vm.count("screen-name"))
 		screen.name = vm["screen-name"].as<std::string>();
@@ -190,9 +190,10 @@ int main_create(int argc, char* const argv[])
 		{
 			if (not (vm.count("low") and vm.count("high")))
 				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
-
-			auto data = std::make_unique<IPScreenData>(screenDir, screen);
-			data->addFiles(vm["low"].as<std::string>(), vm["high"].as<std::string>());
+			
+			auto low = vm["low"].as<std::string>();
+			auto high = vm["high"].as<std::string>();
+			auto data = std::make_unique<IPScreenData>(screenDir, screen, low, high);
 			break;
 		}
 
