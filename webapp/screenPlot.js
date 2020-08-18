@@ -192,7 +192,7 @@ export default class ScreenPlot {
 	}
 
 	recolorGenes(uniqueScale) {
-		this.uniqueScale = uniqueScale;
+		this.uniqueScale = uniqueScale || d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
 
 		[...this.screens.keys()].forEach(sn => {
 			const screenPlotData = this.plotData.select(`#plot-${sn}`);

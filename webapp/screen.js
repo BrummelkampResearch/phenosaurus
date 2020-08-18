@@ -63,7 +63,7 @@ class ScreenPlotRegular extends ScreenPlot {
 						case 'low':
 							return d.rank <= /*this.rankRange[0] +*/ cutOff ? low : (d.fcpv >= this.pvCutOff ? neutral : notHighLow);
 						case 'unique':
-							return d.fcpv >= this.pvCutOff ? neutral : this.uniqueScale(d.unique);
+							return d.fcpv >= (this.pvCutOff || this.uniqueScale == null) ? neutral : this.uniqueScale(d.unique);
 					}
 				})
 				.sort()
