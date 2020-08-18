@@ -158,6 +158,11 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 	return result;
 }
 
+std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene)
+{
+	return {};
+}
+
 // --------------------------------------------------------------------
 
 std::unique_ptr<screen_service> screen_service::s_instance;

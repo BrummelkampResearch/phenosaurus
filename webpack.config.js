@@ -15,7 +15,7 @@ module.exports = {
 		'sl-screen': SCRIPTS + "sl-screen.js",
 
 		// 'login': SCRIPTS + "login.js",
-		// 'geneFinder': SCRIPTS + "geneFinder.js",
+		'geneFinder': SCRIPTS + "geneFinder.js",
 		// 'compare': SCRIPTS + "compare.js",
 		// 'compare2': SCRIPTS + "compare2.js",
 		// 'compare-sbs': SCRIPTS + "compare-sbs.js",

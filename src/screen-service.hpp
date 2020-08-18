@@ -79,6 +79,24 @@ struct gene_uniqueness
 	}
 };
 
+struct gene_finder_data_point
+{
+	std::string screen;
+	float mi;
+	float fcpv;
+	int insertions;
+	int replicate;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("screen", screen)
+		   & zeep::make_nvp("mi", mi)
+		   & zeep::make_nvp("fcpv", fcpv)
+		   & zeep::make_nvp("insertions", insertions)
+		   & zeep::make_nvp("replicate", replicate);
+	}
+};
 
 class ip_screen_data_cache : public screen_data_cache
 {
@@ -97,6 +115,7 @@ class ip_screen_data_cache : public screen_data_cache
 
 	std::vector<ip_data_point> data_points(const std::string& screen);
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
+	std::vector<gene_finder_data_point> find_gene(const std::string& gene);
 
   private:
 

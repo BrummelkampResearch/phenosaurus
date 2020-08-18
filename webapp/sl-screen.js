@@ -1,10 +1,8 @@
 import 'chosen-js/chosen.jquery';
-import ScreenPlot, { neutral, highlight } from './screenPlot';
+import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
+import SLDot from './sl-dot';
 
 import * as d3 from 'd3';
-
-import {pvCutOff, highlightedGenes } from "./screenPlot";
-import SLDot from './sl-dot';
 
 const radius = 5;
 const screenReplicatesMap = new Map();

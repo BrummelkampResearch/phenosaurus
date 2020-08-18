@@ -75,16 +75,20 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("screenData/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
+		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
+			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
+
 		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
 
 		map_post_request("gene-info/{id}", &IPScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	// std::vector<IPDataPoint> screenData(const std::string& screen, const std::string& assembly,
-	// 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-	// 	Direction direction);
 	std::vector<ip_data_point> screenData(const std::string& screen, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		Direction direction);
+
+	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
@@ -116,6 +120,13 @@ std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::strin
 
 	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->uniqueness(screen, pvCutOff);
+}
+
+std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+{
+	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->find_gene(gene);
 }
 
 // std::vector<IPDataPoint> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
@@ -300,9 +311,13 @@ class IPScreenHtmlController : public ScreenHtmlControllerBase
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &IPScreenHtmlController::fishtail);
+		mount("finder", &IPScreenHtmlController::finder);
+		mount("similar", &IPScreenHtmlController::similar);
 	}
 
 	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void similar(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
 	fs::path mScreenDir;
@@ -313,6 +328,16 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 	zh::scope sub(scope);
 	sub.put("page", "fishtail");
 	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
+}
+
+void IPScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	get_template_processor().create_reply_from_template("gene-finder.html", scope, reply);
+}
+
+void IPScreenHtmlController::similar(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	get_template_processor().create_reply_from_template("find-similar.html", scope, reply);
 }
 
 // --------------------------------------------------------------------

@@ -10,6 +10,8 @@ export const neutral = "#aaa", highlight = "#b3ff3e";
 const colorMap = new ScreenColorMap();
 export const highlightedGenes = new Set();
 
+export let pvCutOff = 0.05;
+
 // --------------------------------------------------------------------
 
 export default class ScreenPlot {
@@ -22,7 +24,6 @@ export default class ScreenPlot {
 		this.presentationMode = false;
 		this.showAllLabels = false;
 		this.uniqueScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
-		this.pvCutOff = 0.05;
 
 		this.svg.node().addEventListener('wheel', (evt) => {
 			evt.stopPropagation();
@@ -237,7 +238,7 @@ export default class ScreenPlot {
 			const color = colorMap.get(screenNr);
 			const colors = d.values
 				.map(d =>
-					d.fcpv >= this.pvCutOff
+					d.fcpv >= pvCutOff
 						? highlightedGenes.has(d.geneName)
 							? highlight 
 							: neutral
@@ -257,7 +258,7 @@ export default class ScreenPlot {
 	getOpacity() {
 		return (d) => {
 			if (d.highlight()) return 1;
-			if (d.significant(this.pvCutOff)) return this.presentationMode ? 1 : 0.66;
+			if (d.significant(pvCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
 	}
@@ -423,7 +424,7 @@ export default class ScreenPlot {
 	}
 
 	setPvCutOff(pv) {
-		this.pvCutOff = pv;
+		pvCutOff = pv;
 		this.recolorGenes();
 	}
 
@@ -466,7 +467,7 @@ export default class ScreenPlot {
 	
 				// regular dots
 				screenPlotData.selectAll("g.dot")
-					.filter(d => d.multiDot === undefined && d.significant(this.pvCutOff))
+					.filter(d => d.multiDot === undefined && d.significant(pvCutOff))
 					.append("text")
 					.attr("class", "label")
 					.text(d => d.values.map(d => d.geneName).join(", "))

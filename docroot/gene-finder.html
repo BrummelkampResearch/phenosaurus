@@ -1,0 +1,106 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat" [
+<!ENTITY times "&#xD7;">
+]>
+<html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
+	<meta name="generator" content="HTML Tidy for HTML5 for Linux version 5.6.0" />
+	<title>Gene Finder - Phenosaurus</title>
+
+	<script src="/scripts/geneFinder.js" type="application/ecmascript" z:src="@{/scripts/geneFinder.js}"
+		defer="defer"></script>
+
+<script z:inline="javascript">
+//		const screenType = /*[[${#request.getParameter('screenType')}]]*/ "IP";
+		const screenType = "ip";
+	</script>
+</head>
+
+<body>
+	<nav z:replace="~{menu :: menu}"></nav>
+
+	<input type="hidden" class="screen-id" z:each="screen: ${screens}"
+		z:attr="data-id=${screen.id}, data-name=${screen.name}" /> <input type="hidden" class="gene-id"
+		z:each="geneName: ${geneNames}" z:attr="data-id=${geneName}" />
+
+	<div class="container-fluid mt-3">
+		<div class="missing-genes alert alert-warning alert-dismissible" z:if="${missing}"><button type="button"
+				class="close" data-dismiss="alert">×</button> <strong>Warning</strong> The
+			following gene<span z:if="${missing.size() &gt; 1}">s</span> could
+			not be found: <span z:each="gene, i: ${missing}"><span z:text="${gene + (i.last ? '.' : ', ')}"
+					z:remove="tag">.</span></span></div>
+		<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphTypeBtns"><label
+				class="btn btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off"
+					checked="checked" /> Heatmap</label>
+			<label class="btn btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off" />
+				Dotplot</label>
+			<label class="btn btn-secondary"><input type="radio" name="graphType" id="fishtail" autocomplete="off" />
+				Fishtail</label></div>
+		<br />
+		<br />
+		<div class="row">
+			<div class="col">
+				<ul id="controls">
+					<li><a href="#" id="add-gene-line"><i class="fa fa-plus"></i></a></li>
+					<li><a href="#" data-toggle="modal" data-target="#loadFileDialog"><i
+								class="fa fa-file-upload"></i></a></li>
+					<!--<li>-->
+					<!--<div z:replace="~{gene-info :: geneDiv('ip')}"></div>-->
+					<!--<label>-->
+					<!--<button type="button" class="btn btn-sm" id="show-gene-info">Show GeneInfo Info-->
+					<!--Dialog</button>-->
+					<!--</label>-->
+					<!--</li>-->
+				</ul>
+				<table id="plot" cellpadding="0" cellspacing="0" class="heatmap gf-tabel">
+					<tbody>
+						<tr style="display: none">
+							<td><input type="text" /></td>
+							<td class="screen-status">
+								<!--<span class="spinner">-->
+								<!--<i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i>-->
+								<!--</span>-->
+								<div class="swatch"></div>
+							</td>
+							<td class="svg-container no-fishtail"></td>
+							<td class="no-fishtail"><a href="#"><i class="fa fa-sort-amount-up sort-screens"></i></a>
+							</td>
+						</tr>
+					</tbody>
+					<tfoot>
+						<tr class="no-fishtail">
+							<td></td>
+							<td class="screen-status"></td>
+							<td class="label-container"></td>
+							<td></td>
+						</tr>
+					</tfoot>
+				</table>
+				<div id="fishtailplot" class="plot-container ft-plot-container" style="display: none"><svg width="100%"
+						height="100%" id="ft-plot"></svg></div>
+			</div>
+		</div>
+		<div z:replace="~{gene-info :: geneDiv('ip')}"></div>
+	</div>
+	<div class="tooltip"></div>
+	<div class="modal fade" id="loadFileDialog" role="dialog" tabindex="-1">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<!-- Modal Header -->
+				<div class="modal-header">
+					<h4 class="modal-title">Load gene names from file</h4>
+					<button type="button" class="close" data-dismiss="modal">×</button>
+				</div>
+				<!-- Modal body -->
+				<div class="modal-body">Select a file containing the gene names you
+					want to display. <input type="file" id="localGeneFile" /></div>
+				<!-- Modal footer -->
+				<div class="modal-footer"><button type="button" class="btn btn-danger"
+						data-dismiss="modal">Close</button></div>
+			</div>
+		</div>
+	</div>
+	<footer z:replace="~{footer :: content}"></footer>
+</body>
+
+</html>
