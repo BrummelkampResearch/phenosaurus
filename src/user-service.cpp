@@ -39,6 +39,22 @@ user_service::user_service()
 					     UNION
 						SELECT id FROM auth.groups WHERE name = 'public')))
 		)");
+
+		connection.prepare("allowed-screens-for-user",
+			R"(
+				SELECT a.name FROM screens a, auth.users b
+				 WHERE b.username = $1
+				   AND a.scientist_id = b.id
+				    OR EXISTS (
+						SELECT * FROM auth.screen_permissions p
+						 WHERE p.screen_id = a.id
+						   AND p.group_id IN (
+							SELECT group_id FROM auth.members WHERE user_id = b.id
+							 UNION
+							SELECT id FROM auth.groups WHERE name = 'public'
+						   )
+					)
+			)");
 	});
 }
 
@@ -205,6 +221,20 @@ bool user_service::allow_screen_for_user(const std::string& screen, const std::s
 	tx.commit();
 
 	return allowed;
+}
+
+std::set<std::string> user_service::allowed_screens_for_user(const std::string& user)
+{
+	auto tx = db_connection::start_transaction();
+
+	std::set<std::string> result;
+
+	auto r = tx.exec_prepared("allowed-screens-for-user", user);
+	for (auto row: r)
+		result.insert(row[0].as<std::string>());
+	tx.commit();
+
+	return result;
 }
 
 // --------------------------------------------------------------------

@@ -13,7 +13,7 @@ import ScreenData from "./screenData";
 // import {showLoginDialog} from "./index";
 import {geneSelectionEditor} from './gene-selection';
 
-/* global screenType, context_name */
+/* global screenType, context_name, screenNames */
 
 let pvCutOff = 0.05;
 let nextGeneLineID = 1000;
@@ -28,59 +28,49 @@ const neutral = "#ccc", positive = "#fb8", negative = "#38c";
 
 class Screens {
 	constructor() {
-		const e = Array.from(document.getElementsByClassName("screen-id"));
-		this.known = new Map(e.map(v => [v.dataset.id, v.dataset.name]));
-		this.screenIDs = Array.from(this.known.keys()).map(k => +k);
+		this.screens = screenNames;
 	}
 
 	* [Symbol.iterator]() {
-		yield* this.screenIDs;
-	}
-
-	name(screenID) {
-		return this.known.get(screenID);
-	}
-
-	*names() {
-		for (let i of this.screenIDs)
-			yield this.known.get(""+i);
+		yield* this.screens;
 	}
 
 	scale() {
-		return (screenID) => {
-			const ix = this.screenIDs.indexOf(screenID);
+		return (screen) => {
+			const ix = this.screens.indexOf(screen);
 			if (ix < 0) {
-				alert("Screen '" + screenID + "' not found in index")
+				alert("Screen '" + screen + "' not found in index")
 			}
 			return ix;
 		}
 	}
 
 	get count() {
-		return this.screenIDs.length;
+		return this.screens.length;
 	}
 
 	reorder(newOrder) {
-		this.screenIDs = this.screenIDs.sort((a, b) => {
-			const ai = newOrder.indexOf(a);
-			const bi = newOrder.indexOf(b);
+		this.screens = newOrder;
+		// this.screens = this.screens.sort((a, b) => {
+		// 	const ai = newOrder.indexOf(a);
+		// 	const bi = newOrder.indexOf(b);
 
-			if (ai === bi)
-				return 0;
-			else if (ai < 0) {
-				return 1;
-			}
-			else if (bi < 0) {
-				return -1;
-			}
-			else {
-				return ai - bi;
-			}
-		});
+		// 	if (ai === bi)
+		// 		return 0;
+		// 	else if (ai < 0) {
+		// 		return 1;
+		// 	}
+		// 	else if (bi < 0) {
+		// 		return -1;
+		// 	}
+		// 	else {
+		// 		return ai - bi;
+		// 	}
+		// });
 	}
 
 	labelX(x) {
-		return this.screenIDs[x];
+		return this.screens[x];
 	}
 }
 
@@ -97,12 +87,12 @@ class IPGeneDataTraits
 
 	static label(d, gene) {
 		return "gene: " + gene + "\n" +
-			"screen: " + d.screenName + "\n" +
+			"screen: " + d.screen + "\n" +
 			"mutational index: " + d3.format(".2f")(d.mi);
 	}
 
-	static clickGene(screenName, gene, replicate) {
-		window.open(`./simpleplot?screen=${screenName}&highlightGene=${gene}`, "_blank");
+	static clickGene(screen, gene, replicate) {
+		window.open(`./simpleplot?screen=${screen}&highlightGene=${gene}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -123,13 +113,13 @@ class SLGeneDataTraits
 
 	static label(d, gene) {
 		return "gene: " + gene + "\n" +
-			"screen: " + d.screenName + "\n" +
+			"screen: " + d.screen + "\n" +
 			"sense ratio: " + d3.format(".2f")(d.mi) + "\n" +
 			"replicate: " + d.replicate;
 	}
 
-	static clickGene(screenName, gene, replicate) {
-		window.open(`./slscreen?screen=${screenName}&highlightGene=${gene}&replicate=${replicate}`, "_blank");
+	static clickGene(screen, gene, replicate) {
+		window.open(`./slscreen?screen=${screen}&highlightGene=${gene}&replicate=${replicate}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -223,7 +213,7 @@ class HeatMapPlot extends Plot {
 
 			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, gene, d.replicate))
+			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
 
 			.merge(tiles)
 			.style("fill", d => yScale(d.y));
@@ -297,7 +287,7 @@ class DotPlot extends Plot {
 			.attr("r", radius)
 			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, gene, d.replicate))
+			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
 			.merge(dots)
 			.attr("cx", d => this.x(xScale(d.screen)))
 			.attr("cy", d => this.y(d.y))
@@ -332,7 +322,7 @@ class LabelPlot extends Plot {
 
 	rearrange() {
 		this.x = d3.scalePoint()
-			.domain([...screens.names()])
+			.domain([...screens])
 			.range([0, this.width]);
 
 		const xAxis = d3.axisBottom(this.x);
@@ -374,9 +364,9 @@ class FishTailGeneFinderPlot extends ScreenPlot {
 	}
 
 	dblClickGenes(d, screenNr) {
-		const screenID = d.values[0].screenName;
+		const screen = d.values[0].screen;
 		const gene = this.geneMap.get(screenNr);
-		Plot.clickGene(screenID, gene, d.replicate);
+		Plot.clickGene(screen, gene, d.replicate);
 	}
 
 	mouseOver(d, screenNr) {
@@ -490,14 +480,14 @@ class GeneLine {
 		this.changed();
 	}
 
-	orderedScreenIDs() {
+	orderedScreens() {
 		return this.data
 			.sort((a, b) => b.mi - a.mi)
 			.map(a => a.screen);
 	}
 
 	sort() {
-		const newOrder = this.orderedScreenIDs();
+		const newOrder = this.orderedScreens();
 
 		screens.reorder(newOrder);
 

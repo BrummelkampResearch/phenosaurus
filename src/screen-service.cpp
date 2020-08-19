@@ -162,15 +162,42 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 
 		int colour = static_cast<int>(std::ceil(10 * cd / r));
 
-		result.emplace_back(gene_uniqueness{m_transcripts[ti].geneName, colour});
+		result.push_back(gene_uniqueness{m_transcripts[ti].geneName, colour});
 	}
 
 	return result;
 }
 
-std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene)
+std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene, const std::set<std::string>& allowedScreens)
 {
-	return {};
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	if (gi == m_transcripts.end())
+		return {};
+
+	size_t ti = gi - m_transcripts.begin();
+	size_t N = m_transcripts.size();
+
+	std::vector<gene_finder_data_point> result;
+
+	for (size_t si = 0; si < m_screens.size(); ++si)
+	{
+		if (m_screens[si].second and allowedScreens.count(m_screens[si].first))
+		{
+			size_t ix = si * N + ti;
+
+			gene_finder_data_point p;
+
+			p.screen = m_screens[si].first;
+			p.fcpv = m_data[ix].fcpv;
+			p.mi = m_data[ix].mi;
+			p.insertions = m_data[ix].high + m_data[ix].low;
+			p.replicate = 0;
+
+			result.push_back(std::move(p));
+		}
+	}
+
+	return result;
 }
 
 std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff)

@@ -11,16 +11,14 @@
 		defer="defer"></script>
 
 <script z:inline="javascript">
-//		const screenType = /*[[${#request.getParameter('screenType')}]]*/ "IP";
-		const screenType = "ip";
+	const geneNames = /*[[${geneNames}]]*/ null,
+		  screenNames = /*[[${screenNames}]]*/ null;
+	const screenType = "ip";
 	</script>
 </head>
 
 <body>
 	<nav z:replace="~{menu :: menu}"></nav>
-
-	<input type="hidden" class="screen-id" z:each="screen: ${screens}" z:attr="data-id=${screen.id}, data-name=${screen.name}" />
-	<input type="hidden" class="gene-id" z:each="geneName: ${geneNames}" z:attr="data-id=${geneName}" />
 
 	<div class="container-fluid mt-3">
 		<div class="missing-genes alert alert-warning alert-dismissible" z:if="${missing}">

@@ -84,6 +84,7 @@ class user_service : public zeep::http::user_service
 	void set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups);
 	// std::vector<std::string> screens_for_user(const )
 	bool allow_screen_for_user(const std::string& screen, const std::string& user);
+	std::set<std::string> allowed_screens_for_user(const std::string& user);
 
 	// --------------------------------------------------------------------
 	

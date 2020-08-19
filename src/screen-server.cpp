@@ -132,7 +132,7 @@ std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std:
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
-	return dp->find_gene(gene);
+	return dp->find_gene(gene, user_service::instance().allowed_screens_for_user(get_credentials()["username"].as<std::string>()));
 }
 
 std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string& gene, const std::string& assembly,
@@ -291,6 +291,11 @@ class ScreenHtmlControllerBase : public zh::html_controller
 
 		to_element(screens, s);
 		scope.put("screens", screens);
+
+		json screenNames;
+		for (auto& si: s)
+			screenNames.push_back(si.name);
+		scope.put("screenNames", screenNames);
 	}
 
 	ScreenType mType;
