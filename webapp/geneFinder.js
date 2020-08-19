@@ -199,7 +199,7 @@ class HeatMapPlot extends Plot {
 			.domain([0, screens.count])
 			.range([0, this.width]);
 
-		const yScale = d3.scaleSequential(d3.interpolateViridis).domain(Plot.getDomain(data));
+		const yScale = d3.scaleSequential(d3.interpolatePiYG).domain(Plot.getDomain(data));
 
 		tiles.enter()
 			.append("rect")
