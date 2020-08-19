@@ -75,12 +75,12 @@ class IPGeneDataTraits
 
 	static label(d, geneID) {
 		return "gene: " + geneID + "\n" +
-			"screen: " + d.screenName + "\n" +
-			"mutational index: " + d3.format(".2f")(d.mi);
+			"screen: " + d.screen + "\n" +
+			"mutational index: " + d3.format(".2f")(Math.log2(d.mi));
 	}
 
-	static clickGene(screenName, geneID) {
-		window.open(`../simpleplot?screen=${screenName}&highlightGene=${geneID}`, "_blank");
+	static clickGene(screen, gene) {
+		window.open(`../ip/screen?screen=${screen}&highlightGene=${gene}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -99,15 +99,15 @@ class SLGeneDataTraits
 	constructor() {
 	}
 
-	static label(d, geneID) {
-		return "gene: " + geneID + "\n" +
-			"screen: " + d.screenName + "\n" +
+	static label(d, gene) {
+		return "gene: " + gene + "\n" +
+			"screen: " + d.screen + "\n" +
 			"sense ratio: " + d3.format(".2f")(d.mi) + "\n" +
 			"replicate: " + d.replicate;
 	}
 
-	static clickGene(screenName, geneID, replicate) {
-		window.open(`../slscreen?screen=${screenName}&highlightGene=${geneID}&replicate=${replicate}`, "_blank");
+	static clickGene(screen, gene, replicate) {
+		window.open(`../sl/screen?screen=${screen}&highlightGene=${gene}&replicate=${replicate}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -176,7 +176,7 @@ class HeatMapPlot extends Plot {
 		this.gridWidth = Math.floor(this.width / screens.count);
 	}
 
-	processData(data, geneID) {
+	processData(data, gene) {
 		const tiles = this.svg.selectAll(".tile")
 			.data(data, d => d.screen);
 
@@ -199,9 +199,9 @@ class HeatMapPlot extends Plot {
 			.attr("width", this.gridWidth)
 			.attr("height", this.height - 2)
 
-			.on("mouseover", d => tooltip.show(Plot.label(d, geneID), d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, geneID, d.replicate))
+			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
 
 			.merge(tiles)
 			.style("fill", d => yScale(d.y));
@@ -275,7 +275,7 @@ class DotPlot extends Plot {
 			.attr("r", radius)
 			.on("mouseover", d => tooltip.show(Plot.label(d, geneID), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, geneID, d.replicate))
+			.on("click", d => Plot.clickGene(d.screen, geneID, d.replicate))
 			.merge(dots)
 			.attr("cx", d => this.x(xScale(d.screen)))
 			.attr("cy", d => this.y(d.y))
