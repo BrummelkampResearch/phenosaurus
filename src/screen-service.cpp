@@ -57,27 +57,34 @@ ip_screen_data_cache::ip_screen_data_cache(const std::string& assembly, short tr
 	// for (size_t si = 0; si < m_screens.size(); ++si)
 	parallel_for(m_screens.size(), [&](size_t si)
 	{
-		auto sd = m_data + si * m_transcripts.size();
-
-		fs::path screenDir = screenDataDir / m_screens[si];
-		IPScreenData data(screenDir);
-		
-		std::vector<Insertions> lowInsertions, highInsertions;
-
-		data.analyze(m_assembly, m_trim_length, m_transcripts, lowInsertions, highInsertions);
-
-		auto dp = data.dataPoints(m_transcripts, lowInsertions, highInsertions, m_direction);
-
-		for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
+		try
 		{
-			auto& d = sd[ti];
-			auto& p = dp[ti];
+			auto sd = m_data + si * m_transcripts.size();
 
-			d.pv = p.pv;
-			d.fcpv = p.fcpv;
-			d.mi = p.mi;
-			d.low = p.low;
-			d.high = p.high;
+			fs::path screenDir = screenDataDir / m_screens[si];
+			IPScreenData data(screenDir);
+			
+			std::vector<Insertions> lowInsertions, highInsertions;
+
+			data.analyze(m_assembly, m_trim_length, m_transcripts, lowInsertions, highInsertions);
+
+			auto dp = data.dataPoints(m_transcripts, lowInsertions, highInsertions, m_direction);
+
+			for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
+			{
+				auto& d = sd[ti];
+				auto& p = dp[ti];
+
+				d.pv = p.pv;
+				d.fcpv = p.fcpv;
+				d.mi = p.mi;
+				d.low = p.low;
+				d.high = p.high;
+			}
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
 		}
 	});
 }
