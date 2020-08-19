@@ -214,12 +214,20 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 
 	for (auto negative: { false, true })
 	{
-		auto distance = [&](int geneIx)
+		size_t a_ix = queryGeneIx;
+		const auto* a = &m_data[a_ix];
+
+		std::vector<similar_data_point> hits;
+		hits.reserve(geneCount);
+		
+		double distanceSum = 0;
+
+		for (size_t b_ix = 0; b_ix < geneCount; ++b_ix)
 		{
-			size_t a_ix = queryGeneIx;
-			const auto* a = &m_data[a_ix];
-			size_t b_ix = geneIx;
 			const auto* b = &m_data[b_ix];
+
+			if (b[b_ix].fcpv > pvCutOff)
+				continue;
 
 			long double sum = 0;
 			for (size_t i = 0; i < screenCount; ++i)
@@ -235,19 +243,9 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 					sum += (miQ - miT) * (miQ - miT);
 			}
 
-			return static_cast<double>(sqrt(sum));
-		};
+			double d = static_cast<double>(sqrt(sum));
 
-		std::vector<similar_data_point> hits;
-		hits.reserve(geneCount);
-		
-		double distanceSum = 0;
-
-		for (size_t g_ix = 0; g_ix < geneCount; ++g_ix)
-		{
-			double d = distance(g_ix);
-
-			hits.push_back(similar_data_point{ m_transcripts[g_ix].geneName, static_cast<float>(d), 0.f, negative });
+			hits.push_back(similar_data_point{ m_transcripts[b_ix].geneName, static_cast<float>(d), 0.f, negative });
 
 			distanceSum += d;
 		}

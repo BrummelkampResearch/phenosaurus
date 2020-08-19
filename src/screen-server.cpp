@@ -79,7 +79,7 @@ class IPScreenRestController : public zh::rest_controller
 			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
 		map_post_request("similar/{gene}", &IPScreenRestController::find_similar,
-			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off", "zscore-cut-off");
+			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cutoff", "zs-cutoff");
 
 		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
