@@ -130,6 +130,12 @@ class ip_screen_data_cache : public screen_data_cache
 		return screen_data_cache::is_for(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
 	}
 
+	bool contains_data_for_screen(const std::string& screen) const
+	{
+		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.first == screen; });
+		return si != m_screens.end() and si->second;
+	}
+
 	std::vector<ip_data_point> data_points(const std::string& screen);
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
 	std::vector<gene_finder_data_point> find_gene(const std::string& gene);
@@ -150,7 +156,7 @@ class ip_screen_data_cache : public screen_data_cache
 
 	Direction m_direction;
 	data_point* m_data;
-	std::vector<std::string> m_screens;
+	std::vector<std::pair<std::string,bool>> m_screens;
 };
 
 // --------------------------------------------------------------------
@@ -176,6 +182,9 @@ class screen_service
 	std::shared_ptr<ip_screen_data_cache> get_ip_screen_data(const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
+
+	std::vector<ip_data_point> get_ip_data_points(const std::string& screen, const std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
 
   private:
 	screen_service(const std::string& screen_data_dir);

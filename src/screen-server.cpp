@@ -109,53 +109,14 @@ class IPScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-#if USE_CACHE
-// std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
-// 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
-// {
-// 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
-// 		throw zeep::http::forbidden;
-
-// 	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
-// 	return dp->data_points(screen);
-// }
-#else
 std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	fs::path screenDir = mScreenDir / screen;
-
-	if (not fs::is_directory(screenDir))
-		throw std::runtime_error("No such screen: " + screen);
-
-	IPScreenData data(screenDir);
-	
-	std::vector<ip_data_point> result;
-
-	size_t i = 0;
-	for (auto& dp: data.dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction))
-	{
-		if (dp.low == 0 and dp.high == 0)
-			continue;
-
-		ip_data_point p{};
-
-		p.gene = dp.gene;
-		p.pv = dp.pv;
-		p.fcpv = dp.fcpv;
-		p.mi = dp.mi;
-		p.high = dp.high;
-		p.low = dp.low;
-
-		result.push_back(std::move(p));
-	}
-	
-	return result;
+	return screen_service::instance().get_ip_data_points(screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 }
-#endif
 
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff)
