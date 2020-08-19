@@ -233,8 +233,8 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 
 				data = true;
 
-				miQ = std::log2(a.mi);
-				miT = std::log2(b.mi);
+				miQ = a.mi ? std::log2(a.mi) : 0;
+				miT = b.mi ? std::log2(b.mi) : 0;
 
 				if (anti)
 					sum += (miQ + miT) * (miQ + miT);
