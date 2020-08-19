@@ -7,9 +7,9 @@ import * as d3 from 'd3';
 
 import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
-import ScreenPlot, { pvCutOff, highlightedGenes } from "./screenPlot";
+import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";
 
-const neutral = "#aaa", positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
+const positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;
 
 // --------------------------------------------------------------------
@@ -52,8 +52,8 @@ class ScreenPlotRegular extends ScreenPlot {
 		return (d) => {
 			const colors = d.values
 				.map(d => {
-					if (d.fcpv >= pvCutOff && highlightedGenes.has(d.geneName))
-						return "highlight";
+					if (d.fcpv >= pvCutOff && highlightedGenes.has(d.gene))
+						return highlight;
 
 					switch (this.graphType) {
 						case 'regular':
@@ -63,7 +63,7 @@ class ScreenPlotRegular extends ScreenPlot {
 						case 'low':
 							return d.rank <= /*this.rankRange[0] +*/ cutOff ? low : (d.fcpv >= pvCutOff ? neutral : notHighLow);
 						case 'unique':
-							return d.fcpv >= (pvCutOff || this.uniqueScale == null) ? neutral : this.uniqueScale(d.unique);
+							return d.fcpv >= pvCutOff ? neutral : this.uniqueScale(d.unique);
 					}
 				})
 				.sort()
@@ -148,7 +148,7 @@ class ScreenPlotRegular extends ScreenPlot {
 						$("tr", table).remove();
 						genes.forEach(d => {
 							let row = $("<tr/>");
-							$("<td/>").text(d.geneName).appendTo(row);
+							$("<td/>").text(d.gene).appendTo(row);
 							$("<td/>").text(d.low).appendTo(row);
 							$("<td/>").text(d.high).appendTo(row);
 							$("<td/>").text(fmt(d.fcpv)).appendTo(row);
@@ -182,11 +182,11 @@ class ScreenPlotRegular extends ScreenPlot {
 		if (d.multiDot === undefined && d.values.length === 1) {
 
 			// default is to highlight clicked genes
-			const geneName = d.values[0].geneName;
+			const gene = d.values[0].gene;
 			const plot = this.svg.node();
 			
 			const e = new Event("clicked-gene");
-			e.geneID = geneName;
+			e.gene = gene;
 
 			plot.dispatchEvent(e);
 		}

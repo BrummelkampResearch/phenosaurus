@@ -95,14 +95,14 @@ class IPGeneDataTraits
 	constructor() {
 	}
 
-	static label(d, geneID) {
-		return "gene: " + geneID + "\n" +
+	static label(d, gene) {
+		return "gene: " + gene + "\n" +
 			"screen: " + d.screenName + "\n" +
 			"mutational index: " + d3.format(".2f")(d.mi);
 	}
 
-	static clickGene(screenName, geneID, replicate) {
-		window.open(`./simpleplot?screen=${screenName}&highlightGene=${geneID}`, "_blank");
+	static clickGene(screenName, gene, replicate) {
+		window.open(`./simpleplot?screen=${screenName}&highlightGene=${gene}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -121,15 +121,15 @@ class SLGeneDataTraits
 	constructor() {
 	}
 
-	static label(d, geneID) {
-		return "gene: " + geneID + "\n" +
+	static label(d, gene) {
+		return "gene: " + gene + "\n" +
 			"screen: " + d.screenName + "\n" +
 			"sense ratio: " + d3.format(".2f")(d.mi) + "\n" +
 			"replicate: " + d.replicate;
 	}
 
-	static clickGene(screenName, geneID, replicate) {
-		window.open(`./slscreen?screen=${screenName}&highlightGene=${geneID}&replicate=${replicate}`, "_blank");
+	static clickGene(screenName, gene, replicate) {
+		window.open(`./slscreen?screen=${screenName}&highlightGene=${gene}&replicate=${replicate}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -198,7 +198,7 @@ class HeatMapPlot extends Plot {
 		this.gridWidth = Math.floor(this.width / screens.count);
 	}
 
-	processData(data, geneID) {
+	processData(data, gene) {
 		const tiles = this.svg.selectAll(".tile")
 			.data(data, d => d.screen);
 
@@ -221,9 +221,9 @@ class HeatMapPlot extends Plot {
 			.attr("width", this.gridWidth)
 			.attr("height", this.height - 2)
 
-			.on("mouseover", d => tooltip.show(Plot.label(d, geneID), d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, geneID, d.replicate))
+			.on("click", d => Plot.clickGene(d.screenName, gene, d.replicate))
 
 			.merge(tiles)
 			.style("fill", d => yScale(d.y));
@@ -274,7 +274,7 @@ class DotPlot extends Plot {
 			.attr("class", "axis axis--y");
 	}
 
-	processData(data, geneID) {
+	processData(data, gene) {
 		const xScale = screens.scale();
 
 		this.y.domain(Plot.getDomain(data));
@@ -295,9 +295,9 @@ class DotPlot extends Plot {
 			.append("circle")
 			.attr("class", "dot")
 			.attr("r", radius)
-			.on("mouseover", d => tooltip.show(Plot.label(d, geneID), d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screenName, geneID, d.replicate))
+			.on("click", d => Plot.clickGene(d.screenName, gene, d.replicate))
 			.merge(dots)
 			.attr("cx", d => this.x(xScale(d.screen)))
 			.attr("cy", d => this.y(d.y))
@@ -358,14 +358,14 @@ class FishTailGeneFinderPlot extends ScreenPlot {
 		genelines.forEach(gl => gl.changed());
 	}
 
-	processData(data, geneID) {
+	processData(data, gene) {
 
 		const screenNr = this.nextScreenNr;
 		++this.nextScreenNr;
 
-		this.geneMap.set(screenNr, geneID);
+		this.geneMap.set(screenNr, gene);
 
-		const screenData = new ScreenData(`Fishtail-like plot for gene ${geneID}`, geneID);
+		const screenData = new ScreenData(`Fishtail-like plot for gene ${gene}`, gene);
 		screenData.process(data);
 
 		data.forEach(d => d.fcpv = 1e-12);
@@ -375,13 +375,13 @@ class FishTailGeneFinderPlot extends ScreenPlot {
 
 	dblClickGenes(d, screenNr) {
 		const screenID = d.values[0].screenName;
-		const geneName = this.geneMap.get(screenNr);
-		Plot.clickGene(screenID, geneName, d.replicate);
+		const gene = this.geneMap.get(screenNr);
+		Plot.clickGene(screenID, gene, d.replicate);
 	}
 
 	mouseOver(d, screenNr) {
-		const geneName = this.geneMap.get(screenNr);
-		tooltip.show(Plot.label(d.values[0], geneName), d3.event.pageX + 5, d3.event.pageY - 5);
+		const gene = this.geneMap.get(screenNr);
+		tooltip.show(Plot.label(d.values[0], gene), d3.event.pageX + 5, d3.event.pageY - 5);
 	}
 
 	mouseOut(/*d, screenNr*/) {
@@ -431,17 +431,17 @@ class GeneLine {
 	}
 
 	changed() {
-		const geneIDs = this.input.val().split(/[ \t\r\n,;]+/).filter(e => e.length > 0);
+		const genes = this.input.val().split(/[ \t\r\n,;]+/).filter(e => e.length > 0);
 
 		this.input.removeClass("gene-not-found");
 
-		if (geneIDs.length > 0) {
-			const geneID = geneIDs[0];
-			this.input.val(geneID);
+		if (genes.length > 0) {
+			const gene = genes[0];
+			this.input.val(gene);
 
 			const options = geneSelectionEditor.getOptions();
 
-			fetch(`${context_name}/${screenType}/finder/${geneID}`, {
+			fetch(`${context_name}/${screenType}/finder/${gene}`, {
 				method: 'post',
 				credentials: "include",
 				body: options
@@ -458,11 +458,11 @@ class GeneLine {
 
 				Plot.preProcessData(data);
 
-				this.heatMap.processData(data, geneID);
-				this.dotPlot.processData(data, geneID);
+				this.heatMap.processData(data, gene);
+				this.dotPlot.processData(data, gene);
 
 				if (fishtail != null) {
-					const color = fishtail.processData(data, geneID);
+					const color = fishtail.processData(data, gene);
 
 					this.row.getElementsByClassName("swatch")[0]
 						.style.backgroundColor = color;
@@ -480,8 +480,8 @@ class GeneLine {
 				// }
 			});
 
-			geneIDs.splice(0, 1);
-			geneIDs.forEach(id => new GeneLine(id));
+			genes.splice(0, 1);
+			genes.forEach(id => new GeneLine(id));
 		}
 	}
 

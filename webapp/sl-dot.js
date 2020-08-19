@@ -12,7 +12,7 @@ export default class SLDot extends Dot {
     }
 
     highlight() {
-        return this.values.findIndex(g => highlightedGenes.has(g.geneName)) >= 0;
+        return this.values.findIndex(g => highlightedGenes.has(g.gene)) >= 0;
     }
 
     significant(pvCutOff) {

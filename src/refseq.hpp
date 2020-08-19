@@ -98,6 +98,20 @@ struct Transcript
 		else
 			ranges.back().end = v;
 	}
+
+	bool operator<(const Transcript& t) const
+	{
+		int d = chrom - t.chrom;
+		if (d == 0)
+			d = start() - t.start();
+		return d < 0;
+	}
+
+	bool operator==(const Transcript& t) const
+	{
+		// sufficient for now, I hope
+		return chrom == t.chrom and start() == t.start() and end() == t.end();
+	}
 };
 
 void cutOverlap(Transcript& a, Transcript& b);

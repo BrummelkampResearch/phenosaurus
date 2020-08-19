@@ -68,7 +68,7 @@ export default class GeneInfo {
 		$("tr", table.tBodies[0]).remove();
 		data.forEach(d => {
 			const row = $("<tr/>");
-			$("<td/>").text(d.geneName).appendTo(row);
+			$("<td/>").text(d.gene).appendTo(row);
 			$("<td/>").text(d3.format(".2e")(d.fcpv)).appendTo(row);
 			$("<td/>").text(d.high).appendTo(row);
 			$("<td/>").text(d.low).appendTo(row);
@@ -82,7 +82,7 @@ export default class GeneInfo {
 		$("tr", table.tBodies[0]).remove();
 		data.forEach(d => {
 			const row = $("<tr/>");
-			$("<td/>").text(d.geneName).appendTo(row);
+			$("<td/>").text(d.gene).appendTo(row);
 			$("<td/>").text(d3.format(".2e")(d.binom_fdr)).appendTo(row);
 			$("<td/>").text(d.sense).appendTo(row);
 			$("<td/>").text(d.antisense).appendTo(row);

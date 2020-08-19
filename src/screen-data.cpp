@@ -421,19 +421,15 @@ IPScreenData::IPScreenData(const fs::path& dir, const screen_info& info, fs::pat
 	}	
 }
 
-void IPScreenData::analyze(const std::string& assembly, unsigned readLength, std::vector<Transcript>& transcripts,
+void IPScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
 	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
 {
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-
-	// reorder transcripts
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-	{
-		int d = a.chrom - b.chrom;
-		if (d == 0)
-			d = a.start() - b.start();
-		return d < 0;
-	});
+#if DEBUG
+	auto tc = transcripts;
+	std::stable_sort(tc.begin(), tc.end());
+	assert(tc == transcripts);
+#endif
 
 	boost::thread_group t;
 	std::exception_ptr eptr;
@@ -611,54 +607,44 @@ std::vector<IPDataPoint> IPScreenData::dataPoints(const std::vector<Transcript>&
 	}
 
 	std::vector<double> pvalues(transcripts.size(), 0);
+	std::vector<IPDataPoint> result(transcripts.size());
 
 	parallel_for(transcripts.size(), [&](size_t i)
 	{
-		auto&& [low, high] = countLowHigh(i);
-
-		long v[2][2] = {
-			{ low, high },
-			{ lowCount - low, highCount - high }
-		};
-
-		pvalues[i] = fisherTest2x2(v);
-	});
-
-	auto fcpv = adjustFDR_BH(pvalues);
-
-	std::vector<IPDataPoint> result;
-
-	for (size_t i = 0; i < transcripts.size(); ++i)
-	{
 		auto& t = transcripts[i];
-		const auto& [low, high] = countLowHigh(i);
+		auto& p = result[i];
 
-		if (low == 0 and high == 0)
-			continue;
+		std::tie(p.low, p.high) = countLowHigh(i);
 
-		float miL = low, miH = high, miLT = lowCount - low, miHT = highCount - high;
-		if (low == 0)
+		float miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
+		if (p.low == 0)
 		{
 			miL = 1;
 			miLT -= 1;
 		}
 
-		if (high == 0)
+		if (p.high == 0)
 		{
 			miH = 1;
 			miHT -= 1;
 		}
 
-		IPDataPoint p;
-		p.geneName = t.geneName;
-		p.geneID = i;
+		long v[2][2] = {
+			{ p.low, p.high },
+			{ lowCount - p.low, highCount - p.high }
+		};
+
+		pvalues[i] = fisherTest2x2(v);
+
+		p.gene = t.geneName;
 		p.pv = pvalues[i];
-		p.fcpv = fcpv[i];
 		p.mi = ((miH / miHT) / (miL / miLT));
-		p.high = high;
-		p.low = low;
-		result.push_back(std::move(p));
-	}
+	});
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+		result[i].fcpv = fcpv[i];
 	
 	return result;
 }
@@ -964,8 +950,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 		SLDataPoint& p = datapoints[i];
 
-		p.geneName = t.geneName;
-		p.geneID = i;
+		p.gene = t.geneName;
 		p.sense = insertions[i].sense;
 		p.antisense = insertions[i].antiSense;
 		p.sense_normalized = normalized[i].sense;

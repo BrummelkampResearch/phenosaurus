@@ -22,11 +22,11 @@ export default class Dot {
     }
 
     highlight() {
-        return this.values.findIndex(g => highlightedGenes.has(g.geneName)) >= 0;
+        return this.values.findIndex(g => highlightedGenes.has(g.gene)) >= 0;
     }
 
     label() {
-        return this.values.map(g => g.geneName).filter(g => highlightedGenes.has(g)).join(", ");
+        return this.values.map(g => g.gene).filter(g => highlightedGenes.has(g)).join(", ");
     }
 
     significant(pvCutOff) {

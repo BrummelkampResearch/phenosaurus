@@ -54,7 +54,8 @@ ip_screen_data_cache::ip_screen_data_cache(const std::string& assembly, short tr
 	m_data = new data_point[N * M];
 	memset(m_data, 0, N * M * sizeof(data_point));
 
-	for (size_t si = 0; si < m_screens.size(); ++si)
+	// for (size_t si = 0; si < m_screens.size(); ++si)
+	parallel_for(m_screens.size(), [&](size_t si)
 	{
 		auto sd = m_data + si * m_transcripts.size();
 
@@ -67,9 +68,10 @@ ip_screen_data_cache::ip_screen_data_cache(const std::string& assembly, short tr
 
 		auto dp = data.dataPoints(m_transcripts, lowInsertions, highInsertions, m_direction);
 
-		for (auto& p: dp)
+		for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
 		{
-			auto& d = sd[p.geneID];
+			auto& d = sd[ti];
+			auto& p = dp[ti];
 
 			d.pv = p.pv;
 			d.fcpv = p.fcpv;
@@ -77,7 +79,7 @@ ip_screen_data_cache::ip_screen_data_cache(const std::string& assembly, short tr
 			d.low = p.low;
 			d.high = p.high;
 		}
-	}
+	});
 }
 
 ip_screen_data_cache::~ip_screen_data_cache()
@@ -105,14 +107,13 @@ std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& 
 
 		ip_data_point p{};
 
-		p.gene_name = m_transcripts[i].geneName;
-		p.gene_id = i;
-
+		p.gene = m_transcripts[i].geneName;
 		p.pv = dp.pv;
 		p.fcpv = dp.fcpv;
 		p.mi = dp.mi;
 		p.high = dp.high;
 		p.low = dp.low;
+
 		result.push_back(std::move(p));
 	}
 	
@@ -152,7 +153,7 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 
 		int colour = static_cast<int>(std::ceil(10 * cd / r));
 
-		result.emplace_back(gene_uniqueness{static_cast<int>(ti), colour});
+		result.emplace_back(gene_uniqueness{m_transcripts[ti].geneName, colour});
 	}
 
 	return result;

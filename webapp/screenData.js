@@ -89,11 +89,16 @@ export default class ScreenData {
 			}).then(data => {
 				if (data.ok)
 					return data.json();
-				if (data.status == 403)
-					throw "invalid-credentials";
+				
+				// if (data.status == 403)
+				// 	throw "invalid-credentials";
+				return data.json();
 			}).then(data => {
+				if (data.error != null)
+					throw data.error;
+
 				this.geneColours = new Map(data.map(d => [d.gene, d.colour]));
-				this.data.forEach(d => d.unique = this.geneColours.get(d.geneID));
+				this.data.forEach(d => d.unique = this.geneColours.get(d.gene));
 				resolve(null);
 			}).catch(err => {
 				return reject(err);

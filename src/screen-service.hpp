@@ -43,8 +43,7 @@ class screen_data_cache
 
 struct ip_data_point
 {
-	int gene_id;
-	std::string gene_name;
+	std::string gene;
 	float pv;
 	float fcpv;
 	float mi;
@@ -55,8 +54,7 @@ struct ip_data_point
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("geneID", gene_id)
-		   & zeep::make_nvp("geneName", gene_name)
+		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("pv", pv)
 		   & zeep::make_nvp("fcpv", fcpv)
 		   & zeep::make_nvp("mi", mi)
@@ -68,13 +66,13 @@ struct ip_data_point
 
 struct gene_uniqueness
 {
-	int gene_id;
+	std::string gene;
 	int color;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene_id)
+		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("colour", color);
 	}
 };

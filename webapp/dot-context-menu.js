@@ -43,15 +43,15 @@ export default class DotContextMenu extends ContextMenu {
 	handleSelect(target, action) {
 		const data = d3.select(target).data();
 		const v = data[0] ? data[0].values : null;
-		const geneNames = v ? v.map(g => g.geneName).join(';') : null;
+		const genes = v ? v.map(g => g.gene).join(';') : null;
 
 		switch (action) {
 			case 'gene-finder':
-				window.open("./screen-query/?screenType=IP&gene=" + geneNames, "_blank");
+				window.open("./screen-query/?screenType=IP&gene=" + genes, "_blank");
 				break;
 
 			case 'gene-cards':
-				window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + geneNames, "_blank");
+				window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + genes, "_blank");
 				break;
 
 			case 'show-labels':

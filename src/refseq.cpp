@@ -312,6 +312,8 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 		transcripts.push_back(std::move(ts));
 	}
 
+	std::sort(transcripts.begin(), transcripts.end());
+
 	return transcripts;
 }
 
@@ -598,6 +600,8 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
 
 	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
+
+	std::sort(transcripts.begin(), transcripts.end());
 
 	return transcripts;
 }

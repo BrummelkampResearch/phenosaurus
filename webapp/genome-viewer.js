@@ -53,7 +53,7 @@ export default class GenomveViewer {
 
 		const plot = document.getElementById("plot");
 		if (plot != null) {
-			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.geneID));
+			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.gene));
 		}
 
 		// create the context menu
@@ -161,7 +161,7 @@ export default class GenomveViewer {
 
 	}
 
-	selectedGene(geneID) {
+	selectedGene(gene) {
 		if (this.svg)
 		{
 			this.svg.remove();
@@ -197,7 +197,7 @@ export default class GenomveViewer {
 			geneEnd += geneEndOffset;
 		fd.append("gene-end", geneEnd);
 
-		fetch(`${context_name}ip/gene-info/${geneID}`, { credentials: "include", method: "post", body: fd })
+		fetch(`${context_name}ip/gene-info/${gene}`, { credentials: "include", method: "post", body: fd })
 			.then(data => {
 				if (data.ok)
 					return data.json();

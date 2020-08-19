@@ -143,14 +143,13 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 
 		ip_data_point p{};
 
-		p.gene_name = dp.geneName;
-		p.gene_id = i++;
-
+		p.gene = dp.gene;
 		p.pv = dp.pv;
 		p.fcpv = dp.fcpv;
 		p.mi = dp.mi;
 		p.high = dp.high;
 		p.low = dp.low;
+
 		result.push_back(std::move(p));
 	}
 	

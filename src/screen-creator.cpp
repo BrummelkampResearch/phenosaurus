@@ -372,7 +372,7 @@ Examples:
 
 	for (auto& dp: screenData.dataPoints(transcripts, lowInsertions, highInsertions, direction))
 	{
-		std::cout << dp.geneName << '\t'
+		std::cout << dp.gene << '\t'
 				<< dp.low << '\t'
 				<< dp.high << '\t'
 				<< dp.pv << '\t'
@@ -442,7 +442,7 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
 	{
-		std::cout << dp.geneName << '\t'
+		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
 				  << dp.antisense << '\t'
 				  << dp.pv << '\t'

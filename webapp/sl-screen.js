@@ -23,18 +23,18 @@ class ColorMap {
 	}
 
 	getColor(d) {
-		const mapped = this.geneColorMap.get(d.geneID);
+		const mapped = this.geneColorMap.get(d.gene);
 
 		if (mapped == null || mapped.binom_fdr == null || mapped.binom_fdr >= pvCutOff)
-			return highlightedGenes.has(d.geneName) ? highlight : neutral;
+			return highlightedGenes.has(d.gene) ? highlight : neutral;
 
 		switch (this.type) {
 			case 'raw':
 				return this.scale(mapped.diff);
 			case 'significant':
-				if (significantGenes.has(d.geneName))
+				if (significantGenes.has(d.gene))
 					return this.scale(mapped.diff);
-				else if (highlightedGenes.has(d.geneName))
+				else if (highlightedGenes.has(d.gene))
 					return highlight;
 				else
 					return neutral;
@@ -45,20 +45,20 @@ class ColorMap {
 		this.control = control;
 
 		data.forEach(d => {
-			const prev = this.geneColorMap.get(d.geneID);
+			const prev = this.geneColorMap.get(d.gene);
 			if (prev != null) {
 				prev.diff += d.senseratio - prev.control;
 				prev.control = d.senseratio;
 			}
 			else
-				this.geneColorMap.set(d.geneID, {control: d.senseratio});
+				this.geneColorMap.set(d.gene, {control: d.senseratio});
 		});
 	}
 
 	setData(data) {
 		let maxDiff = 0;
 		data.forEach(d => {
-			const e = this.geneColorMap.get(d.geneID);
+			const e = this.geneColorMap.get(d.gene);
 			if (e != null) {
 				e.binom_fdr = d.binom_fdr;
 				e.diff = e.control - d.senseratio;
@@ -205,7 +205,7 @@ class SLScreenPlot extends ScreenPlot {
 
 	getOpacity() {
 		return (d) => {
-			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.geneName)) >= 0) return 1;
+			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.gene)) >= 0) return 1;
 			if (d.significant(pvCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
@@ -262,7 +262,7 @@ class SLScreenPlot extends ScreenPlot {
 
 		if (this.control != null)
 		{
-			colorMap.setSignificantGenes(data.filter(d => d.significant).map(d => d.geneName));
+			colorMap.setSignificantGenes(data.filter(d => d.significant).map(d => d.gene));
 			this.updateSignificantTable(data);
 		}
 
@@ -321,7 +321,7 @@ class SLScreenPlot extends ScreenPlot {
 					row.appendChild(td);
 				};
 
-				col(d.geneName);
+				col(d.gene);
 				col(d.senseratio);
 				col(d.insertions);
 				col(fmt(d.binom_fdr));
@@ -334,8 +334,8 @@ class SLScreenPlot extends ScreenPlot {
 				// row.appendTo(table);
 
 				row.addEventListener('click', () => {
-					this.highlightGene(d.geneName);
-					this.control.highlightGene(d.geneName);
+					this.highlightGene(d.gene);
+					this.control.highlightGene(d.gene);
 				});
 			});
 			
@@ -364,7 +364,7 @@ class SLControlScreenPlot extends SLScreenPlot {
 		if (this.dotData !== undefined) {
 			this.dotData
 				.forEach(d => {
-					d.values.forEach(v => v.significant = significantGenes.has(v.geneName));
+					d.values.forEach(v => v.significant = significantGenes.has(v.gene));
 				});
 		}
 		

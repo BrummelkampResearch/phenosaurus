@@ -239,7 +239,7 @@ export default class ScreenPlot {
 			const colors = d.values
 				.map(d =>
 					d.fcpv >= pvCutOff
-						? highlightedGenes.has(d.geneName)
+						? highlightedGenes.has(d.gene)
 							? highlight 
 							: neutral
 						: color)
@@ -321,11 +321,11 @@ export default class ScreenPlot {
 		} else if (d.values.length === 1) {
 
 			// default is to highlight clicked genes
-			const geneName = d.values[0].geneName;
-			if (highlightedGenes.has(geneName))
-				highlightedGenes.delete(geneName);
+			const gene = d.values[0].gene;
+			if (highlightedGenes.has(gene))
+				highlightedGenes.delete(gene);
 			else
-				highlightedGenes.add(geneName);
+				highlightedGenes.add(gene);
 
 			const highlightGene = document.getElementById("highlightGene");
 			if (highlightGene != null)
@@ -347,12 +347,12 @@ export default class ScreenPlot {
 			evt.preventDefault();
 		}
 
-		const geneNames = d.values.map(g => g.geneName).join(';');
+		const genes = d.values.map(g => g.gene).join(';');
 
 		if (d3.event.ctrlKey || d3.event.altKey)
-			window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + geneNames, "_blank");
+			window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + genes, "_blank");
 		else
-			window.open("./screen-query/?screenType=IP&gene=" + geneNames, "_blank");
+			window.open("./screen-query/?screenType=IP&gene=" + genes, "_blank");
 	}
 
 	mouseOver(d) {
@@ -470,7 +470,7 @@ export default class ScreenPlot {
 					.filter(d => d.multiDot === undefined && d.significant(pvCutOff))
 					.append("text")
 					.attr("class", "label")
-					.text(d => d.values.map(d => d.geneName).join(", "))
+					.text(d => d.values.map(d => d.gene).join(", "))
 					.filter(d => d.subdot)
 					.attr("x", d => d.tx)
 					.attr("y", d => d.ty)
@@ -501,24 +501,24 @@ export default class ScreenPlot {
 		.remove();
 	}
 
-	highlightGene(geneName) {
-		if (geneName === undefined) {
-			geneName = document.getElementById('highlightGene').value;
+	highlightGene(gene) {
+		if (gene === undefined) {
+			gene = document.getElementById('highlightGene').value;
 		}
 
-		const geneNames = geneName
+		const genes = gene
 			.split(/[ \t\r\n,;]+/)
 			.filter(id => id.length > 0);
 
-		geneNames
+		genes
 			.forEach(value => highlightedGenes.add(value));
-		const geneNameSet = new Set(geneNames);
+		const geneSet = new Set(genes);
 
 		[...this.screens.keys()].forEach(sn => {
 			const screenPlotData = this.plotData.select(`#plot-${sn}`);
 
 			const selected = screenPlotData.selectAll("g.dot")
-			.filter(d => d.multiDot === undefined && d.values.filter(g => geneNameSet.has(g.geneName)).length > 0)
+			.filter(d => d.multiDot === undefined && d.values.filter(g => geneSet.has(g.gene)).length > 0)
 			.classed("highlight", true)
 				.raise();
 

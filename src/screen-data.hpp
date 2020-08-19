@@ -74,8 +74,7 @@ struct screen_info
 
 struct IPDataPoint
 {
-	int geneID;
-	std::string geneName;
+	std::string gene;
 	float pv;
 	float fcpv;
 	float mi;
@@ -85,8 +84,7 @@ struct IPDataPoint
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("geneID", geneID)
-		   & zeep::make_nvp("geneName", geneName)
+		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("pv", pv)
 		   & zeep::make_nvp("fcpv", fcpv)
 		   & zeep::make_nvp("mi", mi)
@@ -99,8 +97,7 @@ struct IPDataPoint
 
 struct SLDataPoint
 {
-	int geneID;
-	std::string geneName;
+	std::string gene;
 	float pv;
 	float fcpv;
 	float ref_pv[4];
@@ -116,8 +113,7 @@ struct SLDataPoint
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("geneID", geneID)
-		   & zeep::make_nvp("geneName", geneName)
+		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("pv", pv)
 		   & zeep::make_nvp("binom_fdr", fcpv)
 		   & zeep::make_nvp("ref_pv", ref_pv)
@@ -262,7 +258,7 @@ class IPScreenData : public ScreenData
 
 	// note: will reorder transcripts!
 	void analyze(const std::string& assembly, unsigned readLength,
-		std::vector<Transcript>& transcripts,
+		const std::vector<Transcript>& transcripts,
 		std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions);
 
 	std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>

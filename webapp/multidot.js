@@ -40,8 +40,8 @@ export default class MultiDot {
 					ty: ccy,
 					anchor: ccx < 0 ? "end" : "begin",
 
-					highlight: () => highlightedGenes.has(g.geneName),
-					label: () => g.geneName
+					highlight: () => highlightedGenes.has(g.gene),
+					label: () => g.gene
 				};
 			});
 
@@ -89,7 +89,7 @@ export default class MultiDot {
 			.attr("y", d => d.ty)
 			.attr("class", "label sub-dot")
 			.attr("text-anchor", d => d.anchor)
-			.text(d => d.gene.geneName)
+			.text(d => d.gene.gene)
 			.style("opacity", 0)
 			.transition()
 			.delay(500)
