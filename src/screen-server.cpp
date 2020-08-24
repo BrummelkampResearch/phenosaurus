@@ -333,7 +333,9 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 
 void IPScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	get_template_processor().create_reply_from_template("gene-finder.html", scope, reply);
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("gene-finder.html", sub, reply);
 }
 
 void IPScreenHtmlController::similar(const zh::request& request, const zh::scope& scope, zh::reply& reply)

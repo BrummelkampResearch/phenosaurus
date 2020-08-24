@@ -364,6 +364,33 @@ screen_info screen_service::retrieve_screen(const std::string& name)
 	return screen;
 }
 
+bool screen_service::is_owner(const std::string& name, const std::string& username)
+{
+	bool result = false;
+
+	std::ifstream manifest(m_screen_data_dir / name / "manifest.json");
+
+	if (manifest.is_open())
+	{
+		try
+		{
+			zeep::json::element info;
+			zeep::json::parse_json(manifest, info);
+
+			screen_info screen;
+			zeep::json::from_element(info, screen);
+
+			result = screen.scientist == username;
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
+		}
+	}
+	
+	return result;
+}
+
 void screen_service::update_screen(const std::string& name, const screen_info& screen)
 {
 	std::ofstream manifest(m_screen_data_dir / name / "manifest.json");

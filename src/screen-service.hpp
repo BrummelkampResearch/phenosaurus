@@ -177,6 +177,8 @@ class screen_service
 	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const;
 
 	screen_info retrieve_screen(const std::string& name);
+	bool is_owner(const std::string& name, const std::string& username);
+
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 

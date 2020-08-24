@@ -352,7 +352,7 @@ export default class ScreenPlot {
 		if (d3.event.ctrlKey || d3.event.altKey)
 			window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + genes, "_blank");
 		else
-			window.open("./screen-query/?screenType=IP&gene=" + genes, "_blank");
+			window.open("finder?screenType=IP&gene=" + genes, "_blank");
 	}
 
 	mouseOver(d) {

@@ -13,7 +13,7 @@ import ScreenData from "./screenData";
 // import {showLoginDialog} from "./index";
 import {geneSelectionEditor} from './gene-selection';
 
-/* global screenType, context_name, screenNames */
+/* global screenType, screenNames */
 
 let pvCutOff = 0.05;
 let nextGeneLineID = 1000;
@@ -28,49 +28,59 @@ const neutral = "#ccc", positive = "#fb8", negative = "#38c";
 
 class Screens {
 	constructor() {
-		this.screens = screenNames;
+		this.known = new Map(screenNames.map(v => [v, v]));
+		// this.screenIDs = Array.from(this.known.keys()).map(k => +k);
+		this.screenIDs = [...this.known.keys()];
 	}
 
 	* [Symbol.iterator]() {
-		yield* this.screens;
+		yield* this.screenIDs;
+	}
+
+	name(screenID) {
+		return this.known.get(screenID);
+	}
+
+	*names() {
+		for (let i of this.screenIDs)
+			yield this.known.get(""+i);
 	}
 
 	scale() {
-		return (screen) => {
-			const ix = this.screens.indexOf(screen);
+		return (screenID) => {
+			const ix = this.screenIDs.indexOf(screenID);
 			if (ix < 0) {
-				alert("Screen '" + screen + "' not found in index")
+				alert("Screen '" + screenID + "' not found in index")
 			}
 			return ix;
 		}
 	}
 
 	get count() {
-		return this.screens.length;
+		return this.screenIDs.length;
 	}
 
 	reorder(newOrder) {
-		this.screens = newOrder;
-		// this.screens = this.screens.sort((a, b) => {
-		// 	const ai = newOrder.indexOf(a);
-		// 	const bi = newOrder.indexOf(b);
+		this.screenIDs = this.screenIDs.sort((a, b) => {
+			const ai = newOrder.indexOf(a);
+			const bi = newOrder.indexOf(b);
 
-		// 	if (ai === bi)
-		// 		return 0;
-		// 	else if (ai < 0) {
-		// 		return 1;
-		// 	}
-		// 	else if (bi < 0) {
-		// 		return -1;
-		// 	}
-		// 	else {
-		// 		return ai - bi;
-		// 	}
-		// });
+			if (ai === bi)
+				return 0;
+			else if (ai < 0) {
+				return 1;
+			}
+			else if (bi < 0) {
+				return -1;
+			}
+			else {
+				return ai - bi;
+			}
+		});
 	}
 
 	labelX(x) {
-		return this.screens[x];
+		return this.screenIDs[x];
 	}
 }
 
@@ -245,7 +255,7 @@ class DotPlot extends Plot {
 		this.svg.attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
 
 		this.x = d3.scaleLinear()
-			.domain([0, screens.count - 1])
+			.domain([0, screens.count])
 			.range([0, this.width]);
 
 		this.y = d3.scaleLinear()
@@ -321,12 +331,12 @@ class LabelPlot extends Plot {
 	}
 
 	rearrange() {
-		this.x = d3.scalePoint()
-			.domain([...screens])
+r		this.x = d3.scaleBand()
+			.domain([...screens.names()])
 			.range([0, this.width]);
 
 		const xAxis = d3.axisBottom(this.x);
-
+		
 		this.gX.call(xAxis)
 			.selectAll("text")
 			.attr("class", "axis-label")
@@ -431,7 +441,7 @@ class GeneLine {
 
 			const options = geneSelectionEditor.getOptions();
 
-			fetch(`${context_name}/${screenType}/finder/${gene}`, {
+			fetch(`finder/${gene}`, {
 				method: 'post',
 				credentials: "include",
 				body: options
@@ -554,6 +564,18 @@ function selectPlotType(type) {
 
 $(function () {
 
+	const query = window.location.search;
+	const params = query
+		? (/^[?#]/.test(query) ? query.slice(1) : query)
+			.split('&')
+			.reduce((params, param) => {
+				let [key, value] = param.split('=');
+				params[key] = value ? decodeURIComponent(value.replace(/\+/g, ' ')) : '';
+				return params;
+			}, {}
+			)
+		: {}
+
 	document.getElementById("heatmap").onchange = () => selectPlotType('heatmap');
 	document.getElementById("dotplot").onchange = () => selectPlotType('dotplot');
 	document.getElementById("fishtail").onchange = () => selectPlotType('fishtail');
@@ -561,8 +583,8 @@ $(function () {
 	// labels = new ScreenLabels();
 	screens = new Screens();
 
-	const genes = Array.from(document.getElementsByClassName("gene-id")).map(e => e.dataset.id);
-	genes.forEach(value => new GeneLine(value));
+	// const genes = Array.from(document.getElementsByClassName("gene-id")).map(e => e.dataset.id);
+	// genes.forEach(value => new GeneLine(value));
 
 	// labels
 	labels = new LabelPlot(d3.select("td.label-container"));
@@ -574,7 +596,10 @@ $(function () {
 	$("#add-gene-line")
 		.on("click", () => new GeneLine());
 
-	if (genes.length === 0) {
+	if (typeof params["gene"] === 'string') {
+		new GeneLine(params["gene"]);
+	}
+	else  {
 		new GeneLine();
 	}
 });

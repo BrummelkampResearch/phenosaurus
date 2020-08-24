@@ -47,7 +47,7 @@ export default class DotContextMenu extends ContextMenu {
 
 		switch (action) {
 			case 'gene-finder':
-				window.open("./screen-query/?screenType=IP&gene=" + genes, "_blank");
+				window.open("finder?screenType=IP&gene=" + genes, "_blank");
 				break;
 
 			case 'gene-cards':
@@ -67,6 +67,7 @@ export default class DotContextMenu extends ContextMenu {
 					break;
 	
 				case 'unique-colours':
+				{
                     this.uniqueScaleIndex = (this.uniqueScaleIndex + 1) % 3;
                     let uniqueScale;
                     
@@ -87,6 +88,7 @@ export default class DotContextMenu extends ContextMenu {
 
                     this.plot.recolorGenes(uniqueScale);
 					break;
+				}
 	
 			case 'export-svg':
 				this.plot.exportSVG();

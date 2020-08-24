@@ -8,6 +8,7 @@
 #include <zeep/crypto.hpp>
 
 #include "user-service.hpp"
+#include "screen-service.hpp"
 #include "db-connection.hpp"
 
 // --------------------------------------------------------------------
@@ -226,6 +227,9 @@ bool user_service::allow_screen_for_user(const std::string& screen, const std::s
 
 	bool allowed = r.empty() == false;
 	tx.commit();
+
+	if (not allowed)
+		allowed = screen_service::instance().is_owner(screen, user);
 
 	return allowed;
 }
