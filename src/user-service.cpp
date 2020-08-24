@@ -163,15 +163,22 @@ std::vector<std::string> user_service::get_groups_for_screen(const std::string& 
 
 void user_service::set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups)
 {
-	auto current = get_groups_for_screen(screen_name);
-
 	uint32_t screenID;
-
 	{
-		pqxx::transaction tx(db_connection::instance());
-		screenID = tx.query_value<uint32_t>("SELECT id FROM screens WHERE name = " + tx.quote(screen_name));
-		tx.commit();
+		try
+		{
+			pqxx::transaction tx(db_connection::instance());
+			screenID = tx.query_value<uint32_t>("SELECT id FROM screens WHERE name = " + tx.quote(screen_name));
+			tx.commit();
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
+			return;
+		}
 	}
+
+	auto current = get_groups_for_screen(screen_name);
 
 	if (current != groups)
 	{
