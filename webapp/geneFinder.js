@@ -331,7 +331,7 @@ class LabelPlot extends Plot {
 	}
 
 	rearrange() {
-r		this.x = d3.scaleBand()
+		this.x = d3.scaleBand()
 			.domain([...screens.names()])
 			.range([0, this.width]);
 
