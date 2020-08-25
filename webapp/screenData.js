@@ -1,20 +1,18 @@
 import * as d3 from "d3";
 import Dot from "./dot";
-import $ from 'jquery';
 
 /* global context_name */
 
 export default class ScreenData {
 
-	constructor(screenName, screenID) {
-		this.screenID = screenID;
-		this.screenName = screenName;
+	constructor(screen) {
+		this.screen = screen;
 		this.geneColours = null;
 	}
 
 	load(options) {
 		return new Promise((resolve, reject) => {
-			fetch(`${context_name}ip/screenData/${this.screenID}`, {
+			fetch(`${context_name}ip/screenData/${this.screen}`, {
 				method: "post",
 				credentials: "include",
 				body: options
@@ -38,7 +36,7 @@ export default class ScreenData {
 					console.log("Error fetching screendata: " + err);
 
 					// if (err === "invalid-credentials")
-					// 	showLoginDialog(null, () => this.loadScreen(this.screenName, this.screenID));
+					// 	showLoginDialog(null, () => this.loadScreen(this.screenName, this.screen));
 					// else
 					reject(err);
 				});
@@ -69,7 +67,7 @@ export default class ScreenData {
 		this.data = data;
 
 		this.dotData = d3.nest()
-			.key(d => [this.screenID, d.mi, d.low + d.high].join(':'))
+			.key(d => [this.screen, d.mi, d.low + d.high].join(':'))
 			.entries(data)
 			.map(d => new Dot(d.key, d.values));
 	}
@@ -81,7 +79,7 @@ export default class ScreenData {
 				return;
 			}
 
-			fetch(`${context_name}ip/unique/${this.screenID}`,
+			fetch(`${context_name}ip/unique/${this.screen}`,
 			{
 				method: "post",
 				credentials: "include",

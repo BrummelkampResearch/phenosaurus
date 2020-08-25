@@ -9,7 +9,7 @@ const screenReplicatesMap = new Map();
 
 export let significantGenes = new Set();
 
-/*global context_name, screenReplicates, selectedGene, selectedReplicate, selectedScreen, $ */
+/*global context_name, screenReplicates, selectedReplicate, selectedScreen, $ */
 
 // --------------------------------------------------------------------
 
@@ -378,6 +378,22 @@ class SLControlScreenPlot extends SLScreenPlot {
 }
 
 window.addEventListener('load', () => {
+
+	const query = window.location.search;
+	const params = query
+		? (/^[?#]/.test(query) ? query.slice(1) : query)
+			.split('&')
+			.reduce((params, param) => {
+				let [key, value] = param.split('=');
+				params[key] = value ? decodeURIComponent(value.replace(/\+/g, ' ')) : '';
+				return params;
+			}, {}
+			)
+		: {}
+
+	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
+	const selectedScreen = params["screen"];
+
 	screenReplicates.forEach(o => {
 		const replicates = o.files
 			.filter(f => f.name.startsWith('replicate-'))
@@ -403,12 +419,12 @@ window.addEventListener('load', () => {
 		}
 	});
 
-	if (selectedScreen != null)
+	if (typeof selectedScreen === 'string')
 	{
 		const r = screenReplicates.find(e => e.name === selectedScreen);
 		if (r != null) {
 			plot.loadScreen(r.name, selectedScreen, +selectedReplicate)
-				.then(() => plot.highlightGene(selectedGene));
+				.then(() => plot.highlightGene(params['gene']));
 		}
 	}
 

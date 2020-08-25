@@ -122,16 +122,16 @@ class ScreenPlotRegular extends ScreenPlot {
 		return fd;
 	}
 
-	loadScreen(screenID, screenName) {
+	loadScreen(screen) {
 		return new Promise( (resolve, reject) => {
 			let plotTitle = $(".plot-title");
 			if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
 				return;
 			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
 
-			$(".screen-name").text(screenName);
+			$(".screen-name").text(screen);
 
-			const screenData = new ScreenData(screenName, screenID);
+			const screenData = new ScreenData(screen);
 
 			screenData.load(this.getOptions())
 				.then(() => {
@@ -196,7 +196,25 @@ class ScreenPlotRegular extends ScreenPlot {
 }
 
 window.addEventListener('load', () => {
-	const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
+
+	const query = window.location.search;
+	const params = query
+		? (/^[?#]/.test(query) ? query.slice(1) : query)
+			.split('&')
+			.reduce((params, param) => {
+				let [key, value] = param.split('=');
+				params[key] = value ? decodeURIComponent(value.replace(/\+/g, ' ')) : '';
+				return params;
+			}, {}
+			)
+		: {}
+
+	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
+	const selectedScreen = params["screen"];
+
+	if (typeof params["gene"] == 'string') {
+		document.getElementById('highlightGene').value = params['gene'];
+	}
 
 	new GenomeViewer();
 
@@ -208,10 +226,8 @@ window.addEventListener('load', () => {
 	$(screenList).chosen().change(() => {
 		const selected = screenList.selectedOptions;
 		if (selected.length === 1) {
-			const screenID = selected.item(0).dataset.screen;
-			const screenName = selected.item(0).textContent;
-
-			plot.loadScreen(screenID, screenName);
+			const screen = selected.item(0).dataset.screen;
+			plot.loadScreen(screen);
 		}
 	});
 
@@ -221,18 +237,16 @@ window.addEventListener('load', () => {
 
 		const selected = screenList.selectedOptions;
 		if (selected.length === 1) {
-			const screenID = selected.item(0).dataset.screen;
-			const screenName = selected.item(0).textContent;
-
-			plot.loadScreen(screenID, screenName);
+			const screen = selected.item(0).dataset.screen;
+			plot.loadScreen(screen);
 		}
 
 		return false;
 	});
 
-	if (selectedName !== "" && selectedID !== "")
-		plot.loadScreen(selectedID, selectedName)
-			.then(() => plot.highlightGene());
+	if (selectedScreen)
+		plot.loadScreen(selectedScreen)
+			.then(() => plot.highlightGene(params['gene']));
 
 	const svgExportBtn = document.getElementById('btn-export-svg');
 	if (svgExportBtn != null)

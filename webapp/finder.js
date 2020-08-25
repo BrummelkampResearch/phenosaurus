@@ -92,7 +92,7 @@ class IPGeneDataTraits
 	}
 
 	static clickGene(screen, gene) {
-		window.open(`screen?screen=${screen}&highlightGene=${gene}`, "_blank");
+		window.open(`screen?screen=${screen}&gene=${gene}`, "_blank");
 	}
 
 	static preProcessData(data) {
@@ -119,7 +119,7 @@ class SLGeneDataTraits
 	}
 
 	static clickGene(screen, gene, replicate) {
-		window.open(`screen?screen=${screen}&highlightGene=${gene}&replicate=${replicate}`, "_blank");
+		window.open(`screen?screen=${screen}&gene=${gene}&replicate=${replicate}`, "_blank");
 	}
 
 	static preProcessData(data) {

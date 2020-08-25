@@ -30,7 +30,7 @@
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='gene'>Gene</label>
 					</div>
-					<input class="form-control" type="text" id="gene" z2:value="${selectedGene ?: ''}" />
+					<input class="form-control" type="text" id="gene" z2:value="${#request.getParameter('gene')}" />
 				</div>
 			</div>
 		
