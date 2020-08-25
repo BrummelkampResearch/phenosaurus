@@ -10,6 +10,7 @@
 #include <iostream>
 #include <regex>
 #include <atomic>
+#include <mutex>
 
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
