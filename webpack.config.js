@@ -15,10 +15,11 @@ module.exports = {
 		'sl-screen': SCRIPTS + "sl-screen.js",
 
 		'gene-selection': SCRIPTS + 'gene-selection.js',
-		'find-similar': SCRIPTS + 'find-similar.js',
+		'gene-finder': SCRIPTS + 'gene-finder.js',
+		'similar-finder': SCRIPTS + 'similar-finder.js',
 
 		// 'login': SCRIPTS + "login.js",
-		'geneFinder': SCRIPTS + "geneFinder.js",
+		// 'geneFinder': SCRIPTS + "geneFinder.js",
 		// 'compare': SCRIPTS + "compare.js",
 		// 'compare2': SCRIPTS + "compare2.js",
 		// 'compare-sbs': SCRIPTS + "compare-sbs.js",

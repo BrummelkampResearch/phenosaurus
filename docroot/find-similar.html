@@ -5,13 +5,11 @@
 
 	<title>Fishtail Plot - Phenosaurus</title>
 
-	<script src="/scripts/find-similar.js" type="application/ecmascript" z2:src="@{/scripts/find-similar.js}"></script>
+	<script defer="defer" src="/scripts/similar-finder.js" type="application/ecmascript" z2:src="@{/scripts/similar-finder.js}"></script>
 
-	<script type="text/javascript" z2:inline="javascript">
-// <![CDATA[
+	<script z2:inline="javascript">
 		const screenNames = /*[[${screenNames}]]*/ null;
-		const selectedGene = [[${selectedGene}]];
-//]]>
+		const screenType = /*[[${screenType}]]*/ null;
 	</script>
 </head>
 <body>
@@ -19,6 +17,13 @@
 
 	<div class="container-fluid mt-3">
 		<div class="row option-row">
+
+			<div class="col-sm-1 mb-3">
+				<div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons" id="graphTypeBtns">
+					<label class="btn btn-sm btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
+					<label class="btn btn-sm btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off"/>Dotplot</label>
+				</div>
+			</div>
 
 			<div class="col-sm-2 mb-3">
 				<div class="input-group input-group-sm">
@@ -51,20 +56,11 @@
 				</div>
 			</div>
 
-			<div class="col-sm-1 mb-3">
-				<div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons" id="graphTypeBtns">
-					<label class="btn btn-sm btn-secondary active">
-						<input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" /> Heatmap
-					</label>
-					<label class="btn btn-sm btn-secondary">
-						<input type="radio" name="graphType" id="dotplot" autocomplete="off"/> Dotplot
-					</label>
-				</div>
-			</div>
-
 			<div class="col" z2:insert="~{gene-selection::gene-selection-dialog}"></div>
 
 		</div>
+
+		<div z2:replace="~{gene-info :: geneDiv('ip')}"></div>
 	</div>
 
 	<div class="container-fluid mt-4 mb-4">
@@ -116,7 +112,7 @@
 		</table>
 	</div>
 
-<div class="tooltip"></div>
+	<div class="tooltip"></div>
 
 </body>
 

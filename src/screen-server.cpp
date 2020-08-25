@@ -335,12 +335,14 @@ void IPScreenHtmlController::finder(const zh::request& request, const zh::scope&
 {
 	zh::scope sub(scope);
 	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("gene-finder.html", sub, reply);
+	get_template_processor().create_reply_from_template("find-genes.html", sub, reply);
 }
 
 void IPScreenHtmlController::similar(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	get_template_processor().create_reply_from_template("find-similar.html", scope, reply);
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("find-similar.html", sub, reply);
 }
 
 // --------------------------------------------------------------------

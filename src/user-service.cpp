@@ -164,6 +164,10 @@ std::vector<std::string> user_service::get_groups_for_screen(const std::string& 
 
 void user_service::set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups)
 {
+	std::unique_lock lock(m_mutex);
+
+	m_allowed_screens_per_user_cache.clear();
+
 	uint32_t screenID;
 	{
 		try
@@ -236,16 +240,25 @@ bool user_service::allow_screen_for_user(const std::string& screen, const std::s
 
 std::set<std::string> user_service::allowed_screens_for_user(const std::string& user)
 {
-	auto tx = db_connection::start_transaction();
+	std::unique_lock lock(m_mutex);
 
-	std::set<std::string> result;
+	auto i = m_allowed_screens_per_user_cache.find(user);
 
-	auto r = tx.exec_prepared("allowed-screens-for-user", user);
-	for (auto row: r)
-		result.insert(row[0].as<std::string>());
-	tx.commit();
+	if (i == m_allowed_screens_per_user_cache.end())
+	{
+		auto tx = db_connection::start_transaction();
 
-	return result;
+		std::set<std::string> result;
+
+		auto r = tx.exec_prepared("allowed-screens-for-user", user);
+		for (auto row: r)
+			result.insert(row[0].as<std::string>());
+		tx.commit();
+
+		std::tie(i, std::ignore) = m_allowed_screens_per_user_cache.emplace(user, result);
+	}
+
+	return i->second;
 }
 
 // --------------------------------------------------------------------

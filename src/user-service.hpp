@@ -104,6 +104,9 @@ class user_service : public zeep::http::user_service
 
   private:
 	user_service();
+
+	std::mutex m_mutex;
+	std::map<std::string,std::set<std::string>> m_allowed_screens_per_user_cache;
 };
 
 // --------------------------------------------------------------------
