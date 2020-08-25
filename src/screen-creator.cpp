@@ -119,6 +119,8 @@ int main_create(int argc, char* const argv[])
 
 	screen_info screen;
 
+	screen.created = boost::posix_time::second_clock().local_time();
+
 	if (vm.count("screen-name"))
 		screen.name = vm["screen-name"].as<std::string>();
 	else
