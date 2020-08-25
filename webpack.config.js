@@ -92,7 +92,6 @@ module.exports = {
 
 	plugins: [
 		new CleanWebpackPlugin({
-			dry: true,
 			cleanOnceBeforeBuildPatterns: [
 				'css/**/*',
 				'css/*',

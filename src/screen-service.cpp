@@ -483,6 +483,25 @@ void screen_admin_html_controller::handle_screen_admin(const zeep::http::request
 
 	zeep::json::element screens;
 	auto s = screen_service::instance().get_all_screens();
+
+	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+	{
+		std::string& a = sa.name;
+		std::string& b = sb.name;
+
+		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+		bool result;
+		if (r.first == a.end() and r.second == b.end())
+			result = false;
+		else if (r.first == a.end())
+			result = true;
+		else if (r.second == b.end())
+			result = false;
+		else
+			result = std::tolower(*r.first) < std::tolower(*r.second);
+		return result;
+	});
+
 	to_element(screens, s);
 	sub.put("screens", screens);
 

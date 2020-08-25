@@ -29,21 +29,36 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 // #else
 	std::atomic<size_t> i = 0;
 
+	std::exception_ptr eptr;
+	std::mutex m;
+
 	boost::thread_group t;
 	for (size_t n = 0; n < boost::thread::hardware_concurrency(); ++n)
-		t.create_thread([N, &i, &f]()
+		t.create_thread([N, &i, &f, &eptr, &m]()
 		{
-			for (;;)
+			try
 			{
-				auto next = i++;
-				if (next >= N)
-					break;
+				for (;;)
+				{
+					auto next = i++;
+					if (next >= N)
+						break;
 				
-				f(next);
+					f(next);
+				}
+			}
+			catch(const std::exception& e)
+			{
+				std::unique_lock lock(m);
+				eptr = std::current_exception();
 			}
 		});
 
 	t.join_all();
+
+	if (eptr)
+		std::rethrow_exception(eptr);
+
 // #endif
 }
 

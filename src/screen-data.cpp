@@ -549,6 +549,9 @@ IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t star
 
 	t.join_all();
 
+	if (eptr)
+		std::rethrow_exception(eptr);
+
 	return std::make_tuple(std::move(highP), std::move(highM), std::move(lowP), std::move(lowM));
 }
 
@@ -708,14 +711,37 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::stri
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>,4> controlInsertions;
+
+	std::exception_ptr eptr;
+
 	parallel_for(4, [&](size_t i) {
-		controlData.count_insertions(i + 1, assembly, trimLength, transcripts, controlInsertions[i]);
+		try
+		{
+			controlData.count_insertions(i + 1, assembly, trimLength, transcripts, controlInsertions[i]);
+		}
+		catch(const std::exception& e)
+		{
+			eptr = std::current_exception();
+		}
 	});
+
+	if (eptr)
+		std::rethrow_exception(eptr);
 
 	std::array<std::vector<InsertionCount>,4> normalizedControlInsertions;
 	parallel_for(4, [&](size_t i) {
-		normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
+		try
+		{
+			normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
+		}
+		catch (const std::exception& e)
+		{
+			eptr = std::current_exception();
+		}
 	});
+
+	if (eptr)
+		std::rethrow_exception(eptr);
 
 	// Then load the screen data
 	std::vector<InsertionCount> insertions;
@@ -866,18 +892,9 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 void SLScreenData::count_insertions(int replicate, const std::string& assembly, unsigned trimLength,
 	const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const
 {
-	boost::thread_group t;
-	std::exception_ptr eptr;
-
-	auto rn = "replicate-" + std::to_string(replicate);
-
-	auto infile = mDataDir / assembly / std::to_string(trimLength) / rn;
-	if (not fs::exists(infile))
-		throw std::runtime_error("Missing " + rn + " file, did you run map already?");
-
 	insertions.resize(transcripts.size());
 
-	auto bwt = read_insertions(assembly, trimLength, infile);
+	auto bwt = read_insertions(assembly, trimLength, "replicate-" + std::to_string(replicate));
 	auto ts = transcripts.begin();
 
 	for (const auto& [chr, strand, pos]: bwt)
