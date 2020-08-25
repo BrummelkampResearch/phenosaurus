@@ -372,6 +372,13 @@ Examples:
 		}
 	}
 
+	std::cout << "gene" << '\t'
+			  << "low" << '\t'
+			  << "high" << '\t'
+			  << "pv" << '\t'
+			  << "fcpv" << '\t'
+			  << "log2(mi)" << std::endl;
+
 	for (auto& dp: screenData.dataPoints(transcripts, lowInsertions, highInsertions, direction))
 	{
 		std::cout << dp.gene << '\t'
@@ -441,6 +448,24 @@ or txEnd to have the start at the cdsEnd e.g.
 	float effectSize = 0.2f;
 
 	// -----------------------------------------------------------------------
+
+	std::cout << "gene" << '\t'
+			  << "sense" << '\t'
+			  << "antisense" << '\t'
+			  << "pv" << '\t'
+			  << "fcpv" << '\t'
+			  << "sense_normalized" << '\t'
+			  << "antisense_normalized" << '\t'
+			  << "ref_fcpv[0]" << '\t'
+			  << "ref_pv[0]" << '\t'
+			  << "ref_fcpv[1]" << '\t'
+			  << "ref_pv[1]" << '\t'
+			  << "ref_fcpv[2]" << '\t'
+			  << "ref_pv[2]" << '\t'
+			  << "ref_fcpv[3]" << '\t'
+			  << "ref_pv[3]" << '\t'
+			  << "sense + antisense" << '\t'
+			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)" << std::endl;
 
 	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
 	{
