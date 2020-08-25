@@ -1,6 +1,3 @@
-import 'bootstrap';
-import 'bootstrap/js/dist/modal'
-import 'chosen-js/chosen.jquery';
 import * as d3 from 'd3';
 import $ from 'jquery';
 
@@ -10,9 +7,8 @@ import {readMyFile} from "./script";
 
 let nextGeneLineID = 1000;
 let geneLines = [];
-let labels;
 
-class GeneLine {
+export class GeneLine {
 	constructor(gene) {
 		const template = $("#plot > tbody > tr:first");
 		const id = 'gene-' + nextGeneLineID++;
@@ -130,9 +126,7 @@ class GeneLine {
 				geneLine.rearrange();
 			});
 
-		if (labels !== null) {
-			labels.rearrange();
-		}
+		LabelPlot.rearrange();
 	}
 
 	rearrange() {
@@ -161,20 +155,6 @@ function addGeneLinesFromFile(evt) {
 	}
 }
 
-function selectPlotType(type) {
-	switch (type) {
-		case 'heatmap':
-			$("#plot").removeClass("dotplot fishtail").addClass("heatmap").width("unset");
-			$("#fishtailplot").hide();
-			break;
-
-		case 'dotplot':
-			$("#plot").removeClass("heatmap fishtail").addClass("dotplot").width("unset");
-			$("#fishtailplot").hide();
-			break;
-	}
-}
-
 window.addEventListener('load', () => {
 
 	const query = window.location.search;
@@ -188,14 +168,6 @@ window.addEventListener('load', () => {
 			}, {}
 			)
 		: {}
-	
-	document.getElementById("heatmap").onchange = () => selectPlotType('heatmap');
-	document.getElementById("dotplot").onchange = () => selectPlotType('dotplot');
-	// document.getElementById("fishtail").onchange = () => selectPlotType('fishtail');
-	
-	// labels
-	labels = new LabelPlot(d3.select("td.label-container"));
-	labels.recreateSVG();
 	
 	$("#localGeneFile")
 		.on("change", e => addGeneLinesFromFile(e));

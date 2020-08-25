@@ -306,9 +306,16 @@ export class DotPlot extends Plot {
 	}
 }
 
+let s_labels = null;
+
 export class LabelPlot extends Plot {
 	constructor(td) {
 		super(td, 200);
+	}
+
+	static init(td) {
+		s_labels = new LabelPlot(td);
+		s_labels.recreateSVG();
 	}
 
 	recreateSVG() {
@@ -317,10 +324,14 @@ export class LabelPlot extends Plot {
 		this.gX = this.svg.append("g")
 			.attr("class", "axis axis--x");
 
-		this.rearrange()
+		this.rearrange_()
 	}
 
-	rearrange() {
+	static rearrange() {
+		s_labels.rearrange_();
+	}
+
+	rearrange_() {
 		this.x = d3.scaleBand()
 			.domain([...Screens.instance().names()])
 			.range([0, this.width]);
@@ -378,3 +389,26 @@ export class LabelPlot extends Plot {
 // 		tooltip.hide();
 // 	}
 // }
+
+function selectPlotType(type) {
+	switch (type) {
+		case 'heatmap':
+			$("#plot").removeClass("dotplot fishtail").addClass("heatmap").width("unset");
+			$("#fishtailplot").hide();
+			break;
+
+		case 'dotplot':
+			$("#plot").removeClass("heatmap fishtail").addClass("dotplot").width("unset");
+			$("#fishtailplot").hide();
+			break;
+	}
+}
+
+window.addEventListener('load', () => {
+	document.getElementById("heatmap").onchange = () => selectPlotType('heatmap');
+	document.getElementById("dotplot").onchange = () => selectPlotType('dotplot');
+	// document.getElementById("fishtail").onchange = () => selectPlotType('fishtail');
+
+	// labels
+	LabelPlot.init(d3.select("td.label-container"));
+})

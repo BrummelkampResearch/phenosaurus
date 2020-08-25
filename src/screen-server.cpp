@@ -81,6 +81,9 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("similar/{gene}", &IPScreenRestController::find_similar,
 			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cutoff", "zs-cutoff");
 
+		map_post_request("clusters", &IPScreenRestController::find_clusters,
+			"assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cutoff", "minPts", "eps", "NNs");
+
 		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
 
@@ -98,6 +101,10 @@ class IPScreenRestController : public zh::rest_controller
 	std::vector<similar_data_point> find_similar(const std::string& gene, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 		float pvCutOff, float zscoreCutOff);
+
+	std::vector<cluster> find_clusters(const std::string& assembly, Mode mode, bool cutOverlap,
+		const std::string& geneStart, const std::string& geneEnd, Direction direction,
+		float pvCutOff, size_t minPts, float eps, size_t NNs);
 
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
@@ -141,6 +148,14 @@ std::vector<similar_data_point> IPScreenRestController::find_similar(const std::
 {
 	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_similar(gene, pvCutOff, zscoreCutOff);
+}
+
+std::vector<cluster> IPScreenRestController::find_clusters(const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+	float pvCutOff, size_t minPts, float eps, size_t NNs)
+{
+	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->find_clusters(pvCutOff, minPts, eps, NNs);
 }
 
 Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
@@ -314,11 +329,13 @@ class IPScreenHtmlController : public ScreenHtmlControllerBase
 		mount("screen", &IPScreenHtmlController::fishtail);
 		mount("finder", &IPScreenHtmlController::finder);
 		mount("similar", &IPScreenHtmlController::similar);
+		mount("cluster", &IPScreenHtmlController::cluster);
 	}
 
 	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void similar(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
 	fs::path mScreenDir;
@@ -343,6 +360,13 @@ void IPScreenHtmlController::similar(const zh::request& request, const zh::scope
 	zh::scope sub(scope);
 	sub.put("screenType", "ip");
 	get_template_processor().create_reply_from_template("find-similar.html", sub, reply);
+}
+
+void IPScreenHtmlController::cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("find-clusters.html", sub, reply);
 }
 
 // --------------------------------------------------------------------

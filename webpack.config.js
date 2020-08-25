@@ -17,6 +17,7 @@ module.exports = {
 		'gene-selection': SCRIPTS + 'gene-selection.js',
 		'gene-finder': SCRIPTS + 'gene-finder.js',
 		'similar-finder': SCRIPTS + 'similar-finder.js',
+		'cluster-finder': SCRIPTS + 'cluster-finder.js',
 
 		// 'login': SCRIPTS + "login.js",
 		// 'geneFinder': SCRIPTS + "geneFinder.js",

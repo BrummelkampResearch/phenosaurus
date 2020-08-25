@@ -1,6 +1,3 @@
-import 'bootstrap';
-import 'bootstrap/js/dist/modal'
-import 'chosen-js/chosen.jquery';
 import * as d3 from 'd3';
 import $ from 'jquery';
 
@@ -9,7 +6,6 @@ import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
 
 let nextGeneLineID = 1000;
 let geneLines = [];
-let labels;
 
 class GeneLine {
 	constructor(hit) {
@@ -92,26 +88,12 @@ class GeneLine {
 				geneLine.rearrange();
 			});
 
-		if (labels !== null) {
-			labels.rearrange();
-		}
+		LabelPlot.rearrange();
 	}
 
 	rearrange() {
 		this.heatMap.rearrange();
 		this.dotPlot.rearrange();
-	}
-}
-
-function selectPlotType(type) {
-	switch (type) {
-		case 'heatmap':
-			$("#plot").removeClass("dotplot").addClass("heatmap");
-			break;
-
-		case 'dotplot':
-			$("#plot").removeClass("heatmap").addClass("dotplot");
-			break;
 	}
 }
 
@@ -183,9 +165,6 @@ window.addEventListener('load', () => {
 			)
 		: {}
 
-	document.getElementById("heatmap").onchange = () => selectPlotType('heatmap');
-	document.getElementById("dotplot").onchange = () => selectPlotType('dotplot');
-
 	document.getElementById("gene").onchange = doSearch;
 	document.getElementById("pv-cut-off").onchange = () => {
 		doSearch();
@@ -195,10 +174,6 @@ window.addEventListener('load', () => {
 		if (e.key === 'Enter')
 			doSearch();
 	};
-
-	// labels
-	labels = new LabelPlot(d3.select("td.label-container"));
-	labels.recreateSVG();
 
 	// start search?
 	if (typeof params["gene"] === 'string') {

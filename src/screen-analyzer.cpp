@@ -491,8 +491,6 @@ int main_update_manifests(int argc, char* const argv[])
 
 int main_guess_manifests(int argc, char* const argv[])
 {
-	int result = 0;
-
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( guess-manifests [options])", {});
 
 	fs::path screenDir = vm["screen-dir"].as<std::string>();

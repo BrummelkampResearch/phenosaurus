@@ -115,6 +115,22 @@ struct similar_data_point
 	}
 };
 
+struct cluster
+{
+	std::vector<std::string> genes;
+	float variance;
+
+	bool operator<(const cluster& c) const { return genes.size() > c.genes.size(); }
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long version)
+	{
+		ar & zeep::make_nvp("genes", genes)
+		   & zeep::make_nvp("variance", variance);
+	}
+};
+
+
 class ip_screen_data_cache : public screen_data_cache
 {
   public:
@@ -141,6 +157,7 @@ class ip_screen_data_cache : public screen_data_cache
 
 	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::set<std::string>& allowedScreens);
 	std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
+	std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
   private:
 
