@@ -1,5 +1,3 @@
-import 'bootstrap';
-import 'bootstrap/js/dist/modal'
 import 'chosen-js/chosen.jquery';
 import $ from 'jquery';
 
