@@ -81,13 +81,13 @@ int get_terminal_width()
 // -----------------------------------------------------------------------
 
 namespace {
-	std::string gVersionNr, gVersionDate;
+	std::string gVersionNr, gVersionDate, gVersionTag;
 }
 
 void load_version_info()
 {
 	const std::regex
-		rxVersionNr(R"(build-(\d+)-g[0-9a-f]{7}(-dirty)?)"),
+		rxVersionNr(R"(build-(\d+)-g([0-9a-f]{7})(-dirty)?)"),
 		rxVersionDate(R"(Date: +(\d{4}-\d{2}-\d{2}).*)");
 
 	auto version = mrsrc::rsrc("version.txt");
@@ -104,8 +104,9 @@ void load_version_info()
 			if (std::regex_match(line, m, rxVersionNr))
 			{
 				gVersionNr = m[1];
-				if (m[2].matched)
-					gVersionNr += '*';
+				gVersionTag = m[2];
+				if (m[3].matched)
+					gVersionTag += '*';
 				continue;
 			}
 
@@ -136,7 +137,10 @@ std::string get_version_date()
 
 void showVersionInfo()
 {
-	std::cout << "Version: " << gVersionNr << ", Date: " << gVersionDate << std::endl;
+	if (gVersionNr.empty())
+		load_version_info();
+
+	std::cout << "Build: " << gVersionNr << ", Date: " << gVersionDate << ", Tag: " << gVersionTag << std::endl;
 }
 
 // --------------------------------------------------------------------

@@ -112,10 +112,10 @@ $(REVISION_FILE):
 rsrc:
 	@ mkdir -p $@
 
-rsrc/lib-version.txt: $(REVISION_FILE) | rsrc
+rsrc/version.txt: $(REVISION_FILE) | rsrc
 	cp $? $@
 
-RSRC = docroot/ rsrc/
+RSRC = docroot/ rsrc/ rsrc/version.txt
 
 # yarn rules
 # SCRIPTS = $(shell find webapp -name '*.js')
