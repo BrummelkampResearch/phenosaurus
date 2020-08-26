@@ -1,5 +1,6 @@
 import 'chosen-js/chosen.jquery';
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
+import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
 
 import * as d3 from 'd3';
@@ -9,7 +10,7 @@ const screenReplicatesMap = new Map();
 
 export let significantGenes = new Set();
 
-/*global context_name, screenReplicates, selectedReplicate, selectedScreen, $ */
+/*global context_name, screenReplicates, selectedReplicate $ */
 
 // --------------------------------------------------------------------
 
@@ -133,35 +134,16 @@ class SLScreenPlot extends ScreenPlot {
 			[...this.parentColumn.getElementsByClassName("screen-name")]
 				.forEach(sn => sn.textContent = name);
 
-			const f = document.geneSelectionForm;
-			const fd = new FormData(f);
+			const options = geneSelectionEditor.getOptions();
 
-			// if (f["read-length"])
-			// 	fd.set("read-length", f["read-length"].value + 0);
-			// fd.set("read-length", 50);
-
-			const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
-
-			let geneStart = document.getElementById("geneStartType").value;
-			if (geneStartOffset > 0)
-				geneStart += "+" + geneStartOffset;
-			else if (geneStartOffset < 0)
-				geneStart += geneStartOffset;
-
-			fd.append("gene-start", geneStart);
-
-			const geneEndOffset = parseInt(document.getElementById('geneEndOffset').value);
-
-			let geneEnd = document.getElementById("geneEndType").value;
-			if (geneEndOffset > 0)
-				geneEnd += "+" + geneEndOffset;
-			else if (geneEndOffset < 0)
-				geneEnd += geneEndOffset;
-
-			fd.append("gene-end", geneEnd);
+			// "id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction"
+			// "replicate", "pvCutOff", "binomCutOff", "effectSize");
+			options.append("pvCutOff", pvCutOff);
+			options.append("binomCutOff", document.getElementById('binom_fdr').value);
+			options.append("effectSize", document.getElementById('effect-size').value);
 
 			fetch(`${context_name}sl/screen/${name}/${replicate}`,
-					{ credentials: "include", method: "post", body: fd })
+					{ credentials: "include", method: "post", body: options })
 				.then(value => {
 					if (value.ok)
 						return value.json();
@@ -274,7 +256,7 @@ class SLScreenPlot extends ScreenPlot {
 
 		const replicateBtnContainer = this.parentColumn.getElementsByClassName("replicate-btn-container")[0];
 
-		const replicates = screenReplicatesMap.get(this.name);
+		const replicates = screenReplicatesMap.get(this.name).sort();
 
 		if (replicates != null) {
 
@@ -397,7 +379,8 @@ window.addEventListener('load', () => {
 	screenReplicates.forEach(o => {
 		const replicates = o.files
 			.filter(f => f.name.startsWith('replicate-'))
-			.map(f => f.name.substr('replicate-'.length, 1));
+			.map(f => f.name.substr('replicate-'.length, 1))
+			.sort((a, b) => a.name < b.name);
 		screenReplicatesMap.set(o.name, replicates)
 	});
 

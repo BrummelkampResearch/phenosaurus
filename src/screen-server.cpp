@@ -398,21 +398,6 @@ void IPScreenHtmlController::compare_3(const zh::request& request, const zh::sco
 
 // --------------------------------------------------------------------
 
-struct ScreenReplicateInfo
-{
-	int id;
-	std::string name;
-	std::vector<int> replicates;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long version)
-	{
-		ar & zeep::name_value_pair("id", id)
-		   & zeep::name_value_pair("name", name)
-		   & zeep::name_value_pair("replicates", replicates);
-	}
-};
-
 class SLScreenRestController : public zh::rest_controller
 {
   public:
