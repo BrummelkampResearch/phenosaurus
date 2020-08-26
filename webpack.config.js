@@ -23,12 +23,11 @@ module.exports = {
 		// 'geneFinder': SCRIPTS + "geneFinder.js",
 		// 'compare': SCRIPTS + "compare.js",
 		// 'compare2': SCRIPTS + "compare2.js",
-		// 'compare-sbs': SCRIPTS + "compare-sbs.js",
+		'compare-3': SCRIPTS + "compare-3.js",
 
 		'admin-user': SCRIPTS + "admin-user.js",
 		'admin-group': SCRIPTS + "admin-group.js",
 		'admin-screen': SCRIPTS + "admin-screen.js",
-		// 'admin-genome': SCRIPTS + "admin-genome.js",
 		'user-screen': SCRIPTS + "user-screen.js"
 	},
 

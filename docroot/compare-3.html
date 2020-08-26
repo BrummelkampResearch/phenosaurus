@@ -1,0 +1,93 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat" [
+<!ENTITY nbsp "&#160;">
+]>
+<html lang="en" xmlns:z2="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head z2:replace="head :: head(~{::title}, ~{}, ~{::script})">
+	<title>Fishtail Plot - Phenosaurus</title>
+	<script src="/scripts/compare-3.js" type="application/ecmascript" z2:src="@{/scripts/compare-3.js}"></script>
+</head>
+
+<body>
+	<nav z2:replace="~{menu :: menu}"></nav>
+
+	<div class="container-fluid mt-3">
+		<div class="row">
+			<div class="col col-sm-2 mb-3">
+				<div class="input-group input-group-sm">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for='pv-cut-off'>p-value</label>
+					</div>
+					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
+							placeholder="0.05"
+							class="form-control" value="0.05"/>
+				</div>
+			</div>
+
+			<div class="col col-sm-1 mb-3">
+
+				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
+					<label class="btn btn-secondary active">
+						<input type="radio" name="graphColor" id="gradient" autocomplete="off" data-colortype="gradient" class="graph-color-btn" checked="checked" />Gradient
+					</label>
+					<label class="btn btn-secondary">
+						<input type="radio" name="graphColor" id="unique" autocomplete="off" data-colortype="unique" class="graph-color-btn" /> Unique
+					</label>
+				</div>
+
+			</div>
+
+			<div class="col col-sm-2 mb-3">
+				<div class="input-group input-group-sm">
+					<input type="text" id="highlightGene" size="5"
+						placeholder="Enter genename..."
+						z2:value="${#request.getParameter('gene')}"
+						class="form-control form-control-sm"/>
+
+					<div class="input-group-append" id="button-addon4">
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
+					</div>
+				</div>	
+			</div>
+			
+			<div class="col col-sm-1" z2:insert="~{gene-selection::gene-selection-dialog}"></div>
+
+			<div class="col col-sm-2 mb-3">
+				
+				<div z2:replace="gene-info :: geneDiv('ip')"></div>
+				<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
+				<label>
+					<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info Dialog</button>
+				</label>
+
+			</div>
+
+		</div>
+
+		<div class="row">
+			<div class="col">
+				<div class="row">
+					<div class="col"><select data-placeholder="Choose a Screen..." id="select-screen-1">
+							<option value=""></option>
+							<option z2:each="screen: ${screens}" z2:attr="data-screen=${screen.name}"
+								z2:text="${screen.name}"></option>
+						</select>
+						<div class="plot-container"><svg width="100%" height="100%" id="plot-1"></svg></div>
+					</div>
+					<div class="col"><select data-placeholder="Choose a Screen..." id="select-screen-2">
+							<option value=""></option>
+							<option z2:each="screen: ${screens}" z2:attr="data-screen=${screen.name}"
+								z2:text="${screen.name}"></option>
+						</select>
+						<div class="plot-container"><svg width="100%" height="100%" id="plot-2"></svg></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div z2:replace="~{contextMenu :: contextMenuNav}"></div>
+	<footer z2:replace="~{footer :: content}"></footer>
+</body>
+
+</html>

@@ -72,7 +72,7 @@ class IPScreenRestController : public zh::rest_controller
 		: zh::rest_controller("ip")
 		, mScreenDir(screenDir)
 	{
-		map_post_request("screenData/{id}", &IPScreenRestController::screenData,
+		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
 		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
@@ -330,12 +330,18 @@ class IPScreenHtmlController : public ScreenHtmlControllerBase
 		mount("finder", &IPScreenHtmlController::finder);
 		mount("similar", &IPScreenHtmlController::similar);
 		mount("cluster", &IPScreenHtmlController::cluster);
+		mount("compare-1", &IPScreenHtmlController::compare_1);
+		mount("compare-2", &IPScreenHtmlController::compare_2);
+		mount("compare-3", &IPScreenHtmlController::compare_3);
 	}
 
 	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void similar(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void compare_1(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void compare_2(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void compare_3(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
 	fs::path mScreenDir;
@@ -369,6 +375,27 @@ void IPScreenHtmlController::cluster(const zh::request& request, const zh::scope
 	get_template_processor().create_reply_from_template("find-clusters.html", sub, reply);
 }
 
+void IPScreenHtmlController::compare_1(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("compare-1.html", sub, reply);
+}
+
+void IPScreenHtmlController::compare_2(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("compare-2.html", sub, reply);
+}
+
+void IPScreenHtmlController::compare_3(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	zh::scope sub(scope);
+	sub.put("screenType", "ip");
+	get_template_processor().create_reply_from_template("compare-3.html", sub, reply);
+}
+
 // --------------------------------------------------------------------
 
 struct ScreenReplicateInfo
@@ -393,7 +420,7 @@ class SLScreenRestController : public zh::rest_controller
 		: zh::rest_controller("sl")
 		, mScreenDir(screenDir)
 	{
-		map_post_request("screenData/{id}/{replicate}", &SLScreenRestController::screenData,
+		map_post_request("screen/{id}/{replicate}", &SLScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "replicate", "pvCutOff", "binomCutOff", "effectSize");
 	}
 

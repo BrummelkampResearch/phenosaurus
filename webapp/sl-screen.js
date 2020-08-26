@@ -160,7 +160,7 @@ class SLScreenPlot extends ScreenPlot {
 
 			fd.append("gene-end", geneEnd);
 
-			fetch(`${context_name}sl/screenData/${name}/${replicate}`,
+			fetch(`${context_name}sl/screen/${name}/${replicate}`,
 					{ credentials: "include", method: "post", body: fd })
 				.then(value => {
 					if (value.ok)
