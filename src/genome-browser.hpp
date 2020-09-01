@@ -101,13 +101,13 @@ struct location
 struct named_location
 {
 	std::string name;
-	location location;
+	location loc;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
 	{
 		ar & zeep::name_value_pair("name", name)
-		   & zeep::name_value_pair("location", location);
+		   & zeep::name_value_pair("location", loc);
 	}
 };
 
