@@ -12,7 +12,7 @@ export default class ScreenData {
 
 	load(options) {
 		return new Promise((resolve, reject) => {
-			fetch(`${context_name}ip/screen/${this.screen}`, {
+			fetch(`screen/${this.screen}`, {
 				method: "post",
 				credentials: "include",
 				body: options
@@ -79,7 +79,7 @@ export default class ScreenData {
 				return;
 			}
 
-			fetch(`${context_name}ip/unique/${this.screen}`,
+			fetch(`unique/${this.screen}`,
 			{
 				method: "post",
 				credentials: "include",

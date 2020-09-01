@@ -100,7 +100,7 @@ int main_create(int argc, char* const argv[])
 		{
 			{ "scientist", po::value<std::string>(),		"The scientist who did the experiment" },
 
-			{ "type", po::value<std::string>(),				"The screen type to create, should be one of 'ip' or 'sl'" },
+			{ "type", po::value<std::string>(),				"The screen type to create, should be one of 'ip', 'pa' or 'sl'" },
 			{ "low", po::value<std::string>(),				"The path to the LOW FastQ file" },
 			{ "high", po::value<std::string>(),				"The path to the HIGH FastQ file" },
 
@@ -143,7 +143,7 @@ int main_create(int argc, char* const argv[])
 		if (vm.count("type"))
 			s = vm["type"].as<std::string>();
 		else
-			s = ask("Screen type [ip/sl]");
+			s = ask("Screen type [ip/sl/pa]");
 
 		screen.type = zeep::value_serializer<ScreenType>::from_string(s);
 		if (screen.type == ScreenType::Unspecified)
@@ -196,6 +196,17 @@ int main_create(int argc, char* const argv[])
 			auto low = vm["low"].as<std::string>();
 			auto high = vm["high"].as<std::string>();
 			auto data = std::make_unique<IPScreenData>(screenDir, screen, low, high);
+			break;
+		}
+
+		case ScreenType::IntracellularPhenotypeActivation:
+		{
+			if (not (vm.count("low") and vm.count("high")))
+				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
+			
+			auto low = vm["low"].as<std::string>();
+			auto high = vm["high"].as<std::string>();
+			auto data = std::make_unique<PAScreenData>(screenDir, screen, low, high);
 			break;
 		}
 
@@ -267,7 +278,7 @@ int main_map(int argc, char* const argv[])
 
 // --------------------------------------------------------------------
 
-int analyze_ip(po::variables_map& vm, IPScreenData& screenData)
+int analyze_ip(po::variables_map& vm, IPPAScreenData& screenData)
 {
 	if (vm.count("assembly") == 0 or
 		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
@@ -532,6 +543,10 @@ int main_analyze(int argc, char* const argv[])
 	{
 		case ScreenType::IntracellularPhenotype:
 			result = analyze_ip(vm, *static_cast<IPScreenData*>(data.get()));
+			break;
+
+		case ScreenType::IntracellularPhenotypeActivation:
+			result = analyze_ip(vm, *static_cast<PAScreenData*>(data.get()));
 			break;
 
 		case ScreenType::SyntheticLethal:

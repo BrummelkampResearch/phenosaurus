@@ -385,15 +385,15 @@ void ScreenData::compress_map(const std::string& assembly, unsigned readLength, 
 
 // --------------------------------------------------------------------
 
-IPScreenData::IPScreenData(const fs::path& dir)
-	: ScreenData(dir)
+IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
+	: ScreenData(dir), mType(type)
 {
-	if (mInfo.type != screen_type)
+	if (mInfo.type != mType)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-IPScreenData::IPScreenData(const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
-	: ScreenData(dir, info)
+IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
+	: ScreenData(dir, info), mType(type)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(low))
@@ -421,7 +421,7 @@ IPScreenData::IPScreenData(const fs::path& dir, const screen_info& info, fs::pat
 	}	
 }
 
-void IPScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
+void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
 	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
 {
 	// reorder transcripts based on chr > end-position, makes code easier and faster
@@ -507,7 +507,7 @@ void IPScreenData::analyze(const std::string& assembly, unsigned readLength, con
 // --------------------------------------------------------------------
 
 std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
-IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
+IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
 {
 	const unsigned readLength = 50;
 
@@ -557,7 +557,7 @@ IPScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t star
 
 // --------------------------------------------------------------------
 
-std::vector<IPDataPoint> IPScreenData::dataPoints(const std::string& assembly,
+std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction)
 {
@@ -574,7 +574,7 @@ std::vector<IPDataPoint> IPScreenData::dataPoints(const std::string& assembly,
 	return dataPoints(transcripts, lowInsertions, highInsertions, direction);
 }
 
-std::vector<IPDataPoint> IPScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript>& transcripts,
 	const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction)
 {
@@ -1048,7 +1048,10 @@ std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 	{
 		case ScreenType::IntracellularPhenotype:
 			return std::make_unique<IPScreenData>(dir);
-		
+
+		case ScreenType::IntracellularPhenotypeActivation:
+			return std::make_unique<PAScreenData>(dir);
+				
 		case ScreenType::SyntheticLethal:
 			return std::make_unique<SLScreenData>(dir);
 		

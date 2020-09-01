@@ -103,7 +103,10 @@ class user_service : public zeep::http::user_service
 	static bool isValidEmail(const std::string& email);
 
   private:
+
 	user_service();
+
+	void fill_allowed_screens_cache();
 
 	std::mutex m_mutex;
 	std::map<std::string,std::set<std::string>> m_allowed_screens_per_user_cache;

@@ -138,6 +138,7 @@ class SLGeneDataTraits
 function baseSelector() {
 	switch (screenType) {
 		case "ip": return IPGeneDataTraits;
+		case "pa": return IPGeneDataTraits;
 		case "sl": return SLGeneDataTraits;
 		default: throw "Invalid screen type";
 	}

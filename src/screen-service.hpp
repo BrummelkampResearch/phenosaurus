@@ -19,19 +19,21 @@
 class screen_data_cache
 {
   public:
-	screen_data_cache(const std::string& assembly, short trim_length,
+	screen_data_cache(ScreenType type, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
 	virtual ~screen_data_cache();
 
-	bool is_for(const std::string& assembly, short trim_length,
+	bool is_for(ScreenType type, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd) const
 	{
-		return m_assembly == assembly and m_trim_length == trim_length and
+		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
 			m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
 	}
 
   protected:
 
+	ScreenType m_type;
 	std::string m_assembly;
 	short m_trim_length;
 	Mode m_mode;
@@ -134,22 +136,23 @@ struct cluster
 class ip_screen_data_cache : public screen_data_cache
 {
   public:
-	ip_screen_data_cache(const std::string& assembly, short trim_length,
+	ip_screen_data_cache(ScreenType type, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
+
 	~ip_screen_data_cache();
 
-	bool is_for(std::string& assembly, short trim_length,
+	bool is_for(ScreenType type, std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction) const
 	{
-		return screen_data_cache::is_for(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
+		return screen_data_cache::is_for(type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
 	}
 
 	bool contains_data_for_screen(const std::string& screen) const
 	{
-		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.first == screen; });
-		return si != m_screens.end() and si->second;
+		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+		return si != m_screens.end() and si->filled;
 	}
 
 	std::vector<ip_data_point> data_points(const std::string& screen);
@@ -170,11 +173,18 @@ class ip_screen_data_cache : public screen_data_cache
 		uint32_t	high;
 	};
 
+	struct cached_screen
+	{
+		std::string name;
+		bool filled = false;
+		bool ignore = false;
+	};
+
 	size_t index(size_t screen_nr, size_t transcript) const;
 
 	Direction m_direction;
 	data_point* m_data;
-	std::vector<std::pair<std::string,bool>> m_screens;
+	std::vector<cached_screen> m_screens;
 };
 
 // --------------------------------------------------------------------
@@ -199,11 +209,11 @@ class screen_service
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 
-	std::shared_ptr<ip_screen_data_cache> get_ip_screen_data(const std::string& assembly, short trim_length,
+	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
-	std::vector<ip_data_point> get_ip_data_points(const std::string& screen, const std::string& assembly, short trim_length,
+	std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
 
   private:

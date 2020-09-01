@@ -7,6 +7,10 @@ const SCSS = __dirname + "/scss/";
 const DEST = __dirname + "/docroot/";
 
 module.exports = {
+	node: {
+		fs: 'empty'
+	},
+
 	mode: "development",
 	entry: {
 		'sa-style': SCSS + "sa-style.scss",
@@ -19,16 +23,14 @@ module.exports = {
 		'similar-finder': SCRIPTS + 'similar-finder.js',
 		'cluster-finder': SCRIPTS + 'cluster-finder.js',
 
-		// 'login': SCRIPTS + "login.js",
-		// 'geneFinder': SCRIPTS + "geneFinder.js",
-		// 'compare': SCRIPTS + "compare.js",
-		// 'compare2': SCRIPTS + "compare2.js",
 		'compare-3': SCRIPTS + "compare-3.js",
 
 		'admin-user': SCRIPTS + "admin-user.js",
 		'admin-group': SCRIPTS + "admin-group.js",
 		'admin-screen': SCRIPTS + "admin-screen.js",
-		'user-screen': SCRIPTS + "user-screen.js"
+		'user-screen': SCRIPTS + "user-screen.js",
+
+		'genome-browser': SCRIPTS + "genome-browser.js"
 	},
 
 	output: {

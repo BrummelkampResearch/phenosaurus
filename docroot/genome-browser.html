@@ -1,0 +1,32 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:z2="http://www.hekkelman.com/libzeep/m2" xml:lang="en" lang="en">
+
+<head z2:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
+
+	<title>Genome Browser - Phenosaurus</title>
+
+	<script src="/jbrowse/dist/browser.bundle.js" type="application/ecmascript" z2:src="@{/jbrowse/dist/browser.bundle.js}"></script>
+	<script defer="defer" src="/scripts/genome-browser.js" type="application/ecmascript" z2:src="@{/scripts/genome-browser.js}"></script>
+</head>
+<body>
+	<nav z2:replace="menu :: menu"></nav>
+
+<style>
+.jbrowse {
+	height: 1000px;
+	width: calc(100% - 5em);
+	padding: 0;
+	margin-left: 5em;
+	border: 1px solid #ccc;
+}
+</style>
+
+	<div class="container-fluid mt-3">
+		<div class="jbrowse" id="GenomeBrowser">
+            <div id="LoadingScreen" style="padding: 50px;">
+                <h1>Loading...</h1>
+            </div>
+        </div>
+	</div>
+</body>
+</html>

@@ -17,6 +17,7 @@
 #include "utils.hpp"
 #include "user-service.hpp"
 #include "db-connection.hpp"
+#include "genome-browser.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -68,9 +69,9 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 class IPScreenRestController : public zh::rest_controller
 {
   public:
-	IPScreenRestController(const fs::path& screenDir)
-		: zh::rest_controller("ip")
-		, mScreenDir(screenDir)
+	IPScreenRestController(const fs::path& screenDir, ScreenType type)
+		: zh::rest_controller(zeep::value_serializer<ScreenType>::to_string(type))
+		, mScreenDir(screenDir), mType(type)
 	{
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
@@ -114,6 +115,7 @@ class IPScreenRestController : public zh::rest_controller
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	fs::path mScreenDir;
+	ScreenType mType;
 };
 
 std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
@@ -122,7 +124,7 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	return screen_service::instance().get_ip_data_points(screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 }
 
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
@@ -131,14 +133,14 @@ std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::strin
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->uniqueness(screen, pvCutOff);
 }
 
 std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
-	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_gene(gene, user_service::instance().allowed_screens_for_user(get_credentials()["username"].as<std::string>()));
 }
 
@@ -146,7 +148,7 @@ std::vector<similar_data_point> IPScreenRestController::find_similar(const std::
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, float zscoreCutOff)
 {
-	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_similar(gene, pvCutOff, zscoreCutOff);
 }
 
@@ -154,7 +156,7 @@ std::vector<cluster> IPScreenRestController::find_clusters(const std::string& as
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, size_t minPts, float eps, size_t NNs)
 {
-	auto dp = screen_service::instance().get_ip_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_clusters(pvCutOff, minPts, eps, NNs);
 }
 
@@ -238,7 +240,7 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	if (not fs::is_directory(screenDir))
 		throw std::runtime_error("No such screen: " + screen);
 
-	IPScreenData data(screenDir);
+	auto data = IPPAScreenData::load(screenDir);
 	
 	result.insertions.assign({
 		{ "+", "high" },
@@ -248,7 +250,7 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	});
 
 	std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) = 
-		data.insertions(assembly, result.chrom, result.start, result.end);
+		data->insertions(assembly, result.chrom, result.start, result.end);
 
 	// filter
 	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
@@ -272,8 +274,9 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 class ScreenHtmlControllerBase : public zh::html_controller
 {
   protected:
-	ScreenHtmlControllerBase(const std::string& path, ScreenType type)
-		: zh::html_controller(path), mType(type) {}
+	ScreenHtmlControllerBase(ScreenType type)
+		: zh::html_controller(zeep::value_serializer<ScreenType>::to_string(type))
+		, mType(type) {}
 	
 	void init_scope(zh::scope& scope)
 	{
@@ -311,6 +314,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		for (auto& si: s)
 			screenNames.push_back(si.name);
 		scope.put("screenNames", screenNames);
+
+		scope.put("screenType", mType);
 	}
 
 	ScreenType mType;
@@ -318,12 +323,11 @@ class ScreenHtmlControllerBase : public zh::html_controller
 
 // --------------------------------------------------------------------
 
-
 class IPScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	IPScreenHtmlController(const fs::path& screenDir)
-		: ScreenHtmlControllerBase("ip", ScreenType::IntracellularPhenotype)
+	IPScreenHtmlController(const fs::path& screenDir, ScreenType type)
+		: ScreenHtmlControllerBase(type)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &IPScreenHtmlController::fishtail);
@@ -356,44 +360,32 @@ void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scop
 
 void IPScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("find-genes.html", sub, reply);
+	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
 }
 
 void IPScreenHtmlController::similar(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("find-similar.html", sub, reply);
+	get_template_processor().create_reply_from_template("find-similar.html", scope, reply);
 }
 
 void IPScreenHtmlController::cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("find-clusters.html", sub, reply);
+	get_template_processor().create_reply_from_template("find-clusters.html", scope, reply);
 }
 
 void IPScreenHtmlController::compare_1(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("compare-1.html", sub, reply);
+	get_template_processor().create_reply_from_template("compare-1.html", scope, reply);
 }
 
 void IPScreenHtmlController::compare_2(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("compare-2.html", sub, reply);
+	get_template_processor().create_reply_from_template("compare-2.html", scope, reply);
 }
 
 void IPScreenHtmlController::compare_3(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	zh::scope sub(scope);
-	sub.put("screenType", "ip");
-	get_template_processor().create_reply_from_template("compare-3.html", sub, reply);
+	get_template_processor().create_reply_from_template("compare-3.html", scope, reply);
 }
 
 // --------------------------------------------------------------------
@@ -576,12 +568,11 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 	return {};
 }
 
-
 class SLScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
 	SLScreenHtmlController(const fs::path& screenDir)
-		: ScreenHtmlControllerBase("sl", ScreenType::SyntheticLethal)
+		: ScreenHtmlControllerBase(ScreenType::SyntheticLethal)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &SLScreenHtmlController::screen);
@@ -611,6 +602,7 @@ class ScreenHtmlController : public zh::html_controller
 	}
 
 	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void genome_browser(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 };
 
 void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply)
@@ -644,7 +636,7 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });
-	sc->add_rule("/{ip,sl,screen}/", { "USER" });
+	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
 	sc->add_rule("/", {});
 
 	auto server = new zh::server(sc, docroot);
@@ -655,11 +647,16 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 
 	server->add_controller(new zh::login_controller());
 	server->add_controller(new ScreenHtmlController());
-	server->add_controller(new IPScreenRestController(screenDir));
-	server->add_controller(new IPScreenHtmlController(screenDir));
+	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotype));
+	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotypeActivation));
+	server->add_controller(new IPScreenHtmlController(screenDir, ScreenType::IntracellularPhenotype));
+	server->add_controller(new IPScreenHtmlController(screenDir, ScreenType::IntracellularPhenotypeActivation));
 
 	server->add_controller(new SLScreenRestController(screenDir));
 	server->add_controller(new SLScreenHtmlController(screenDir));
+
+	server->add_controller(new genome_browser_html_controller());
+	server->add_controller(new genome_browser_rest_controller());
 
 	// admin
 	server->add_controller(new user_admin_rest_controller());

@@ -18,10 +18,12 @@ enum class ScreenType
 
 	IntracellularPhenotype,
 	SyntheticLethal,
+	IntracellularPhenotypeActivation,
 
 	// abreviated synonyms
 	IP = IntracellularPhenotype,
-	SL = SyntheticLethal
+	SL = SyntheticLethal,
+	PA = IntracellularPhenotypeActivation
 };
 
 // --------------------------------------------------------------------
@@ -245,16 +247,17 @@ class ScreenData
 
 // --------------------------------------------------------------------
 
-class IPScreenData : public ScreenData
+class IPPAScreenData : public ScreenData
 {
   public:
-	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotype;
-
-	IPScreenData(const std::filesystem::path& dir);
-	IPScreenData(const std::filesystem::path& dir, const screen_info& info,
-		std::filesystem::path low, std::filesystem::path high);
-
-	static std::unique_ptr<IPScreenData> create(const screen_info& info, const std::filesystem::path& dir);
+	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
+	static std::unique_ptr<IPPAScreenData> load(const std::filesystem::path& dir)
+	{
+		auto result = ScreenData::load(dir);
+		if (result->get_type() != ScreenType::IntracellularPhenotype and result->get_type() != ScreenType::IntracellularPhenotypeActivation)
+			throw std::runtime_error("Invalid type in screen data manifest");
+		return std::unique_ptr<IPPAScreenData>(static_cast<IPPAScreenData*>(result.release()));
+	}
 
 	// note: will reorder transcripts!
 	void analyze(const std::string& assembly, unsigned readLength,
@@ -271,6 +274,38 @@ class IPScreenData : public ScreenData
 	std::vector<IPDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction);
+
+  protected:
+
+	IPPAScreenData(ScreenType type, const std::filesystem::path& dir);
+	IPPAScreenData(ScreenType type, const std::filesystem::path& dir, const screen_info& info,
+		std::filesystem::path low, std::filesystem::path high);
+
+	ScreenType mType;
+};
+
+class IPScreenData : public IPPAScreenData
+{
+  public:
+	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotype;
+
+	IPScreenData(const std::filesystem::path& dir)
+		: IPPAScreenData(ScreenType::IntracellularPhenotype, dir) {}
+	IPScreenData(const std::filesystem::path& dir, const screen_info& info,
+		std::filesystem::path low, std::filesystem::path high)
+		: IPPAScreenData(ScreenType::IntracellularPhenotype, dir, info, low, high) {}
+};
+
+class PAScreenData : public IPPAScreenData
+{
+  public:
+	static constexpr ScreenType screen_type = ScreenType::IntracellularPhenotypeActivation;
+
+	PAScreenData(const std::filesystem::path& dir)
+		: IPPAScreenData(ScreenType::IntracellularPhenotypeActivation, dir) {}
+	PAScreenData(const std::filesystem::path& dir, const screen_info& info,
+		std::filesystem::path low, std::filesystem::path high)
+		: IPPAScreenData(ScreenType::IntracellularPhenotypeActivation, dir, info, low, high) {}
 };
 
 // --------------------------------------------------------------------
@@ -288,7 +323,7 @@ class SLScreenData : public ScreenData
 	SLScreenData(const std::filesystem::path& dir);
 	SLScreenData(const std::filesystem::path& dir, const screen_info& info);
 
-	static std::unique_ptr<IPScreenData> create(const screen_info& info, const std::filesystem::path& dir);
+	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
 	void addFile(std::filesystem::path file);
 

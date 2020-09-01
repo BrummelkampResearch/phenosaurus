@@ -27,36 +27,6 @@ user_service& user_service::instance()
 
 user_service::user_service()
 {
-	db_connection::instance().register_prepared_statement_factory([](pqxx::connection& connection)
-	{
-		connection.prepare("screen-is-allowed-for-user",
-			R"(
-				SELECT 1 FROM auth.users a, screens b
-				 WHERE b.name = $1 and a.username = $2
-				   AND (b.scientist_id = a.id OR EXISTS
-				   	(SELECT * FROM auth.screen_permissions p
-					  WHERE p.screen_id = b.id AND p.group_id IN
-					   (SELECT group_id FROM auth.members WHERE user_id = a.id
-					     UNION
-						SELECT id FROM auth.groups WHERE name = 'public')))
-		)");
-
-		connection.prepare("allowed-screens-for-user",
-			R"(
-				SELECT a.name FROM screens a, auth.users b
-				 WHERE b.username = $1
-				   AND a.scientist_id = b.id
-				    OR EXISTS (
-						SELECT * FROM auth.screen_permissions p
-						 WHERE p.screen_id = a.id
-						   AND p.group_id IN (
-							SELECT group_id FROM auth.members WHERE user_id = b.id
-							 UNION
-							SELECT id FROM auth.groups WHERE name = 'public'
-						   )
-					)
-			)");
-	});
 }
 
 zeep::http::user_details user_service::load_user(const std::string& username) const
@@ -226,39 +196,70 @@ void user_service::set_groups_for_screen(const std::string& screen_name, std::ve
 
 bool user_service::allow_screen_for_user(const std::string& screen, const std::string& user)
 {
-	pqxx::transaction tx(db_connection::instance());
-	auto r = tx.exec_prepared("screen-is-allowed-for-user", screen, user);
+	std::unique_lock lock(m_mutex);
 
-	bool allowed = r.empty() == false;
-	tx.commit();
+	if (m_allowed_screens_per_user_cache.empty())
+		fill_allowed_screens_cache();
 
-	if (not allowed)
-		allowed = screen_service::instance().is_owner(screen, user);
-
-	return allowed;
+	auto i = m_allowed_screens_per_user_cache.find(user);
+	return i != m_allowed_screens_per_user_cache.end() and
+		std::find(i->second.begin(), i->second.end(), screen) != i->second.end();
 }
 
 std::set<std::string> user_service::allowed_screens_for_user(const std::string& user)
 {
 	std::unique_lock lock(m_mutex);
 
+	if (m_allowed_screens_per_user_cache.empty())
+		fill_allowed_screens_cache();
+	
+	std::set<std::string> result;
+
 	auto i = m_allowed_screens_per_user_cache.find(user);
+	if (i != m_allowed_screens_per_user_cache.end())
+		result = i->second;
+	return result;
+}
 
-	if (i == m_allowed_screens_per_user_cache.end())
+void user_service::fill_allowed_screens_cache()
+{
+	auto tx = db_connection::start_transaction();
+
+	m_allowed_screens_per_user_cache.clear();
+
+	for (const auto& [ user, screen ]: tx.stream<std::string,std::string>(
+		R"(
+			SELECT u.username, s.name
+			  FROM auth.users u
+			  JOIN auth.members m ON u.id = m.user_id
+			  JOIN auth.groups g ON g.id = m.group_id
+			  JOIN auth.screen_permissions p ON m.group_id = p.group_id
+			  JOIN screens s ON p.screen_id = s.id
+			UNION
+			SELECT u1.username, s1.name
+			  FROM auth.users u1, screens s1
+			 WHERE u1.id = s1.scientist_id
+		)"))
 	{
-		auto tx = db_connection::start_transaction();
-
-		std::set<std::string> result;
-
-		auto r = tx.exec_prepared("allowed-screens-for-user", user);
-		for (auto row: r)
-			result.insert(row[0].as<std::string>());
-		tx.commit();
-
-		std::tie(i, std::ignore) = m_allowed_screens_per_user_cache.emplace(user, result);
+		m_allowed_screens_per_user_cache[user].insert(screen);
 	}
 
-	return i->second;
+	std::vector<std::string> screens;
+	for (auto& s: screen_service::instance().get_all_screens())
+		screens.push_back(s.name);
+
+	// special case, for the Brummelkampers
+	for (const auto& [ user ]: tx.stream<std::string>(
+		R"(
+			SELECT u.username
+			  FROM auth.users u
+			  JOIN auth.members m ON u.id = m.user_id
+			  JOIN auth.groups g ON m.group_id = g.id
+			 WHERE g.id = 1
+		)"))
+	{
+		m_allowed_screens_per_user_cache[user].insert(screens.begin(), screens.end());
+	}
 }
 
 // --------------------------------------------------------------------

@@ -416,6 +416,8 @@ int main_update_manifests(int argc, char* const argv[])
 
         if (type == "IP")
             screen.type = ScreenType::IntracellularPhenotype;
+        else if (type == "PA")
+            screen.type = ScreenType::IntracellularPhenotypeActivation;
         else if (type == "SL")
             screen.type = ScreenType::SyntheticLethal;
         else
@@ -489,126 +491,6 @@ int main_update_manifests(int argc, char* const argv[])
 
 // --------------------------------------------------------------------
 
-int main_guess_manifests(int argc, char* const argv[])
-{
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( guess-manifests [options])", {});
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-
-	screen_service::init(screenDir);
-
-	// --------------------------------------------------------------------
-
-	for (auto di = fs::directory_iterator(screenDir); di != fs::directory_iterator(); ++di)
-	{
-		if (not di->is_directory())
-			continue;
-		
-		auto manifest = di->path() / "manifest.json";
-		if (fs::exists(manifest))
-		{
-			if (VERBOSE)
-				std::cerr << manifest << " exists" << std::endl;
-			continue;
-		}
-		
-		bool hasLow = false, hasHigh = false, hasRepl[4] = {};
-
-		for (fs::directory_iterator iter(di->path()); iter != fs::directory_iterator(); ++iter)
-		{
-			if (iter->is_directory())
-				continue;
-			
-			auto name = iter->path().filename();
-			if (name.extension() == ".gz")
-				name = name.stem();
-			if (name.extension() != ".fastq")
-				continue;
-			
-			name = name.stem();
-			
-			if (name == "low")
-				hasLow = true;
-			else if (name == "high")
-				hasHigh = true;
-			else if (name.string().length() == 11 and name.string().compare(0, 10, "replicate-") == 0)
-			{
-				char d = name.string().back();
-				if (d >= '1' and d <= '4')
-					hasRepl[d - '1'] = true;
-			}
-		}
-
-        screen_info screen;
-		if (hasLow and hasHigh)
-			screen.type = ScreenType::IntracellularPhenotype;
-		else if (hasRepl[0] or hasRepl[1] or hasRepl[2] or hasRepl[3])
-			screen.type = ScreenType::SyntheticLethal;
-		else
-		{
-			std::cerr << "Could not deduce type for " << di->path().filename() << std::endl;
-			continue;
-		}
-		
-        screen.name = di->path().filename();
-	    // screen.cell_line = cell_line;
-	    // screen.description = description;
-	    // screen.long_description = long_description;
-	    // screen.ignore = ignore;
-	    // screen.scientist = scientist;
-
-		std::error_code ec;
-		auto ft = fs::last_write_time(di->path() / "hg38", ec);
-		if (ec)
-			ft = fs::last_write_time(di->path() / "hg19", ec);
-
-		if (not ec)
-		{
-			auto lastWriteTime = std::chrono::duration_cast<std::chrono::seconds>(ft - decltype(ft)::clock::time_point{}).count();
-			screen.created = boost::posix_time::from_time_t(lastWriteTime);
-		}
-
-		for (auto fi = fs::directory_iterator(di->path()); fi != fs::directory_iterator(); ++fi)
-		{
-			if (fi->is_directory())
-				continue;
-			
-			auto name = fi->path().filename();
-			if (name.extension() == ".gz")
-				name = name.stem();
-			if (name.extension() != ".fastq")
-				continue;
-			
-			std::error_code ec;
-			auto cp = fs::canonical(fi->path(), ec);
-			if (ec)
-				cp = fi->path();
-
-			screen.files.emplace_back(screen_file{name.stem(), cp });
-		}
-
-		std::ofstream mff(manifest);
-		if (not mff.is_open())
-		{
-			std::cerr << "Could not open manifest file for writing" << std::endl;
-			continue;
-		}
-
-		zeep::json::element mfe;
-		to_element(mfe, screen);
-
-		mff << mfe;
-
-		if (VERBOSE)
-			std::cerr << manifest << " written" << std::endl;
-
-	}
-
-	return 0;
-}
-
-// --------------------------------------------------------------------
-
 int main(int argc, char* const argv[])
 {
 	int result = 0;
@@ -617,6 +499,7 @@ int main(int argc, char* const argv[])
 
 	zeep::value_serializer<ScreenType>::init("screen-type", {
 		{ ScreenType::IntracellularPhenotype, "ip" },
+		{ ScreenType::IntracellularPhenotypeActivation, "pa" },
 		{ ScreenType::SyntheticLethal, "sl" }
 	});
 
@@ -674,8 +557,6 @@ int main(int argc, char* const argv[])
 			result = main_dump(argc - 1, argv + 1);
 		else if (command == "update-manifest")
 			result = main_update_manifests(argc - 1, argv + 1);
-		else if (command == "guess-manifest")
-			result = main_guess_manifests(argc - 1, argv + 1);
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
 			usage();
 		else if (command == "version" or command == "-v" or command == "--version")
