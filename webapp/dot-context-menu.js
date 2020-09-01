@@ -47,7 +47,7 @@ export default class DotContextMenu extends ContextMenu {
 
 		switch (action) {
 			case 'gene-finder':
-				window.open("finder?screenType=IP&gene=" + genes, "_blank");
+				window.open("finder?gene=" + genes, "_blank");
 				break;
 
 			case 'gene-cards':
