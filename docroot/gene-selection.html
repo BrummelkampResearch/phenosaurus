@@ -5,7 +5,7 @@
 <body>
 
     <!-- The gene selection dialog: -->
-	<div z:fragment="gene-selection-dialog">
+	<div z:fragment="gene-selection-dialog(screenType)">
 		<script z:src="@{/scripts/gene-selection.js}" src="/scripts/gene-selection.js"></script>
 
 		<button class="btn btn-sm btn-secondary show-gene-selection-btn" id="show-gene-selection-btn">Select Genes</button>
@@ -42,15 +42,15 @@
 											</div>
 							
 											<select class="custom-select custom-select-sm" name="mode">
-												<option value="collapse" selected="selected">Collapse</option>
-												<option value="longest">Longest</option>
+												<option value="collapse" z:selected="${screenType=='ip'}">Collapse</option>
+												<option value="longest" z:selected="${screenType=='pa'}">Longest</option>
 											</select>
 										</div>
 							
 										<div class="input-group input-group-sm mb-3">
 											<div class="input-group-prepend">
 												<span class="input-group-text">
-													<input type="checkbox" name="cut-overlap" checked="checked" />
+													<input type="checkbox" name="cut-overlap" z:checked="${screenType=='ip'}" />
 												</span>
 											</div>
 											<input type="text" class="form-control form-control-sm"
@@ -71,9 +71,8 @@
 							
 											<input type="text" class="form-control" aria-label="Start of gene"
 												aria-describedby="StartLabel" id="geneStartOffset"
-												placeholder="offset..." />
+												placeholder="offset..." z:value="${screenType=='pa'?-5000:''}" />
 										</div>
-
 
 										<div class="input-group input-group-sm mb-3">
 											<div class="input-group-prepend">
@@ -83,8 +82,8 @@
 											<select class="custom-select custom-select-sm" id="geneEndType">
 												<option value="txStart">tx-start</option>
 												<option value="txEnd">tx-end</option>
-												<option value="cdsStart">cds-start</option>
-												<option value="cdsEnd" selected="selected">cds-end</option>
+												<option value="cdsStart" z:selected="${screenType=='pa'}">cds-start</option>
+												<option value="cdsEnd" z:selected="${screenType=='ip'}">cds-end</option>
 											</select>
 							
 											<input type="text" class="form-control" aria-label="End of gene"

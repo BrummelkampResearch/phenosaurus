@@ -62,7 +62,7 @@
 				</div>
 			</div>
 			
-			<div class="col col-sm-1" z2:insert="~{gene-selection::gene-selection-dialog}"></div>
+			<div class="col col-sm-1" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
 			<div class="col col-sm-1 mb-3">
 				<div class="input-group input-group-sm">
@@ -171,104 +171,6 @@
 			</div>
 		</div>
 	</div>
-
-
-	<!-- <div class="container-fluid mt-3">
-		<div class="row option-row">
-
-			<div class="col-sm-1 mb-3">
-				<div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons" id="graphTypeBtns">
-					<label class="btn btn-sm btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
-					<label class="btn btn-sm btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off"/>Dotplot</label>
-				</div>
-			</div>
-
-			<div class="col-sm-2 mb-3">
-				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='gene'>Gene</label>
-					</div>
-					<input class="form-control" type="text" id="gene" z2:value="${#request.getParameter('gene')}" />
-				</div>
-			</div>
-		
-			<div class="col-sm-2 mb-3">
-				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='pv-cut-off'>p-value filter</label>
-					</div>
-					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
-							placeholder="0.05"
-							class="form-control" value="0.05"/>
-				</div>
-			</div>
-
-			<div class="col-sm-2 mb-3">
-				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='zscore-cut-off'>z-score filter</label>
-					</div>
-					<input type="number" min="0" max="1" step="0.001" id="zscore-cut-off" maxlength="8" size="5"
-							placeholder="2"
-							class="form-control" value="2"/>
-				</div>
-			</div>
-
-			<div class="col" z2:insert="~{gene-selection::gene-selection-dialog}"></div>
-
-		</div>
-
-		<div z2:replace="~{gene-info :: geneDiv('ip')}"></div>
-	</div>
-
-	<div class="container-fluid mt-4 mb-4">
-		<div class="plot-title">
-			<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Searching for <span class="gene-name"></span>...</span>
-			<span class="loaded">Query results for <span class="gene-name"></span></span>
-			<span class="failed">Query results for <span class="gene-name"></span> could not be loaded.</span>
-			<span class="no-hits">No hits found for <span class="gene-name"></span></span>
-		</div>
-	</div>
-
-	<div class="container-fluid">
-		<table id="plot" cellpadding="0" cellspacing="0" class="heatmap gf-tabel no-anti">
-			<thead>
-				<tr>
-					<th>Gene</th>
-					<th>Z-score</th>
-					<th></th>
-					<th></th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr style="display: none">
-					<td><input type="text" readonly="readonly" class="form-control-plaintext" /></td>
-					<td><input type="text" readonly="readonly" class="form-control-plaintext" /></td>
-					<td class="svg-container"></td>
-					<td><a href="#"> <i class="fa fa-sort-amount-up sort-screens"></i></a></td>
-				</tr>
-			</tbody>
-			<tbody class="divider">
-				<tr>
-					<td>
-						<strong>Anti</strong>
-					</td>
-					<td colspan="3">
-						<hr/>
-					</td>
-				</tr>
-			</tbody>
-			<tbody class="anti">
-			</tbody>
-			<tfoot>
-				<tr>
-					<td colspan="2"></td>
-					<td class="label-container"></td>
-					<td></td>
-				</tr>
-			</tfoot>
-		</table>
-	</div> -->
 
 	<div class="tooltip"></div>
 
