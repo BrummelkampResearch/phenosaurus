@@ -495,6 +495,12 @@ int main(int argc, char* const argv[])
 {
 	int result = 0;
 
+	std::set_terminate([]()
+	{
+		std::cerr << "Unhandled exception" << std::endl;
+		std::abort();
+	});
+
 	// initialize enums
 
 	zeep::value_serializer<ScreenType>::init("screen-type", {

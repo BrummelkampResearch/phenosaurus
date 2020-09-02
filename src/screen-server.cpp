@@ -615,6 +615,12 @@ void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& 
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	const std::string& secret, const std::string& context_name)
 {
+	std::set_terminate([]()
+	{
+		std::cerr << "Unhandled exception in server" << std::endl;
+		std::abort();
+	});
+
 	// map enums
 
 	zeep::value_serializer<Mode>::init("mode", {
