@@ -776,7 +776,8 @@ std::vector<std::tuple<size_t,size_t>> divide(size_t listsize, size_t suggested_
 	}
 
 	// due to rounding errors, the last may be incorrect
-	std::get<1>(result.back()) = listsize;
+	if (not result.empty())
+		std::get<1>(result.back()) = listsize;
 
 	return result;
 }
