@@ -25,6 +25,7 @@ const colorMap = new class ScreenColorMapSBS {
 		if (this.colorType === 'unique')
 		{
 			const options = geneSelectionEditor.getOptions();
+			options.append("pv-cut-off", pvCutOff);
 			await data.loadUnique(options);
 		}
 	}
@@ -106,6 +107,7 @@ const colorMap = new class ScreenColorMapSBS {
 			{
 				this.colorType = 'unique';
 				const options = geneSelectionEditor.getOptions();
+				options.append("pv-cut-off", pvCutOff);
 				await this.data.loadUnique(options);
 				break;
 			}
