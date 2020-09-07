@@ -17,8 +17,8 @@
 
 	<div class="container-fluid mt-3">
 
-		<div class="row">
-			<div class="col">
+		<div class="option-row">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<select id="screenList" data-placeholder="Choose a Screen...">
 						<option value=""></option>
@@ -28,11 +28,11 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-1" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="col col-sm-2">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<input type="text" id="highlightGene" size="5"
+					<input type="text" id="highlightGene" size="10"
 						placeholder="Enter genename..."
 						z:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
@@ -44,7 +44,7 @@
 				</div>	
 			</div>
 
-			<div class="col col-12 col-md-4 col-lg-2">
+			<div class="option-col">
 				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
 					<label class="btn btn-secondary active">
 						<input type="radio" name="graphColor" id="raw" autocomplete="off" data-colortype="raw" class="graph-color-btn"/>Raw Difference
@@ -56,7 +56,7 @@
 			</div>
 
 
-			<div class="col col-sm-2">
+			<div class="option-col">
 				
 				<div z:replace="gene-info :: geneDiv('ip')"></div>
 				<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
@@ -66,15 +66,7 @@
 
 			</div>
 
-			<div class="col col-sm-1">
-				<div class="input-group input-group-sm">
-					<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
-				</div>
-			</div>
-		</div>
-
-		<div class="row mt-1">
-			<div class="col col-sm-2">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='pv-cut-off'>p-value</label>
@@ -84,7 +76,7 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-2">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for="binom_fdr">Binom_fdr</label>
@@ -94,7 +86,7 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-2">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for="effect-size">Effect size</label>
@@ -103,6 +95,13 @@
 						value="0.2" class="form-control form-control-sm"/> 
 				</div>
 			</div>
+
+			<div class="option-col">
+				<div class="input-group input-group-sm">
+					<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
+				</div>
+			</div>
+
 		</div>
 
 		<div class="row mt-3">

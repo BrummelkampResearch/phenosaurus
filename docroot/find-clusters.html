@@ -16,9 +16,9 @@
 	<nav z2:replace="menu :: menu"></nav>
 
 	<div class="container-fluid mt-3">
-		<div class="row">
+		<div class="option-row">
 
-			<div class="col mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='pv-cut-off'>p-value</label>
@@ -29,7 +29,7 @@
 				</div>
 			</div>
 
-			<div class="col mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 						<div class="input-group-prepend">
 						<label class="input-group-text" for='eps'>&#x3B5;</label>
@@ -40,7 +40,7 @@
 				</div>
 			</div>
 
-			<div class="col mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='nns'>SNN s</label>
@@ -51,7 +51,7 @@
 				</div>
 			</div>
 
-			<div class="col mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='minPts'>Cluster size</label>
@@ -62,9 +62,9 @@
 				</div>
 			</div>
 			
-			<div class="col col-sm-1" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="option-col" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="col col-sm-1 mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<button class="btn btn-sm btn-primary" id="cluster-btn">Cluster</button>
 				</div>

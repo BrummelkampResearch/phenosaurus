@@ -27,15 +27,15 @@
 			</span>
 		</div>
 
-		<div class="row mt-3">
-			<div class="col">
+		<div class="option-row">
+			<div class="option-col">
 				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphTypeBtns">
 					<label class="btn btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
 					<label class="btn btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off" />Dotplot</label>
 					<!-- <label class="btn btn-secondary"><input type="radio" name="graphType" id="fishtail" autocomplete="off" />Fishtail</label> -->
 				</div>
 			</div>
-			<div class="col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 		</div>
 
 		<div class="row mt-5">

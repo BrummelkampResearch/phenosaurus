@@ -16,16 +16,16 @@
 	<nav z2:replace="menu :: menu"></nav>
 
 	<div class="container-fluid mt-3">
-		<div class="row option-row">
+		<div class="option-row">
 
-			<div class="col-sm-1 mb-3">
+			<div class="option-col">
 				<div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons" id="graphTypeBtns">
 					<label class="btn btn-sm btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
 					<label class="btn btn-sm btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off"/>Dotplot</label>
 				</div>
 			</div>
 
-			<div class="col-sm-2 mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='gene'>Gene</label>
@@ -34,7 +34,7 @@
 				</div>
 			</div>
 		
-			<div class="col-sm-2 mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='pv-cut-off'>p-value filter</label>
@@ -45,7 +45,7 @@
 				</div>
 			</div>
 
-			<div class="col-sm-2 mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='zscore-cut-off'>z-score filter</label>
@@ -56,7 +56,7 @@
 				</div>
 			</div>
 
-			<div class="col" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="option-col" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
 		</div>
 

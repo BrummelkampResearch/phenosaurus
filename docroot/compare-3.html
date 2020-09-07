@@ -12,8 +12,8 @@
 	<nav z2:replace="~{menu :: menu}"></nav>
 
 	<div class="container-fluid mt-3">
-		<div class="row">
-			<div class="col col-sm-2 mb-3">
+		<div class="option-row">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
 					<div class="input-group-prepend">
 						<label class="input-group-text" for='pv-cut-off'>p-value</label>
@@ -24,7 +24,7 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-1 mb-3">
+			<div class="option-col">
 
 				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
 					<label class="btn btn-secondary active">
@@ -37,9 +37,9 @@
 
 			</div>
 
-			<div class="col col-sm-2 mb-3">
+			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<input type="text" id="highlightGene" size="5"
+					<input type="text" id="highlightGene" size="10"
 						placeholder="Enter genename..."
 						z2:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
@@ -51,9 +51,9 @@
 				</div>	
 			</div>
 			
-			<div class="col col-sm-1" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="option-col" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="col col-sm-2 mb-3">
+			<div class="option-col">
 				
 				<div z2:replace="gene-info :: geneDiv('ip')"></div>
 				<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
