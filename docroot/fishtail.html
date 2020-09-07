@@ -21,9 +21,9 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-1" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div class="col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="col col-sm-2">
+			<div class="col">
 				<div class="input-group input-group-sm">
 
 					<form name="graphTypeForm">
@@ -62,7 +62,7 @@
 				</div>
 			</div>
 
-			<div class="col col-sm-2">
+			<div class="col col-sm-3">
 				<div class="input-group input-group-sm">
 					<input type="text" id="highlightGene" size="5"
 						placeholder="Enter genename..."
@@ -76,12 +76,12 @@
 				</div>	
 			</div>
 
-			<div class="col col-sm-2">
+			<div class="col col-sm-1">
 				
 				<div z:replace="gene-info :: geneDiv('ip')"></div>
 				<!-- <div z:replace="geneinfo :: geneDiv('ip')"></div> -->
 				<label>
-					<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info Dialog</button>
+					<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Gene Info</button>
 				</label>
 
 			</div>

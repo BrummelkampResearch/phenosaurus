@@ -645,6 +645,8 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
 	sc->add_rule("/", {});
 
+	sc->set_validate_csrf(true);
+
 	auto server = new zh::server(sc, docroot);
 
 	server->add_error_handler(new db_error_handler());
@@ -652,6 +654,8 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	server->set_context_name(context_name);
 
 	server->add_controller(new zh::login_controller());
+	server->add_controller(new user_service_html_controller());
+
 	server->add_controller(new ScreenHtmlController());
 	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotype));
 	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotypeActivation));

@@ -93,8 +93,7 @@ void load_version_info()
 	auto version = mrsrc::rsrc("version.txt");
 	if (version)
 	{
-		zeep::char_streambuf buffer(version.data(), version.size());
-		std::istream is(&buffer);
+		mrsrc::istream is(version);
 		std::string line;
 
 		while (std::getline(is, line))
@@ -148,12 +147,12 @@ void showVersionInfo()
 std::string get_user_name()
 {
 	struct passwd pwd;
-	struct passwd *result;
+	struct passwd *result = nullptr;
 	char buf[16384];
 	
 	int s = getpwuid_r(getuid(), &pwd, buf, sizeof(buf), &result);
 
-	return result ? result->pw_name : "";
+	return (s>= 0 and result != nullptr) ? result->pw_name : "";
 }
 
 // --------------------------------------------------------------------

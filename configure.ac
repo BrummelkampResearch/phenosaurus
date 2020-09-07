@@ -42,6 +42,8 @@ AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package 
 AC_CHECK_HEADER([bzlib.h], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
 AC_CHECK_LIB([bz2], [BZ2_bzCompressInit], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
 AX_PKG_CHECK_MODULES([Z], [zlib], [], [], [AC_MSG_ERROR([the required package libz-dev is not installed])])
+AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
+AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
 
 AX_PTHREAD
 

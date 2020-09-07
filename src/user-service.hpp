@@ -64,6 +64,8 @@ class user_service : public zeep::http::user_service
 {
   public:
 
+	static void init(const std::string& smtp_server, uint16_t smtp_port, const std::string& smtp_user = "", const std::string& smtp_password = "");
+
 	static user_service& instance();
 
 	/// Validate the authorization, returns the validated user. Throws unauthorized_exception in case of failure
@@ -102,14 +104,38 @@ class user_service : public zeep::http::user_service
 	static bool isValidPassword(const std::string& password);
 	static bool isValidEmail(const std::string& email);
 
+	/// Update the password to \a password for the user with e-mail address in \a email
+	void send_new_password_for(const std::string& email);
+
+	static std::string generate_password();
+
   private:
 
-	user_service();
+	user_service(const std::string& smtp_server, uint16_t smtp_port, const std::string& smtp_user, const std::string& smtp_password)
+		: m_smtp_server(smtp_server), m_smtp_port(smtp_port), m_smtp_user(smtp_user), m_smtp_password(smtp_password) {}
 
 	void fill_allowed_screens_cache();
 
 	std::mutex m_mutex;
 	std::map<std::string,std::set<std::string>> m_allowed_screens_per_user_cache;
+
+	// for sending out new passwords
+	std::string m_smtp_server;
+	unsigned short m_smtp_port;
+	std::string m_smtp_user;
+	std::string m_smtp_password;
+
+	static std::unique_ptr<user_service> s_instance;
+};
+
+// --------------------------------------------------------------------
+
+class user_service_html_controller : public zeep::http::html_controller
+{
+  public:
+	user_service_html_controller();
+
+	void handle_reset_password(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
 };
 
 // --------------------------------------------------------------------

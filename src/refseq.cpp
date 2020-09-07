@@ -130,12 +130,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 	if (not refseq)
 		throw std::runtime_error("Invalid assembly specified, could not find genes");
 
-	struct membuf : public std::streambuf
-	{
-		membuf(char* data, size_t length)		{ this->setg(data, data, data + length); }
-	} buffer(const_cast<char*>(refseq.data()), refseq.size());
-	
-	std::istream in(&buffer);
+	mrsrc::istream in(refseq);
 	
 	std::string line;
 	if (not std::getline(in, line) or line.empty())

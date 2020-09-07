@@ -31,8 +31,7 @@
 #include "screen-server.hpp"
 #include "screen-service.hpp"
 #include "db-connection.hpp"
-
-#include "mrsrc.h"
+#include "user-service.hpp"
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
@@ -87,6 +86,10 @@ po::options_description get_config_options()
 		( "user,u",				po::value<std::string>(),	"User to run the daemon")
 		( "secret",				po::value<std::string>(),	"Secret hashed used in user authentication")
 		( "context",			po::value<std::string>(),	"Context name of this server (used e.g. in a reverse proxy setup)")
+		( "smtp-server",		po::value<std::string>(),	"SMTP server address for sending out new passwords" )
+		( "smtp-port",			po::value<uint16_t>(),		"SMTP server port for sending out new passwords" )
+		( "smtp-user",			po::value<std::string>(),	"SMTP server user name for sending out new passwords" )
+		( "smtp-password",		po::value<std::string>(),	"SMTP server password name for sending out new passwords" )
 		;
 
 
@@ -212,8 +215,8 @@ int main_server(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( sever command [options])",
 		{
-			{ "command", po::value<std::string>(),		"Server command" }
-		}, { }, { "command" });
+			{ "command", 		po::value<std::string>(),	"Server command" },
+		}, { "smtp-server", "smtp-port" }, { "command" });
 
 	// --------------------------------------------------------------------
 
@@ -242,6 +245,16 @@ Command should be either:
 	}
 
 	db_connection::init(ba::join(vConn, " "));
+
+	// --------------------------------------------------------------------
+	
+	std::string smtpServer = vm["smtp-server"].as<std::string>();
+	uint16_t smtpPort = vm["smtp-port"].as<uint16_t>();
+	std::string smtpUser, smtpPassword;
+	if (vm.count("smtp-user"))	smtpUser = vm["smtp-user"].as<std::string>();
+	if (vm.count("smtp-password"))	smtpPassword = vm["smtp-password"].as<std::string>();
+
+	user_service::init(smtpServer, smtpPort, smtpUser, smtpPassword);
 
 	// --------------------------------------------------------------------
 

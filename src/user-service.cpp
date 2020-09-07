@@ -5,7 +5,14 @@
 
 #include "config.hpp"
 
+#include <random>
+
 #include <zeep/crypto.hpp>
+
+#include <mailio/smtp.hpp>
+#include <mailio/message.hpp>
+
+#include "mrsrc.h"
 
 #include "user-service.hpp"
 #include "screen-service.hpp"
@@ -19,14 +26,16 @@ const int
 
 // --------------------------------------------------------------------
 
-user_service& user_service::instance()
+std::unique_ptr<user_service> user_service::s_instance;
+
+void user_service::init(const std::string& smtp_server, uint16_t smtp_port, const std::string& smtp_user, const std::string& smtp_password)
 {
-	static std::unique_ptr<user_service> s_instance(new user_service());
-	return *s_instance;
+	s_instance.reset(new user_service(smtp_server, smtp_port, smtp_user, smtp_password));
 }
 
-user_service::user_service()
+user_service& user_service::instance()
 {
+	return *s_instance;
 }
 
 zeep::http::user_details user_service::load_user(const std::string& username) const
@@ -490,6 +499,197 @@ bool user_service::isValidEmail(const std::string& email)
 {
 	std::regex rx(R"((?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\]))", std::regex::icase);
 	return std::regex_match(email, rx);
+}
+
+std::string user_service::generate_password()
+{
+	const bool
+		includeDigits = true,
+		includeSymbols = true,
+		includeCapitals = true,
+		noAmbiguous = true;
+	const int length = 10;
+
+	std::random_device rng;
+
+	std::string result;
+
+	std::set<std::string> kAmbiguous{ "B", "8", "G", "6", "I", "1", "l", "0", "O", "Q", "D", "S", "5", "Z", "2" };
+
+	std::vector<std::string> vowels{ "a", "ae", "ah", "ai", "e", "ee", "ei", "i", "ie", "o", "oh", "oo", "u" };
+	std::vector<std::string> consonants{ "b", "c", "ch", "d", "f", "g", "gh", "h", "j", "k", "l", "m", "n", "ng", "p", "ph", "qu", "r", "s", "sh", "t", "th", "v", "w", "x", "y", "z" };
+
+	bool vowel = rng();
+	bool wasVowel = false, hasDigits = false, hasSymbols = false, hasCapitals = false;
+
+	for (;;)
+	{
+		if (result.length() >= length)
+		{
+			if (result.length() > length or
+					includeDigits != hasDigits or
+					includeSymbols != hasSymbols or
+					includeCapitals != hasCapitals) {
+				result.clear();
+				hasDigits = hasSymbols = hasCapitals = false;
+				continue;
+			}
+
+			break;
+		}
+
+		std::string s;
+		if (vowel)
+		{
+			do
+				s = vowels[rng() % vowels.size()];
+			while (wasVowel and s.length() > 1);
+		}
+		else
+			s = consonants[rng() % consonants.size()];
+
+		if (s.length() + result.length() > length)
+			continue;
+
+		if (noAmbiguous and kAmbiguous.count(s))
+			continue;
+
+		if (includeCapitals and (result.length() == s.length() or vowel == false) and (rng() % 10) < 2)
+		{
+			for (auto& ch: s)
+				ch = std::toupper(ch);
+			hasCapitals = true;
+		}
+		result += s;
+
+		if (vowel and (wasVowel or s.length() > 1 or (rng() % 10) > 3))
+		{
+			vowel = false;
+			wasVowel = true;
+		}
+		else
+		{
+			wasVowel = vowel;
+			vowel = true;
+		}
+
+		if (hasDigits == false and includeDigits and (rng() % 10) < 3)
+		{
+			std::string ch;
+			do ch = (rng() % 10) + '0';
+			while (noAmbiguous and kAmbiguous.count(ch));
+
+			result += ch;
+			hasDigits = true;
+		}
+		else if (hasSymbols == false and includeSymbols and (rng() % 10) < 2)
+		{
+			std::vector<char> kSymbols
+					{
+							'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+',
+							',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@',
+							'[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
+					};
+
+			result += kSymbols[rng() % kSymbols.size()];
+			hasSymbols = true;
+		}
+	}
+
+	return result;
+}
+
+void user_service::send_new_password_for(const std::string& email)
+{
+	std::cerr << "Request reset password for " << email << std::endl;
+	std::string newPassword = generate_password();
+	std::string newPasswordHash = create_password_hash(newPassword);
+
+	std::cerr << "Reset password for " << email << " to " << newPasswordHash << std::endl;
+
+	// --------------------------------------------------------------------
+	
+	pqxx::transaction tx(db_connection::instance());
+	tx.exec0("UPDATE auth.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
+
+	// --------------------------------------------------------------------
+
+	mailio::message msg;
+	// msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "phenosaurus@nki.nl"));
+	msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "maarten@hekkelman.com"));
+	msg.add_recipient(mailio::mail_address("Phenosaurus user", email));
+	msg.subject("New password for Phenosaurus");
+
+	std::ostringstream content;
+
+	mrsrc::istream is("reset-password-mail.txt");
+
+	std::string line;
+	while (std::getline(is, line))
+	{
+		auto i = line.find("^1");
+		if (i != std::string::npos)
+			line.replace(i, 2, newPassword);
+		content << line << std::endl;
+	}
+
+	msg.content(content.str());
+	msg.content_type(mailio::mime::media_type_t::TEXT, "plain", "utf-8");
+	msg.content_transfer_encoding(mailio::mime::content_transfer_encoding_t::BINARY);
+
+	if (m_smtp_port == 25)
+	{
+		mailio::smtp conn(m_smtp_server, m_smtp_port);
+		conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtp::auth_method_t::NONE : mailio::smtp::auth_method_t::LOGIN);
+		conn.submit(msg);	
+	}
+	else if (m_smtp_port == 465)
+	{
+		mailio::smtps conn(m_smtp_server, m_smtp_port);
+		conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtps::auth_method_t::NONE : mailio::smtps::auth_method_t::LOGIN);
+		conn.submit(msg);	
+	}
+	else if (m_smtp_port == 587 and not m_smtp_user.empty())
+	{
+		mailio::smtps conn(m_smtp_server, m_smtp_port);
+		conn.authenticate(m_smtp_user, m_smtp_password, mailio::smtps::auth_method_t::START_TLS);
+		conn.submit(msg);	
+	}
+	else
+		throw std::runtime_error("Unable to send message, smtp configuration error");
+
+	// --------------------------------------------------------------------
+	// Sending the new password succeeded
+
+	tx.commit();
+}
+
+// --------------------------------------------------------------------
+
+user_service_html_controller::user_service_html_controller()
+{
+	mount("reset-password", &user_service_html_controller::handle_reset_password);
+}
+
+void user_service_html_controller::handle_reset_password(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	if (request.get_method() == "GET")
+		get_template_processor().create_reply_from_template("reset-password", scope, reply);
+	else
+	{
+		try
+		{
+			auto email = request.get_parameter("email");
+
+			user_service::instance().send_new_password_for(email);
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
+		}
+
+		reply = zeep::http::reply::redirect("login");
+	}
 }
 
 // --------------------------------------------------------------------

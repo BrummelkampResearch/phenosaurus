@@ -651,6 +651,10 @@ build_os
 build_vendor
 build_cpu
 build
+MAILIO_LIBS
+MAILIO_CFLAGS
+SSL_LIBS
+SSL_CFLAGS
 Z_LIBS
 Z_CFLAGS
 EGREP
@@ -753,6 +757,10 @@ PQ_LIBS
 CXXCPP
 Z_CFLAGS
 Z_LIBS
+SSL_CFLAGS
+SSL_LIBS
+MAILIO_CFLAGS
+MAILIO_LIBS
 CC
 CFLAGS
 CPP
@@ -1442,6 +1450,11 @@ Some influential environment variables:
   CXXCPP      C++ preprocessor
   Z_CFLAGS    C compiler flags for Z, overriding pkg-config
   Z_LIBS      linker flags for Z, overriding pkg-config
+  SSL_CFLAGS  C compiler flags for SSL, overriding pkg-config
+  SSL_LIBS    linker flags for SSL, overriding pkg-config
+  MAILIO_CFLAGS
+              C compiler flags for MAILIO, overriding pkg-config
+  MAILIO_LIBS linker flags for MAILIO, overriding pkg-config
   CC          C compiler command
   CFLAGS      C compiler flags
   CPP         C preprocessor
@@ -4835,6 +4848,172 @@ $as_echo "no" >&6; }
 else
 	Z_CFLAGS=$pkg_cv_Z_CFLAGS
 	Z_LIBS=$pkg_cv_Z_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
+    # Substitute output.
+
+
+
+
+
+
+
+    AX_PACKAGE_REQUIRES="$AX_PACKAGE_REQUIRES libssl openssl"
+    AX_PACKAGE_REQUIRES_PRIVATE="$AX_PACKAGE_REQUIRES_PRIVATE "
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL" >&5
+$as_echo_n "checking for SSL... " >&6; }
+
+if test -n "$SSL_CFLAGS"; then
+    pkg_cv_SSL_CFLAGS="$SSL_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libssl openssl \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libssl openssl ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_SSL_CFLAGS=`$PKG_CONFIG --cflags "libssl openssl " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$SSL_LIBS"; then
+    pkg_cv_SSL_LIBS="$SSL_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libssl openssl \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libssl openssl ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_SSL_LIBS=`$PKG_CONFIG --libs "libssl openssl " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        SSL_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libssl openssl " 2>&1`
+        else
+	        SSL_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libssl openssl " 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$SSL_PKG_ERRORS" >&5
+
+	as_fn_error $? "the required package libssl-dev is not installed" "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "the required package libssl-dev is not installed" "$LINENO" 5
+else
+	SSL_CFLAGS=$pkg_cv_SSL_CFLAGS
+	SSL_LIBS=$pkg_cv_SSL_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
+    # Substitute output.
+
+
+
+
+
+
+
+    AX_PACKAGE_REQUIRES="$AX_PACKAGE_REQUIRES mailio"
+    AX_PACKAGE_REQUIRES_PRIVATE="$AX_PACKAGE_REQUIRES_PRIVATE "
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for MAILIO" >&5
+$as_echo_n "checking for MAILIO... " >&6; }
+
+if test -n "$MAILIO_CFLAGS"; then
+    pkg_cv_MAILIO_CFLAGS="$MAILIO_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"mailio \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "mailio ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_MAILIO_CFLAGS=`$PKG_CONFIG --cflags "mailio " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$MAILIO_LIBS"; then
+    pkg_cv_MAILIO_LIBS="$MAILIO_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"mailio \""; } >&5
+  ($PKG_CONFIG --exists --print-errors "mailio ") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_MAILIO_LIBS=`$PKG_CONFIG --libs "mailio " 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        MAILIO_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "mailio " 2>&1`
+        else
+	        MAILIO_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "mailio " 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$MAILIO_PKG_ERRORS" >&5
+
+	as_fn_error $? "the required package mailio-dev is not installed" "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "the required package mailio-dev is not installed" "$LINENO" 5
+else
+	MAILIO_CFLAGS=$pkg_cv_MAILIO_CFLAGS
+	MAILIO_LIBS=$pkg_cv_MAILIO_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
