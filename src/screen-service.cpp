@@ -91,6 +91,33 @@ ip_screen_data_cache::~ip_screen_data_cache()
 	delete [] m_data;
 }
 
+bool ip_screen_data_cache::is_up_to_date() const
+{
+	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
+	auto screenDataDir = screen_service::instance().get_screen_data_dir();
+
+	std::set<std::string> current;
+	for (auto& s: screens)
+		current.insert(s.name);
+
+	bool result = true;
+
+	for (auto& s: m_screens)
+	{
+		if (not current.count(s.name))
+		{
+			result = false;
+			break;
+		}
+
+		current.erase(s.name);
+	}
+
+	result = result and current.empty();
+
+	return result;
+}
+
 std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& screen)
 {
 	std::vector<ip_data_point> result;
@@ -772,8 +799,14 @@ std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const Scre
 	std::shared_ptr<ip_screen_data_cache> result;
 
 	if (i != m_ip_data_cache.end())
-		result = *i;
-	else
+	{
+		if ((*i)->is_up_to_date())
+			result = *i;
+		else
+			m_ip_data_cache.erase(i);
+	}
+	
+	if (not result)
 	{
 		result = std::make_shared<ip_screen_data_cache>(type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction);
 		m_ip_data_cache.emplace_back(result);
@@ -788,7 +821,7 @@ std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type
 	auto i = std::find_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
 		std::bind(&ip_screen_data_cache::is_for, std::placeholders::_1, type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction));
 
-	if (i != m_ip_data_cache.end() and (*i)->contains_data_for_screen(screen))
+	if (i != m_ip_data_cache.end() and (*i)->contains_data_for_screen(screen) and (*i)->is_up_to_date())
 		return (*i)->data_points(screen);
 
 	fs::path screenDir = m_screen_data_dir / screen;

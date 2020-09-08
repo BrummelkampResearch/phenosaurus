@@ -345,3 +345,7 @@ div.option-row {
 div.option-row div.option-col {
 	margin: 0 0.4em;
 }
+
+div.option-col-screenselector {
+	width: 15em;
+}

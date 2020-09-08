@@ -30,6 +30,8 @@ class screen_data_cache
 		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
 			m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
 	}
+	
+	virtual bool is_up_to_date() const = 0;
 
   protected:
 
@@ -141,6 +143,8 @@ class ip_screen_data_cache : public screen_data_cache
 		Direction direction);
 
 	~ip_screen_data_cache();
+
+	virtual bool is_up_to_date() const override;
 
 	bool is_for(ScreenType type, std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,

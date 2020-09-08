@@ -1,5 +1,2 @@
-- gene-finder
-- find similar
-- compare screens
-- uniqueness
 - manifest -- expand with bowtie/map info
+
