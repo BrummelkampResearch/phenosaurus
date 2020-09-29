@@ -216,7 +216,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 	close(ifd[0]);
 
 	// always assume we have to trim (we used to check for trim length==read length, but that complicated the code too much)
-	boost::thread thread([trimLength, &fastq, fd = ifd[1]]()
+	std::thread thread([trimLength, &fastq, fd = ifd[1]]()
 	{
 		progress p(fastq.string(), fs::file_size(fastq));
 		p.message(fastq.filename().string());
@@ -295,7 +295,7 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 
 	// start a thread to read stderr, can be used for logging
 
-	boost::thread err_thread([fd = efd[0]]()
+	std::thread err_thread([fd = efd[0]]()
 	{
 		char buffer[1024];
 		for (;;)

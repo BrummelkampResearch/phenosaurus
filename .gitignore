@@ -22,3 +22,4 @@ config.status
 config.log
 *.csv
 *.bed
+src/config.hpp.in~

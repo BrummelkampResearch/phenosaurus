@@ -15,9 +15,6 @@
 /* define if the Boost::PROGRAM_OPTIONS library is available */
 #undef HAVE_BOOST_PROGRAM_OPTIONS
 
-/* define if the Boost::Thread library is available */
-#undef HAVE_BOOST_THREAD
-
 /* define if the compiler supports basic C++17 syntax */
 #undef HAVE_CXX17
 

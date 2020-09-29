@@ -13,8 +13,6 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 
-#include <boost/thread.hpp>
-
 #include <zeep/value-serializer.hpp>
 #include <zeep/json/parser.hpp>
 
@@ -431,13 +429,13 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 	assert(tc == transcripts);
 #endif
 
-	boost::thread_group t;
+	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
 	for (std::string s: { "low", "high" })
 	{
 #ifndef DEBUG
-		t.create_thread([&, lh = s]()
+		t.emplace_back([&, lh = s]()
 		{
 #else
 		auto lh = s;
@@ -495,7 +493,8 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 #endif
 	}
 
-	t.join_all();
+	for (auto& ti: t)
+		ti.join();
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -513,12 +512,12 @@ IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t st
 
 	std::vector<uint32_t> lowP, lowM, highP, highM;
 
-	boost::thread_group t;
+	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
 	for (std::string s: { "low", "high" })
 	{
-		t.create_thread([&, lh = s]()
+		t.emplace_back([&, lh = s]()
 		{
 			try
 			{
@@ -547,7 +546,8 @@ IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t st
 		});
 	}
 
-	t.join_all();
+	for (auto& ti: t)
+		ti.join();
 
 	if (eptr)
 		std::rethrow_exception(eptr);
