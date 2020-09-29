@@ -9,12 +9,46 @@
 
 #include <zeep/crypto.hpp>
 
+#include "mrsrc.h"
+
 #include "user-service.hpp"
 #include "screen-service.hpp"
 #include "db-connection.hpp"
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
+
+// --------------------------------------------------------------------
+
+class gene_ranking
+{
+  public:
+	static gene_ranking& instance()
+	{
+		static gene_ranking s_instance;
+		return s_instance;
+	}
+
+	int operator()(const std::string& gene) const
+	{
+		auto i = m_ranked.find(gene);
+		return i != m_ranked.end() ? i->second : -1;
+	}
+
+  private:
+	gene_ranking()
+	{
+		mrsrc::istream data("ranked.txt");
+
+		std::string line;
+
+		int nr = 0;
+		while (std::getline(data, line))
+			m_ranked[line] = nr++;
+	}
+
+	std::map<std::string,int> m_ranked;
+};
 
 // --------------------------------------------------------------------
 
@@ -130,6 +164,8 @@ std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& 
 	size_t N = m_transcripts.size();
 	auto data = m_data + screenIx * N;
 
+	auto& rank = gene_ranking::instance();
+
 	for (size_t i = 0; i < m_transcripts.size(); ++i)
 	{
 		auto& dp = data[i];
@@ -144,6 +180,10 @@ std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& 
 		p.mi = dp.mi;
 		p.high = dp.high;
 		p.low = dp.low;
+
+		auto r = rank(p.gene);
+		if (r >= 0)
+			p.rank.emplace(r);
 
 		result.push_back(std::move(p));
 	}
@@ -833,6 +873,8 @@ std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type
 	
 	std::vector<ip_data_point> result;
 
+	auto& rank = gene_ranking::instance();
+
 	for (auto& dp: data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction))
 	{
 		if (dp.low == 0 and dp.high == 0)
@@ -846,6 +888,10 @@ std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type
 		p.mi = dp.mi;
 		p.high = dp.high;
 		p.low = dp.low;
+
+		auto r = rank(p.gene);
+		if (r >= 0)
+			p.rank.emplace(r);
 
 		result.push_back(std::move(p));
 	}

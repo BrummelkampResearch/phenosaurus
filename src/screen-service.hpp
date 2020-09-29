@@ -53,7 +53,7 @@ struct ip_data_point
 	float mi;
 	int low;
 	int high;
-	int rank;
+	std::optional<int> rank;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
