@@ -396,10 +396,10 @@ IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const scree
 	: ScreenData(dir, info), mType(type)
 {
 	// follow links until we end up at the final destination
-	while (fs::is_symlink(low))
+	while (fs::exists(low) and fs::is_symlink(low))
 		low = fs::read_symlink(low);
 	
-	while (fs::is_symlink(high))
+	while (fs::exists(high) and fs::is_symlink(high))
 		low = fs::read_symlink(high);
 	
 	// And then make these canonical/system_complete
