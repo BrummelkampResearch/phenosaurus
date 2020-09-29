@@ -6,24 +6,25 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <thread>
 
 #include <iostream>
 #include <regex>
 #include <atomic>
 #include <mutex>
 
-#include <boost/thread.hpp>
-#include <boost/timer/timer.hpp>
-
 #include <zeep/streambuf.hpp>
 
 #include "utils.hpp"
 #include "mrsrc.h"
 
+const auto kProcessorCount = std::thread::hardware_concurrency();
+
 // --------------------------------------------------------------------
 
 void parallel_for(size_t N, std::function<void(size_t)>&& f)
 {
+
 // #if DEBUG
 //     for (size_t i = 0; i < N; ++i)
 //         f(i);
@@ -33,9 +34,10 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 	std::exception_ptr eptr;
 	std::mutex m;
 
-	boost::thread_group t;
-	for (size_t n = 0; n < boost::thread::hardware_concurrency(); ++n)
-		t.create_thread([N, &i, &f, &eptr, &m]()
+	std::list<std::thread> t;
+
+	for (size_t n = 0; n < kProcessorCount; ++n)
+		t.emplace_back([N, &i, &f, &eptr, &m]()
 		{
 			try
 			{
@@ -55,7 +57,8 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 			}
 		});
 
-	t.join_all();
+	for (auto& ti: t)
+		ti.join();
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -174,9 +177,9 @@ struct progress_impl
 	std::atomic<long> mConsumed;
 	std::string mAction, mMessage;
 	int mSpinner;
-	boost::mutex mMutex;
-	boost::thread mThread;
-	boost::timer::cpu_timer mTimer;
+	std::mutex mMutex;
+	std::thread mThread;
+	std::chrono::time_point<std::chrono::system_clock> mStart = std::chrono::system_clock::now();
 };
 
 void progress_impl::Run()
@@ -185,9 +188,9 @@ void progress_impl::Run()
 	{
 		for (;;)
 		{
-			boost::this_thread::sleep(boost::posix_time::seconds(1));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-			boost::unique_lock<boost::mutex> lock(mMutex);
+			std::unique_lock lock(mMutex);
 
 			if (mConsumed == mMax)
 				break;
@@ -195,7 +198,13 @@ void progress_impl::Run()
 			if (mConsumed == mLast)
 				continue;
 
+			auto elapsed = std::chrono::system_clock::now() - mStart;
+
+			if (elapsed < std::chrono::seconds(5))
+				continue;
+
 			PrintProgress();
+
 			mLast = mConsumed;
 		}
 	}
@@ -256,11 +265,52 @@ void progress_impl::PrintProgress()
 	}
 }
 
+namespace
+{
+
+std::ostream& operator<<(std::ostream& os, const std::chrono::duration<double>& t)
+{
+	uint64_t s = static_cast<uint64_t>(std::trunc(t.count()));
+	if (s > 24 * 60 * 60)
+	{
+		uint32_t days = s / (24 * 60 * 60);
+		os << days << "d ";
+		s %= 24 * 60 * 60;
+	}
+	
+	if (s > 60 * 60)
+	{
+		uint32_t hours = s / (60 * 60);
+		os << hours << "h ";
+		s %= 60 * 60;
+	}
+	
+	if (s > 60)
+	{
+		uint32_t minutes = s / 60;
+		os << minutes << "m ";
+		s %= 60;
+	}
+	
+	double ss = s + 1e-6 * (t.count() - s);
+	
+	os << std::fixed << std::setprecision(1) << ss << 's';
+
+	return os;
+}
+
+}
+
 void progress_impl::PrintDone()
 {
-	int width = 80;
+	std::string::size_type width = 80;
 
-	std::string msg = mTimer.format(0, mAction + " done in %ts cpu / %ws wall");
+	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - mStart;
+
+	std::ostringstream msgstr;
+	msgstr << mAction << " done in " << elapsed << " cpu / %ws wall";
+	auto msg = msgstr.str();
+
 	if (msg.length() < width)
 		msg += std::string(width - msg.length(), ' ');
 
@@ -282,8 +332,6 @@ progress::~progress()
 	if (m_impl->mThread.joinable())
 	{
 		m_impl->mConsumed = m_impl->mMax;
-
-		m_impl->mThread.interrupt();
 		m_impl->mThread.join();
 	}
 
@@ -295,7 +343,6 @@ void progress::consumed(int64_t n)
 	if ((m_impl->mConsumed += n) >= m_impl->mMax and
 		m_impl->mThread.joinable())
 	{
-		m_impl->mThread.interrupt();
 		m_impl->mThread.join();
 	}
 }
@@ -305,13 +352,12 @@ void progress::set(int64_t n)
 	if ((m_impl->mConsumed = n) >= m_impl->mMax and
 		m_impl->mThread.joinable())
 	{
-		m_impl->mThread.interrupt();
 		m_impl->mThread.join();
 	}
 }
 
 void progress::message(const std::string& msg)
 {
-	boost::unique_lock<boost::mutex> lock(m_impl->mMutex);
+	std::unique_lock lock(m_impl->mMutex);
 	m_impl->mMessage = msg;
 }

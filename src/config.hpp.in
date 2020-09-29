@@ -6,8 +6,8 @@
 /* define if the Boost::ASIO library is available */
 #undef HAVE_BOOST_ASIO
 
-/* define if the Boost::Chrono library is available */
-#undef HAVE_BOOST_CHRONO
+/* define if the Boost::Date_Time library is available */
+#undef HAVE_BOOST_DATE_TIME
 
 /* define if the Boost::IOStreams library is available */
 #undef HAVE_BOOST_IOSTREAMS
