@@ -169,7 +169,10 @@ class SLScreenPlot extends ScreenPlot {
 						});
 					})
 
-					this.process(data.replicate[replicate].data, name);
+					if (replicate > data.replicate.length)
+						replicate = data.replicate.length;
+
+					this.process(data.replicate[replicate - 1].data, name);
 					plotTitle.classList.remove("plot-status-loading");
 					plotTitle.classList.add("plot-status-loaded");
 					resolve(data);
