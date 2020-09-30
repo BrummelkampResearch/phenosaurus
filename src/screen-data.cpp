@@ -705,7 +705,7 @@ void SLScreenData::addFile(fs::path file)
 		throw std::runtime_error("Screen already contains 4 fastq files");
 }
 
-std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::string& assembly, unsigned trimLength,
+SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trimLength,
 	const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
@@ -717,7 +717,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::stri
 	parallel_for(4, [&](size_t i) {
 		try
 		{
-			controlData.count_insertions(i + 1, assembly, trimLength, transcripts, controlInsertions[i]);
+			controlData.count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
 		}
 		catch(const std::exception& e)
 		{
@@ -743,19 +743,86 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(int replicate, const std::stri
 	if (eptr)
 		std::rethrow_exception(eptr);
 
-	// Then load the screen data
-	std::vector<InsertionCount> insertions;
-	count_insertions(replicate, assembly, trimLength, transcripts, insertions);
+	SLDataResult result;
 
-	// And now analyse this
-	auto datapoints = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize, pvCutOff, binomCutOff, effectSize);
-
-	// remove redundant datapoints
-	datapoints.erase(
-		std::remove_if(datapoints.begin(), datapoints.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
-		datapoints.end());
+	for (auto& f: mInfo.files)
+		result.replicate.push_back({ f.name });
 	
-	return datapoints;
+	parallel_for(result.replicate.size(), [&](size_t i) {
+		try
+		{
+			auto& replicate = result.replicate[i];
+
+			// Then load the screen data
+			std::vector<InsertionCount> insertions;
+			count_insertions(replicate.name, assembly, trimLength, transcripts, insertions);
+
+			// And now analyse this
+			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize, pvCutOff, binomCutOff, effectSize);
+
+			// // remove redundant datapoints
+			// replicate.data.erase(
+			// 	std::remove_if(replicate.data.begin(), replicate.data.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
+			// 	replicate.data.end());
+		}
+		catch (const std::exception& e)
+		{
+			eptr = std::current_exception();
+		}
+	});
+
+	if (eptr)
+		std::rethrow_exception(eptr);
+	
+	// find out which genes are significant
+
+	std::mutex m;
+	parallel_for(transcripts.size(), [&](size_t i) {
+	// for (size_t i = 0; i < transcripts.size(); ++ i) {
+		double minSenseRatio = std::numeric_limits<double>::max();
+		for (size_t j = 0; j < 4; ++j)
+		{
+			auto& nc = normalizedControlInsertions[0][i];
+			if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
+				minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
+		}
+
+		auto maxSenseRatio = std::numeric_limits<double>::lowest();
+		for (auto& r: result.replicate)
+		{
+			auto& nc = r.data[i];
+
+			if (nc.binom_fdr > binomCutOff)
+				continue;
+			
+			if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
+				continue;
+			
+			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
+			if (senseRatio >= 0.5)
+				continue;
+
+			if (maxSenseRatio < senseRatio)
+				maxSenseRatio = senseRatio;
+		}
+
+		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio)
+		{
+			std::unique_lock lock(m);
+			result.significant.push_back(transcripts[i].geneName);
+		}
+	// }
+	});
+
+	for (auto& r: result.replicate)
+	{
+		// remove redundant datapoints
+		r.data.erase(
+			std::remove_if(r.data.begin(), r.data.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
+			r.data.end());
+	}
+	
+	return result;
 }
 
 // --------------------------------------------------------------------
@@ -890,12 +957,12 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	return result;
 }
 
-void SLScreenData::count_insertions(int replicate, const std::string& assembly, unsigned trimLength,
+void SLScreenData::count_insertions(const std::string& replicate, const std::string& assembly, unsigned trimLength,
 	const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const
 {
 	insertions.resize(transcripts.size());
 
-	auto bwt = read_insertions(assembly, trimLength, "replicate-" + std::to_string(replicate));
+	auto bwt = read_insertions(assembly, trimLength, replicate);
 	auto ts = transcripts.begin();
 
 	for (const auto& [chr, strand, pos]: bwt)
@@ -1026,16 +1093,16 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		dp.ref_pv[3]	= pvalues[4][ix];
 		dp.ref_fcpv[3]	= fcpv[4][ix];
 
-		dp.insertions = dp.sense_normalized + dp.antisense_normalized;
-		dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
+		// dp.insertions = dp.sense_normalized + dp.antisense_normalized;
+		// dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
 
-		dp.significant =
-			dp.binom_fdr < binomCutOff and
-			dp.ref_fcpv[0] < pvCutOff and
-			dp.ref_fcpv[1] < pvCutOff and
-			dp.ref_fcpv[2] < pvCutOff and
-			dp.ref_fcpv[3] < pvCutOff and
-			(minSenseRatio[i] - dp.senseratio) > effectSize;
+		// dp.significant =
+		// 	dp.binom_fdr < binomCutOff and
+		// 	dp.ref_fcpv[0] < pvCutOff and
+		// 	dp.ref_fcpv[1] < pvCutOff and
+		// 	dp.ref_fcpv[2] < pvCutOff and
+		// 	dp.ref_fcpv[3] < pvCutOff and
+		// 	(minSenseRatio[i] - dp.senseratio) > effectSize;
 	});
 
 	return datapoints;
@@ -1077,32 +1144,3 @@ std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 			throw std::logic_error("should not be called with unspecified");
 	}
 }
-
-	// // perhaps we should improve this...
-
-	// bool hasLow = false, hasHigh = false, hasRepl[4] = {};
-
-	// for (fs::directory_iterator iter(dir); iter != fs::directory_iterator(); ++iter)
-	// {
-	// 	if (iter->is_directory())
-	// 		continue;
-		
-	// 	auto name = iter->path().filename();
-	// 	if (name.extension() == ".gz")
-	// 		name = name.stem();
-	// 	if (name.extension() != ".fastq")
-	// 		continue;
-		
-	// 	name = name.stem();
-		
-	// 	if (name == "low")
-	// 		hasLow = true;
-	// 	else if (name == "high")
-	// 		hasHigh = true;
-	// 	else if (name.string().length() == 11 and name.string().compare(0, 10, "replicate-") == 0)
-	// 	{
-	// 		char d = name.string().back();
-	// 		if (d >= '1' and d <= '4')
-	// 			hasRepl[d - '1'] = true;
-	// 	}
-	// }

@@ -397,13 +397,13 @@ class SLScreenRestController : public zh::rest_controller
 		: zh::rest_controller("sl")
 		, mScreenDir(screenDir)
 	{
-		map_post_request("screen/{id}/{replicate}", &SLScreenRestController::screenData,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "replicate", "pvCutOff", "binomCutOff", "effectSize");
+		map_post_request("screen/{id}", &SLScreenRestController::screenData,
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
 	}
 
-	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly,
+	SLDataResult screenData(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		Direction direction, uint16_t replicate, float pvCutOff, float binomCutOff, float effectSize);
+		Direction direction, float pvCutOff, float binomCutOff, float effectSize);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -411,8 +411,8 @@ class SLScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, uint16_t replicate,
+SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
@@ -450,7 +450,7 @@ std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& s
 
 	// -----------------------------------------------------------------------
 
-	return data->dataPoints(replicate, assembly, trimLength, transcripts, *controlData, groupSize, pvCutOff, binomCutOff, effectSize);
+	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize, pvCutOff, binomCutOff, effectSize);
 }
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)

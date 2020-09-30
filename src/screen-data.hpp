@@ -103,13 +103,7 @@ struct SLDataPoint
 	double binom_fdr;
 	float ref_pv[4];
 	float ref_fcpv[4];
-	int sense, sense_normalized;
-	int antisense, antisense_normalized;
-
-	float senseratio;
-	int insertions;
-
-	bool significant;
+	uint32_t sense, sense_normalized, antisense, antisense_normalized;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -118,10 +112,35 @@ struct SLDataPoint
 		   & zeep::make_nvp("binom_fdr", binom_fdr)
 		   & zeep::make_nvp("ref_pv", ref_pv)
 		   & zeep::make_nvp("ref_fcpv", ref_fcpv)
-		   & zeep::make_nvp("sense", sense_normalized)
-		   & zeep::make_nvp("antisense", antisense_normalized)
-		   & zeep::make_nvp("senseratio", senseratio)
-		   & zeep::make_nvp("insertions", insertions)
+		   & zeep::make_nvp("sense", sense)
+		   & zeep::make_nvp("antisense", antisense)
+		   & zeep::make_nvp("sense_normalized", sense_normalized)
+		   & zeep::make_nvp("antisense_normalized", antisense_normalized);
+	}
+};
+
+struct SLDataReplicate
+{
+	std::string name;
+	std::vector<SLDataPoint> data;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("name", name)
+		   & zeep::make_nvp("data", data);
+	}
+};
+
+struct SLDataResult
+{
+	std::vector<SLDataReplicate> replicate;
+	std::vector<std::string> significant;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("replicate", replicate)
 		   & zeep::make_nvp("significant", significant);
 	}
 };
@@ -325,7 +344,7 @@ class SLScreenData : public ScreenData
 
 	void addFile(std::filesystem::path file);
 
-	std::vector<SLDataPoint> dataPoints(int replicate, const std::string& assembly, unsigned readLength,
+	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
 		float pvCutOff, float binomCutOff, float effectSize);
 
@@ -334,7 +353,7 @@ class SLScreenData : public ScreenData
 	std::vector<InsertionCount> normalize(const std::vector<InsertionCount>& counts,
 		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 
-	void count_insertions(int replicate, const std::string& assembly, unsigned readLength,
+	void count_insertions(const std::string& replicate, const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const;
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,

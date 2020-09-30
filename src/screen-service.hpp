@@ -193,6 +193,80 @@ class ip_screen_data_cache : public screen_data_cache
 
 // --------------------------------------------------------------------
 
+struct sl_data_point
+{
+	std::string gene;
+	float binom_fdr;
+	uint32_t sense;
+	uint32_t antisense;
+	uint32_t sense_normalized;
+	uint32_t antisense_normalized;
+	std::array<float,4> pv;
+	std::array<float,4> fcpv;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long)
+	{
+		ar & zeep::make_nvp("gene", gene)
+		   & zeep::make_nvp("binom_fdr", binom_fdr)
+		   & zeep::make_nvp("sense", sense)
+		   & zeep::make_nvp("antisense", antisense)
+		   & zeep::make_nvp("sense_normalized", sense_normalized)
+		   & zeep::make_nvp("antisense_normalized", antisense_normalized)
+		   & zeep::make_nvp("pv", pv)
+		   & zeep::make_nvp("fcpv", fcpv);
+	}
+};
+
+class sl_screen_data_cache : public screen_data_cache
+{
+  public:
+	sl_screen_data_cache(const std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
+	~sl_screen_data_cache();
+
+	virtual bool is_up_to_date() const override;
+
+	bool is_for(std::string& assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd) const
+	{
+		return screen_data_cache::is_for(ScreenType::SyntheticLethal, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd);
+	}
+
+	bool contains_data_for_screen(const std::string& screen) const
+	{
+		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+		return si != m_screens.end() and not si->data.empty();
+	}
+
+	std::vector<sl_data_point> data_points(const std::string& screen, float binomFdrCutOff, float pvCutOff, float effectSize);
+
+  private:
+
+	struct data_point
+	{
+		float binom_fdr;
+		uint32_t sense;
+		uint32_t antisense;
+		uint32_t sense_normalized;
+		std::array<float,4> pv;
+		std::array<float,4> fcpv;
+	};
+
+	struct cached_screen
+	{
+		std::string name;
+		std::vector<data_point> data;
+		bool ignore = false;
+	};
+
+	size_t index(size_t screen_nr, size_t transcript) const;
+	std::vector<cached_screen> m_screens;
+};
+
+// --------------------------------------------------------------------
+
 class screen_service
 {
   public:

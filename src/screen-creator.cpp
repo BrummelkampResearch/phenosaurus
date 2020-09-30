@@ -478,7 +478,9 @@ or txEnd to have the start at the cdsEnd e.g.
 			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)"
 			  << std::endl;
 
-	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
+	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
+
+	for (auto& dp: r.replicate[replicate].data)
 	{
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'

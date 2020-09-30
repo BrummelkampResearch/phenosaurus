@@ -142,7 +142,7 @@ class SLScreenPlot extends ScreenPlot {
 			options.append("binomCutOff", document.getElementById('binom_fdr').value);
 			options.append("effectSize", document.getElementById('effect-size').value);
 
-			fetch(`${context_name}sl/screen/${name}/${replicate}`,
+			fetch(`${context_name}sl/screen/${name}`,
 					{ credentials: "include", method: "post", body: options })
 				.then(value => {
 					if (value.ok)
@@ -151,7 +151,25 @@ class SLScreenPlot extends ScreenPlot {
 						throw "invalid-credentials";
 				})
 				.then(data => {
-					this.process(data, name, replicate);
+
+					const significant = new Set(data.significant);
+
+					data.replicate.forEach(r => {
+						r.data.forEach(d => {
+							d.sense_raw = d.sense;
+							d.antisense_raw = d.antisense;
+	
+							d.sense = d.sense_normalized;
+							d.antisense = d.antisense_normalized;
+	
+							d.insertions = d.sense + d.antisense;
+							d.senseratio = (d.sense + 1) / (d.insertions + 2);
+
+							d.significant = significant.has(d.gene);
+						});
+					})
+
+					this.process(data.replicate[replicate].data, name);
 					plotTitle.classList.remove("plot-status-loading");
 					plotTitle.classList.add("plot-status-loaded");
 					resolve(data);
