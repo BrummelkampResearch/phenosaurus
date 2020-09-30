@@ -36,7 +36,7 @@ AC_CHECK_PROG([HAVE_GOOGLE_FONT_DOWNLOADER], [google-font-downloader], [yes],
 
 AC_PATH_PROG([PKG_CONFIG], [pkg-config])
 
-AX_PKG_CHECK_MODULES([PQXX], [libpqxx], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
+AX_PKG_CHECK_MODULES([PQXX], [libpqxx >= 7.1], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
 AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package libpq-dev is not installed])])
 # AX_PKG_CHECK_MODULES([BZ2], [libbz2], [], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
 AC_CHECK_HEADER([bzlib.h], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
