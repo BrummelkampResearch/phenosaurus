@@ -463,28 +463,27 @@ or txEnd to have the start at the cdsEnd e.g.
 	std::cout << "gene" << '\t'
 			  << "sense" << '\t'
 			  << "antisense" << '\t'
-			  << "pv" << '\t'
-			  << "fcpv" << '\t'
+			  << "binom_fdr" << '\t'
 			  << "sense_normalized" << '\t'
 			  << "antisense_normalized" << '\t'
-			  << "ref_fcpv[0]" << '\t'
-			  << "ref_pv[0]" << '\t'
-			  << "ref_fcpv[1]" << '\t'
-			  << "ref_pv[1]" << '\t'
-			  << "ref_fcpv[2]" << '\t'
-			  << "ref_pv[2]" << '\t'
-			  << "ref_fcpv[3]" << '\t'
-			  << "ref_pv[3]" << '\t'
+			  << "fcpv_control_1 " << '\t'
+			  << "pv_control_1" << '\t'
+			  << "fcpv_control_2" << '\t'
+			  << "pv_control_2" << '\t'
+			  << "fcpv_control_3" << '\t'
+			  << "pv_control_3" << '\t'
+			  << "fcpv_control_4" << '\t'
+			  << "pv_control_4" << '\t'
 			  << "sense + antisense" << '\t'
-			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)" << std::endl;
+			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)"
+			  << std::endl;
 
 	for (auto& dp: screenData.dataPoints(replicate, assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize))
 	{
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
 				  << dp.antisense << '\t'
-				  << dp.pv << '\t'
-				  << dp.fcpv << '\t'
+				  << dp.binom_fdr << '\t'
 				  << dp.sense_normalized << '\t'
 				  << dp.antisense_normalized << '\t'
 				  << dp.ref_fcpv[0] << '\t'
@@ -496,7 +495,8 @@ or txEnd to have the start at the cdsEnd e.g.
 				  << dp.ref_fcpv[3] << '\t'
 				  << dp.ref_pv[3] << '\t'
 				  << (dp.sense + dp.antisense) << '\t'
-				  << ((dp.sense_normalized + 1.0f) / (dp.sense_normalized + dp.antisense_normalized + 2.0f)) << std::endl;
+				  << ((dp.sense_normalized + 1.0f) / (dp.sense_normalized + dp.antisense_normalized + 2.0f))
+				  << std::endl;
 	}
 
 	return 0;
@@ -519,8 +519,8 @@ int main_analyze(int argc, char* const argv[])
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 			
-			{ "output",		po::value<std::string>(),	"Output file" }
-		}, { "screen-name", "assembly" });
+			{ "output,o",	po::value<std::string>(),	"Output file" }
+			}, { "screen-name", "assembly" });
 
 	// fail early
 	std::ofstream out;

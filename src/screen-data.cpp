@@ -619,7 +619,7 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 
 		std::tie(p.low, p.high) = countLowHigh(i);
 
-		float miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
+		double miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
 		if (p.low == 0)
 		{
 			miL = 1;
@@ -787,7 +787,7 @@ std::vector<std::tuple<size_t,size_t>> divide(size_t listsize, size_t suggested_
 std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionCount>& insertions,
 	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
 {
-	std::vector<float> senseRatio(insertions.size()), refSenseRatio(insertions.size());
+	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions.size());
 
 	parallel_for(insertions.size(), [&](size_t i)
@@ -844,7 +844,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 		// calculate median ratio for sample and reference in this group
 		// The median for ref can be picked up immediately since the
 		// group is already sorted on this value
-		float ref_median;
+		double ref_median;
 
 		if (l & 1)
 		{
@@ -858,11 +858,11 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 		}
 
 		// median for sample needs to be calculated
-		std::vector<float> srs;
+		std::vector<double> srs;
 		for (auto ix = b; ix < e; ++ix)
 			srs.push_back(senseRatio[index[ix]]);
 		std::sort(srs.begin(), srs.end());
-		float sample_median = l & 1
+		double sample_median = l & 1
 			? srs[l / 2 + 1]
 			: (srs[l / 2] + srs[l / 2 + 1]) / 2.0;
 		
@@ -874,7 +874,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 			auto iSenseRatio = senseRatio[iix];
 
-			float f = iSenseRatio <= sample_median
+			double f = iSenseRatio <= sample_median
 				? (ref_median * iSenseRatio) / sample_median
 				: 1 - ((1 - ref_median) * (1 - iSenseRatio)) / (1 - sample_median);
 
@@ -938,31 +938,46 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
-	std::vector<SLDataPoint> datapoints(transcripts.size(), SLDataPoint{});
+	const size_t N = transcripts.size();
+	std::vector<SLDataPoint> datapoints(N, SLDataPoint{});
+
+	std::vector<size_t> index;
+	index.reserve(N);
+
+	for (size_t i = 0; i < N; ++i)
+	{
+		if (insertions[i].sense + insertions[i].antiSense > 0)
+			index.push_back(i);
+	}
+
+	const size_t M = index.size();
 
 	std::vector<double> pvalues[5];
+
 	for (auto& pv: pvalues)
-		pv.resize(transcripts.size());
+		pv.resize(M);
 
 	// Calculate the minimal sense ratio per gene in the controls
-	std::vector<float> minSenseRatio(transcripts.size());
+	std::vector<double> minSenseRatio(N);
 	for (auto& cdi: controlInsertions)
 	{
-		for (size_t i = 0; i < cdi.size(); ++i)
+		for (auto i: index)
 		{
 			auto& cd = cdi[i];
-			float r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
+			double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
 			if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
 				minSenseRatio[i] = r;
 		}
 	}
 
-	parallel_for(transcripts.size(), [&](size_t i)
+	parallel_for(M, [&](size_t ix)
 	{
+		size_t i = index[ix];
+
 		// calculate p-value for insertion
-		int x = static_cast<int>(normalized[i].sense);
-		int n = x + static_cast<int>(normalized[i].antiSense);
-		pvalues[0][i] = binom_test(x, n);
+		int x = static_cast<int>(insertions[i].sense);
+		int n = x + static_cast<int>(insertions[i].antiSense);
+		pvalues[0][ix] = binom_test(x, n);
 
 		auto& t = transcripts[i];
 
@@ -983,7 +998,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 				{ static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense) }
 			};
 
-			pvalues[j + 1][i] = fisherTest2x2(v);
+			pvalues[j + 1][ix] = fisherTest2x2(v);
 		}
 	});
 
@@ -993,27 +1008,29 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		fcpv[i] = adjustFDR_BH(pvalues[i]);
 	});
 
-	parallel_for(transcripts.size(), [&](size_t i)
+	parallel_for(M, [&](size_t ix)
 	{
+		size_t i = index[ix];
+
 		auto& dp = datapoints[i];
 
-		dp.pv = pvalues[0][i];
-		dp.fcpv = fcpv[0][i];
+		// dp.pv = pvalues[0][ix];
+		dp.binom_fdr = fcpv[0][ix];
 
-		dp.ref_pv[0]	= pvalues[1][i];
-		dp.ref_fcpv[0]	= fcpv[1][i];
-		dp.ref_pv[1]	= pvalues[2][i];
-		dp.ref_fcpv[1]	= fcpv[2][i];
-		dp.ref_pv[2]	= pvalues[3][i];
-		dp.ref_fcpv[2]	= fcpv[3][i];
-		dp.ref_pv[3]	= pvalues[4][i];
-		dp.ref_fcpv[3]	= fcpv[4][i];
+		dp.ref_pv[0]	= pvalues[1][ix];
+		dp.ref_fcpv[0]	= fcpv[1][ix];
+		dp.ref_pv[1]	= pvalues[2][ix];
+		dp.ref_fcpv[1]	= fcpv[2][ix];
+		dp.ref_pv[2]	= pvalues[3][ix];
+		dp.ref_fcpv[2]	= fcpv[3][ix];
+		dp.ref_pv[3]	= pvalues[4][ix];
+		dp.ref_fcpv[3]	= fcpv[4][ix];
 
 		dp.insertions = dp.sense_normalized + dp.antisense_normalized;
 		dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
 
 		dp.significant =
-			dp.fcpv < binomCutOff and
+			dp.binom_fdr < binomCutOff and
 			dp.ref_fcpv[0] < pvCutOff and
 			dp.ref_fcpv[1] < pvCutOff and
 			dp.ref_fcpv[2] < pvCutOff and

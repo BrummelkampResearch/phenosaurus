@@ -100,8 +100,7 @@ struct IPDataPoint
 struct SLDataPoint
 {
 	std::string gene;
-	float pv;
-	float fcpv;
+	double binom_fdr;
 	float ref_pv[4];
 	float ref_fcpv[4];
 	int sense, sense_normalized;
@@ -116,8 +115,7 @@ struct SLDataPoint
 	void serialize(Archive& ar, unsigned long)
 	{
 		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("pv", pv)
-		   & zeep::make_nvp("binom_fdr", fcpv)
+		   & zeep::make_nvp("binom_fdr", binom_fdr)
 		   & zeep::make_nvp("ref_pv", ref_pv)
 		   & zeep::make_nvp("ref_fcpv", ref_fcpv)
 		   & zeep::make_nvp("sense", sense_normalized)
