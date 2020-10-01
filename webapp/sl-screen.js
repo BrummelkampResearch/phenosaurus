@@ -330,7 +330,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
-				col(d.senseratio);
+				col(d.senseratio.toFixed(2));
 				col(d.insertions);
 				col(fmt(d.binom_fdr));
 				col(fmt(d.ref_fcpv[0]));

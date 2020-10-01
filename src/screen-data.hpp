@@ -358,6 +358,5 @@ class SLScreenData : public ScreenData
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<InsertionCount>& insertions,
-		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize,
-		float pvCutOff, float binomCutOff, float effectSize);
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 };

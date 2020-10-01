@@ -758,7 +758,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 			count_insertions(replicate.name, assembly, trimLength, transcripts, insertions);
 
 			// And now analyse this
-			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize, pvCutOff, binomCutOff, effectSize);
+			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
 
 			// // remove redundant datapoints
 			// replicate.data.erase(
@@ -806,7 +806,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 				maxSenseRatio = senseRatio;
 		}
 
-		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio)
+		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
 		{
 			std::unique_lock lock(m);
 			result.significant.push_back(transcripts[i].geneName);
@@ -1001,7 +1001,7 @@ void SLScreenData::count_insertions(const std::string& replicate, const std::str
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
 	const std::vector<InsertionCount>& insertions, const std::array<std::vector<InsertionCount>,4>& controlInsertions,
-	unsigned groupSize, float pvCutOff, float binomCutOff, float effectSize)
+	unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
