@@ -4,9 +4,9 @@ import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
 
 import * as d3 from 'd3';
+import { transition } from 'd3';
 
 const radius = 5;
-const screenReplicatesMap = new Map();
 
 export let significantGenes = new Set();
 
@@ -81,6 +81,8 @@ class ColorMap {
 			const btns = document.getElementById("graphColorBtns");
 			btns.dispatchEvent(new Event("change-color"));
 		}
+
+		return significantGenes;
 	}
 
 	selectType(colortype) {
@@ -100,6 +102,9 @@ class SLScreenPlot extends ScreenPlot {
 	constructor(svg) {
 		super(svg, 'sense ratio');
 
+		this.data = null;
+		this.replicate = 0;
+
 		this.parentColumn = svg.node().parentNode.parentNode;
 		this.control = null;
 		this.updateColorMap = (data) => colorMap.setData(data);
@@ -108,22 +113,13 @@ class SLScreenPlot extends ScreenPlot {
 		btns.addEventListener("change-color", () => this.updateColors());
 	}
 
-	selectReplicate(replicate) {
-		this.loadScreen(this.name, replicate);
-	}
-
 	reloadScreen(name) {
-		this.loadScreen(this.name ? this.name : name, this.replicateNr);
+		this.loadScreen(this.name ? this.name : name);
 	}
 
-	loadScreen(name, replicate = 1) {
+	loadScreen(name, replicate = 0) {
 		return new Promise((resolve, reject) => {
 			this.name = name;
-			this.replicateNr = replicate;
-
-			// colorMap.add(replicate);
-
-			this.updateReplicateBtns(replicate);
 
 			const plotTitle = this.parentColumn.getElementsByClassName("plot-title")[0];
 			if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
@@ -136,8 +132,6 @@ class SLScreenPlot extends ScreenPlot {
 
 			const options = geneSelectionEditor.getOptions();
 
-			// "id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction"
-			// "replicate", "pvCutOff", "binomCutOff", "effectSize");
 			options.append("pvCutOff", pvCutOff);
 			options.append("binomCutOff", document.getElementById('binom_fdr').value);
 			options.append("effectSize", document.getElementById('effect-size').value);
@@ -152,9 +146,11 @@ class SLScreenPlot extends ScreenPlot {
 				})
 				.then(data => {
 
-					const significant = new Set(data.significant);
+					this.data = data;
 
-					data.replicate.forEach(r => {
+					const significant = colorMap.setSignificantGenes(this.data.significant);
+
+					this.data.replicate.forEach(r => {
 						r.data.forEach(d => {
 							d.sense_raw = d.sense;
 							d.antisense_raw = d.antisense;
@@ -169,13 +165,10 @@ class SLScreenPlot extends ScreenPlot {
 						});
 					})
 
-					if (replicate > data.replicate.length)
-						replicate = data.replicate.length;
-
-					this.process(data.replicate[replicate - 1].data, name);
+					this.process(replicate);
 					plotTitle.classList.remove("plot-status-loading");
 					plotTitle.classList.add("plot-status-loaded");
-					resolve(data);
+					resolve();
 				})
 				.catch(err => {
 					plotTitle.classList.remove("plot-status-loading");
@@ -214,7 +207,20 @@ class SLScreenPlot extends ScreenPlot {
 		};
 	}
 
-	process(data) {
+	process(replicate) {
+		
+		this.replicate = replicate;
+		if (this.data == null || this.replicate > this.data.replicate.length)
+		{
+			screenPlot.selectAll("g.dot")
+				.remove();
+			return;
+		}
+
+		this.updateReplicateBtns(replicate);
+
+		const data = this.data.replicate[this.replicate].data;
+
 		this.screens.set(0, data);
 
 		this.updateColorMap(data);
@@ -264,41 +270,40 @@ class SLScreenPlot extends ScreenPlot {
 			.style("opacity", this.getOpacity());
 
 		if (this.control != null)
-		{
-			colorMap.setSignificantGenes(data.filter(d => d.significant).map(d => d.gene));
 			this.updateSignificantTable(data);
-		}
 
 		this.highlightGenes();
 	}
 
 	updateReplicateBtns(number) {
-		this.replicateNr = number;
-
 		const replicateBtnContainer = this.parentColumn.getElementsByClassName("replicate-btn-container")[0];
 
-		const replicates = screenReplicatesMap.get(this.name).sort();
+		[...replicateBtnContainer.getElementsByTagName("label")]
+			.forEach(r => r.remove());
 
-		if (replicates != null) {
+		if (this.data.replicate.length > 0) {
+			const btns = [];
 
-			[...replicateBtnContainer.getElementsByTagName("label")]
-				.forEach(r => r.remove());
-
-			for (let replicate of replicates) {
+			for (let i in this.data.replicate) {
+				const replicate = this.data.replicate[i].name.replace(/replicate-/, '');
 				const label = document.createElement("label");
 				label.classList.add("btn", "btn-secondary");
-				if (+number === +replicate)
+				if (+number === +i)
 					label.classList.add("active");
 				const btn = document.createElement("input");
 				btn.type = "radio";
 				btn.name = "replicate";
 				btn.autocomplete = "off";
-				btn.dataset.replicate = replicate;
+				btn.dataset.replicate = i;
 				label.appendChild(btn);
 				label.appendChild(document.createTextNode(`${replicate}`));
-				replicateBtnContainer.appendChild(label);
-				btn.onchange = () => this.selectReplicate(replicate);
+				btn.onchange = () => this.process(i);
+
+				btns.push(label);
 			}
+
+			btns.sort((a, b) => a.textContent > b.textContent)
+				.forEach(b => replicateBtnContainer.appendChild(b));
 		}
 	}
 
@@ -360,7 +365,7 @@ class SLControlScreenPlot extends SLScreenPlot {
 		if (controlData == null)
 			throw "Missing control data set";
 
-		this.loadScreen("ControlData-HAP1", 1);
+		this.loadScreen("ControlData-HAP1", 0);
 	}
 
 	updateColors() {
@@ -397,14 +402,6 @@ window.addEventListener('load', () => {
 	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
 
-	screenReplicates.forEach(o => {
-		const replicates = o.files
-			.filter(f => f.name.startsWith('replicate-'))
-			.map(f => f.name.substr('replicate-'.length, 1))
-			.sort((a, b) => a.name < b.name);
-		screenReplicatesMap.set(o.name, replicates)
-	});
-
 	const svg = d3.select("#plot-screen");
 	const plot = new SLScreenPlot(svg);
 
@@ -413,13 +410,11 @@ window.addEventListener('load', () => {
 
 	const screenList = document.getElementById("screenList");
 
-	$(screenList).chosen().change(() => {
+	$(screenList).chosen().on('change', () => {
 		const selected = screenList.selectedOptions;
 		if (selected.length === 1) {
 			const name = selected.item(0).dataset.screen;
-			const replicates = screenReplicatesMap.get(name);
-
-			plot.loadScreen(name, replicates[0]);
+			plot.loadScreen(name);
 		}
 	});
 
@@ -427,7 +422,7 @@ window.addEventListener('load', () => {
 	{
 		const r = screenReplicates.find(e => e.name === selectedScreen);
 		if (r != null) {
-			plot.loadScreen(r.name, selectedScreen, +selectedReplicate)
+			plot.loadScreen(selectedScreen, +selectedReplicate)
 				.then(() => plot.highlightGene(params['gene']));
 		}
 	}
