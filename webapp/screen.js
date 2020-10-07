@@ -168,28 +168,13 @@ class ScreenPlotRegular extends ScreenPlot {
 
 					$("#plot-status-error-text").text(err).show();
 
-					if (err === "invalid-credentials")
-						showLoginDialog(null, () => screenData.load());
-					else reject(err);
+					// if (err === "invalid-credentials")
+					// 	showLoginDialog(null, () => screenData.load());
+					// else 
+						reject(err);
 				});
 		});
 
-	}
-
-	clickGenes(d, screenNr) {
-		if (d.multiDot === undefined && d.values.length === 1) {
-
-			// default is to highlight clicked genes
-			const gene = d.values[0].gene;
-			const plot = this.svg.node();
-			
-			const e = new Event("clicked-gene");
-			e.gene = gene;
-
-			plot.dispatchEvent(e);
-		}
-
-		return super.clickGenes(d, screenNr);
 	}
 }
 

@@ -666,6 +666,16 @@ SLScreenData::SLScreenData(const fs::path& dir, const screen_info& info)
 {
 }
 
+std::vector<std::string> SLScreenData::getReplicateNames() const
+{
+	std::vector<std::string> result;
+
+	for (auto& f: mInfo.files)
+		result.push_back(f.name);
+
+	return result;
+}
+
 void SLScreenData::addFile(fs::path file)
 {
 	// follow links until we end up at the final destination
@@ -995,6 +1005,32 @@ void SLScreenData::count_insertions(const std::string& replicate, const std::str
 			++t;
 		}
 	}
+}
+
+std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> SLScreenData::getInsertionsForReplicate(const std::string& replicate,
+	const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end) const
+{
+	const unsigned readLength = 50;
+
+	std::vector<uint32_t> insP;
+	std::vector<uint32_t> insM;
+
+	auto bwt = read_insertions(assembly, readLength, replicate);
+
+	for (auto&& [chr, strand, pos]: bwt)
+	{
+		assert(chr != CHROM::INVALID);
+
+		if (chr == chrom and pos >= start and pos < end)
+		{
+			if (strand == '+')
+				insP.push_back(pos);
+			else
+				insM.push_back(pos);
+		}
+	}
+
+	return std::make_tuple(std::move(insP), std::move(insM));
 }
 
 // --------------------------------------------------------------------

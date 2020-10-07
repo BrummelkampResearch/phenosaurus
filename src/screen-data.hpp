@@ -191,6 +191,18 @@ struct InsertionInfo
 	std::string name;
 	std::vector<uint32_t> pos;
 
+	InsertionInfo() = default;
+	InsertionInfo(const InsertionInfo&) = default;
+	InsertionInfo(InsertionInfo&&) = default;
+
+	InsertionInfo& operator=(const InsertionInfo&) = default;
+	InsertionInfo& operator=(InsertionInfo&&) = default;
+
+	InsertionInfo(const std::string& strand, const std::string& name)
+		: strand(strand), name(name) {}
+	InsertionInfo(const std::string& strand, const std::string& name, std::vector<uint32_t>&& pos)
+		: strand(strand), name(name), pos(std::move(pos)) {}
+
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
@@ -347,6 +359,10 @@ class SLScreenData : public ScreenData
 	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
 		float pvCutOff, float binomCutOff, float effectSize);
+
+	std::vector<std::string> getReplicateNames() const;
+	std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> getInsertionsForReplicate(
+		const std::string& replicate, const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end) const;
 
   private:
 

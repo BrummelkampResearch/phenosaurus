@@ -45,16 +45,14 @@ export class GenomeViewerContextMenu extends ContextMenu {
 
 // --------------------------------------------------------------------
 
-export default class GenomveViewer {
+export default class GenomeViewer {
 
 	constructor(svg) {
 
 		this.svg = svg;
 
-		const plot = document.getElementById("plot");
-		if (plot != null) {
-			plot.addEventListener("clicked-gene", (event) => this.selectedGene(event.gene));
-		}
+		[...document.querySelectorAll("svg.fishtail")]
+			.forEach(plot => plot.addEventListener("clicked-gene", (event) => this.selectedGene(event)));
 
 		// create the context menu
 		const contextMenuDiv = document.getElementById("genome-viewer-context-menu");
@@ -62,14 +60,14 @@ export default class GenomveViewer {
 			this.contextMenu = new GenomeViewerContextMenu(this, "genome-viewer-context-menu");
 	}
 
-	createSVG(nrOfGenes) {
+	createSVG(nrOfGenes, nrOfInsertionLines) {
 		if (this.svg)
 			this.svg.remove();
 		
 		const container = document.getElementById('genome-viewer-container');
 
 		const boxWidth = container.clientWidth;
-		const boxHeight = 60 + nrOfGenes * 7;
+		const boxHeight = 32 + nrOfInsertionLines * 7 + nrOfGenes * 7;
 
 		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
@@ -161,7 +159,9 @@ export default class GenomveViewer {
 
 	}
 
-	selectedGene(gene) {
+	selectedGene(event) {
+		const gene = event.gene;
+
 		if (this.svg)
 		{
 			this.svg.remove();
@@ -171,15 +171,20 @@ export default class GenomveViewer {
 		const f = document.geneSelectionForm;
 		const fd = new FormData(f);
 
-		let screenID;
+		let screenID = event.screen;
 
-		const screenList = document.getElementById("screenList");
-		const selected = screenList.selectedOptions;
-		if (selected.length === 1) {
-			screenID = selected.item(0).dataset.screen;
+		if (screenID === null)
+		{
+			const screenList = document.getElementById("screenList");
+			const selected = screenList.selectedOptions;
+			if (selected.length === 1) {
+				screenID = selected.item(0).dataset.screen;
+			}
 		}
 
 		fd.set("screen", screenID);
+		if (event.replicate != null)
+			fd.set("replicate", event.replicate);
 
 		const geneStartOffset = parseInt(document.getElementById('geneStartOffset').value);
 		let geneStart = document.getElementById("geneStartType").value;
@@ -229,7 +234,7 @@ export default class GenomveViewer {
 	}
 
 	setGene(data) {
-		this.createSVG(data.genes.length);
+		this.createSVG(data.genes.length, data.insertions.length);
 
 		this.region = data;
 
@@ -242,23 +247,36 @@ export default class GenomveViewer {
 		const x = this.adjustAxis();
 
 		let Y = -7;
+
+		this.insertionsData.selectAll('g.ins').remove();
+
 		data.insertions.map(d => {
 			return {
+				name: d.name,
+				strand: d.strand,
 				low: d.name === "low",
+				high: d.name === "high",
 				y: (Y += 7),
 				i: d.pos,
 				n: `${d.name}-${d.strand==='+'?'p':'m'}`,
 				sense: data.geneStrand === d.strand
 			};
 		}).forEach(ii => {
-			const r = this.insertionsData.selectAll(`rect.${ii.n}`)
+			const g = this.insertionsData
+				.append("g")
+				.attr("class", "ins")
+				.attr("transform", `translate(0, ${ii.y})`)
+				.on("mouseover", () => tooltip.show(`${ii.name} ${ii.strand}`, d3.event.pageX + 5, d3.event.pageY - 5))
+				.on("mouseout", () => tooltip.hide());
+	
+			const r = g.selectAll(`rect.${ii.n}`)
 				.data(ii.i, d => d);
 		
 			r.exit().remove();
 			const l = r.enter()
 				.append("rect")
 				.attr("class", `ins ${ii.n}`)
-				.attr("y", ii.y)
+				// .attr("y", ii.y)
 				.attr("height", 5)
 				.attr("width", 2)
 				.attr("fill", d => {
@@ -288,7 +306,7 @@ export default class GenomveViewer {
 		const gl = g.enter()
 			.append("g")
 			.attr("class", "gene")
-			.attr("transform", g => `translate(0, ${30 + g.nr * 7})`)
+			.attr("transform", g => `translate(0, ${Y + 12 + g.nr * 7})`)
 			.on("mouseover", g => tooltip.show(g.name, d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide());
 		

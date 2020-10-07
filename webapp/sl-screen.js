@@ -4,7 +4,8 @@ import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
 
 import * as d3 from 'd3';
-import { transition } from 'd3';
+
+import GenomeViewer from "./genome-viewer";
 
 const radius = 5;
 
@@ -120,6 +121,7 @@ class SLScreenPlot extends ScreenPlot {
 	loadScreen(name, replicate = 0) {
 		return new Promise((resolve, reject) => {
 			this.name = name;
+			this.screen = name;	// for click-genes -> genome-viewer
 
 			const plotTitle = this.parentColumn.getElementsByClassName("plot-title")[0];
 			if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
@@ -386,6 +388,8 @@ class SLControlScreenPlot extends SLScreenPlot {
 }
 
 window.addEventListener('load', () => {
+
+	new GenomeViewer();
 
 	const query = window.location.search;
 	const params = query

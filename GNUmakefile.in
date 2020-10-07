@@ -134,7 +134,8 @@ SCRIPTS = \
 	webapp/admin-group.js \
 	webapp/admin-screen.js \
 	webapp/user-screen.js \
-	webapp/genome-browser.js
+	webapp/genome-browser.js \
+	webapp/genome-viewer.js
 
 WEBAPP_FILES = $(SCRIPTS)
 SCRIPT_FILES = $(SCRIPTS:webapp/%.js=docroot/scripts/%.js)
