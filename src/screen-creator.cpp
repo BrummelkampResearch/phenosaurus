@@ -510,9 +510,9 @@ int main_analyze(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
 		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "mode",		po::value<std::string>()->default_value("longest"),	"Mode, should be either collapse, longest" },
+			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
 			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 
