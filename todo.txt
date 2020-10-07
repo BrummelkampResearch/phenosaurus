@@ -5,8 +5,6 @@
 
 - user/group validation
 - create screen process, web interface? Screen name volgens methode Lisa
-- add genome viewer to SL
-- high and low 
 - csv file downloaden
 - SL analyse replicatie van gegevens Vincent
 - samengestelde score voor alle SL replicates in experiment
