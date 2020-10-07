@@ -484,8 +484,13 @@ or txEnd to have the start at the cdsEnd e.g.
 	if (replicate > r.replicate.size())
 		throw std::runtime_error("replicate number too high");
 
+	bool significantOnly = vm.count("significant");
+
 	for (auto& dp: r.replicate[replicate - 1].data)
 	{
+		if (significantOnly and not r.significant.count(dp.gene))
+			continue;
+
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
 				  << dp.antisense << '\t'
@@ -522,6 +527,7 @@ int main_analyze(int argc, char* const argv[])
 
 			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
 			{ "group-size",	po::value<unsigned short>(),"The group size to use for normalizing insertions counts in SL, default is 500"},
+			{ "significant", new po::untyped_value(true),	"The significant genes only, in case of synthetic lethal"},
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 			

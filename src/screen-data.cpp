@@ -797,7 +797,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
 		{
 			std::unique_lock lock(m);
-			result.significant.push_back(transcripts[i].geneName);
+			result.significant.insert(transcripts[i].geneName);
 		}
 	// }
 	});
@@ -1106,17 +1106,6 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		dp.ref_fcpv[2]	= fcpv[3][ix];
 		dp.ref_pv[3]	= pvalues[4][ix];
 		dp.ref_fcpv[3]	= fcpv[4][ix];
-
-		// dp.insertions = dp.sense_normalized + dp.antisense_normalized;
-		// dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
-
-		// dp.significant =
-		// 	dp.binom_fdr < binomCutOff and
-		// 	dp.ref_fcpv[0] < pvCutOff and
-		// 	dp.ref_fcpv[1] < pvCutOff and
-		// 	dp.ref_fcpv[2] < pvCutOff and
-		// 	dp.ref_fcpv[3] < pvCutOff and
-		// 	(minSenseRatio[i] - dp.senseratio) > effectSize;
 	});
 
 	return datapoints;

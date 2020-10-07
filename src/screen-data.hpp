@@ -135,7 +135,7 @@ struct SLDataReplicate
 struct SLDataResult
 {
 	std::vector<SLDataReplicate> replicate;
-	std::vector<std::string> significant;
+	std::set<std::string> significant;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)

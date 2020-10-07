@@ -426,7 +426,7 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 		throw std::runtime_error("No such screen: " + screen);
 
 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
-#warning "make control a parameter"
+// #warning "make control a parameter"
 	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / "ControlData-HAP1"));
 	
 	// -----------------------------------------------------------------------
