@@ -218,7 +218,7 @@ int main_server(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( sever command [options])",
+	auto vm = load_options(argc, argv, PACKAGE_NAME R"( server command [options])",
 		{
 			{ "command", 		po::value<std::string>(),	"Server command" },
 		}, { "smtp-server", "smtp-port" }, { "command" });
