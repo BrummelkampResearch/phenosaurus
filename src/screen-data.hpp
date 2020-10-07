@@ -261,6 +261,8 @@ class ScreenData
 
 	ScreenType get_type() const					{ return mInfo.type; }
 
+	virtual void addFile(const std::string& name, std::filesystem::path file);
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
@@ -269,6 +271,8 @@ class ScreenData
 
 	ScreenData(const std::filesystem::path& dir);
 	ScreenData(const std::filesystem::path& dir, const screen_info& info);
+
+	void write_manifest();
 
 	std::filesystem::path	mDataDir;
 	screen_info mInfo;
@@ -354,7 +358,7 @@ class SLScreenData : public ScreenData
 
 	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
-	void addFile(std::filesystem::path file);
+	virtual void addFile(const std::string& name, std::filesystem::path file) override;
 
 	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,

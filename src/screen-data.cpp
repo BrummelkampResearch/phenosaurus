@@ -110,14 +110,45 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 
 	fs::create_directories(dir);
 
-	std::ofstream manifest(dir / "manifest.json");
+	write_manifest();
+}
+
+void ScreenData::write_manifest()
+{
+	std::ofstream manifest(mDataDir / "manifest.json");
 	if (not manifest.is_open())
-		throw std::runtime_error("Could not create manifest file in " + dir.string());
+		throw std::runtime_error("Could not create manifest file in " + mDataDir.string());
 
 	zeep::json::element jInfo;
-	zeep::json::to_element(jInfo, info);
+	zeep::json::to_element(jInfo, mInfo);
 	manifest << jInfo;
 	manifest.close();
+}
+
+void ScreenData::addFile(const std::string& name, fs::path file)
+{
+	// follow links until we end up at the final destination
+	while (fs::is_symlink(file))
+		file = fs::read_symlink(file);
+	
+	// And then make these canonical/system_complete
+	file = fs::weakly_canonical(file);
+
+	checkIsFastQ(file);
+
+	auto ext = file.extension();
+
+	fs::path to;
+	if (ext == ".gz" or ext == ".bz2")
+		to = mDataDir / (name + ext.string());
+	else
+		to = mDataDir / name;
+		
+	fs::create_symlink(file, to);
+
+	mInfo.files.push_back({ name, file });
+
+	write_manifest();
 }
 
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
@@ -393,30 +424,8 @@ IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
 IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
 	: ScreenData(dir, info), mType(type)
 {
-	// follow links until we end up at the final destination
-	while (fs::exists(low) and fs::is_symlink(low))
-		low = fs::read_symlink(low);
-	
-	while (fs::exists(high) and fs::is_symlink(high))
-		low = fs::read_symlink(high);
-	
-	// And then make these canonical/system_complete
-	low = fs::weakly_canonical(low);
-	high = fs::weakly_canonical(high);
-
-	checkIsFastQ(low);
-	checkIsFastQ(high);
-
-	for (auto p: { std::make_pair("low.fastq", low), std::make_pair("high.fastq", high) })
-	{
-		fs::path to;
-		if (p.second.extension() == ".gz" or p.second.extension() == ".bz2")
-			to = mDataDir / (p.first + p.second.extension().string());
-		else
-			to = mDataDir / p.first;
-		
-		fs::create_symlink(p.second, to);
-	}	
+	addFile("low.fastq", low);
+	addFile("high.fastq", high);
 }
 
 void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
@@ -676,43 +685,12 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 	return result;
 }
 
-void SLScreenData::addFile(fs::path file)
+void SLScreenData::addFile(const std::string& name, fs::path file)
 {
-	// follow links until we end up at the final destination
-	while (fs::is_symlink(file))
-		file = fs::read_symlink(file);
-	
-	// And then make these canonical/system_complete
-	file = fs::weakly_canonical(file);
-
-	checkIsFastQ(file);
-
-	auto ext = file.extension();
-
-	int r = 1;
-	for (; r <= 4; ++r)
-	{
-		auto name = "replicate-" + std::to_string(r) + ".fastq";
-
-		if (fs::exists(mDataDir / name) or
-			fs::exists(mDataDir / (name + ".gz")) or
-			fs::exists(mDataDir / (name + ".bz2")))
-		{
-			continue;
-		}
-
-		fs::path to;
-		if (ext == ".gz" or ext == ".bz2")
-			to = mDataDir / (name + ext.string());
-		else
-			to = mDataDir / name;
-		
-		fs::create_symlink(file, to);
-		break;
-	}
-
-	if (r > 4)
+	if (mInfo.files.size() >= 4)
 		throw std::runtime_error("Screen already contains 4 fastq files");
+
+	ScreenData::addFile(name, file);
 }
 
 SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trimLength,

@@ -216,8 +216,9 @@ int main_create(int argc, char* const argv[])
 				throw std::runtime_error("For IP screens you should provide at least one replicate fastq file");
 
 			auto data = std::make_unique<SLScreenData>(screenDir, screen);
+			int nr = 1;
 			for (auto& replicate: vm["replicate"].as<std::vector<std::string>>())
-				data->addFile(replicate);
+				data->addFile("replicate-" + std::to_string(nr++) + ".fastq", replicate);
 			break;
 		}
 
@@ -579,8 +580,8 @@ int main_refseq(int argc, char* const argv[])
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
 		{
 			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
 			// { "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 			{ "no-exons",	new po::untyped_value(true),"Leave out exons" },
