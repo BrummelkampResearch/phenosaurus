@@ -480,7 +480,10 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
 
-	for (auto& dp: r.replicate[replicate].data)
+	if (replicate > r.replicate.size())
+		throw std::runtime_error("replicate number too high");
+
+	for (auto& dp: r.replicate[replicate - 1].data)
 	{
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
