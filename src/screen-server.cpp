@@ -624,10 +624,9 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	// map enums
 
 	zeep::value_serializer<Mode>::init("mode", {
-		{ Mode::Collapse, 	"collapse" },
-		{ Mode::Longest, 	"longest" },
-		{ Mode::Start, 		"start" },
-		{ Mode::End, 		"end" }
+		{ Mode::Collapse, 			"collapse" },
+		{ Mode::LongestTranscript, 	"longest-transcript" },
+		{ Mode::LongestExon,		"longest-exon" }
 	});
 
 	zeep::value_serializer<Direction>::init("direction", {
