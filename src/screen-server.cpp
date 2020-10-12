@@ -621,20 +621,6 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 		std::abort();
 	});
 
-	// map enums
-
-	zeep::value_serializer<Mode>::init("mode", {
-		{ Mode::Collapse, 			"collapse" },
-		{ Mode::LongestTranscript, 	"longest-transcript" },
-		{ Mode::LongestExon,		"longest-exon" }
-	});
-
-	zeep::value_serializer<Direction>::init("direction", {
-		{ Direction::Sense, 	"sense" },
-		{ Direction::AntiSense, "antisense" },
-		{ Direction::Both, 		"both" }
-	});
-
 	// init screen_service
 	screen_service::init(screenDir);
 

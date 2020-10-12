@@ -1,13 +1,8 @@
-- bug in longest voor PA? (zie chat met abdel), geen bug maar longest moet 'longest transcribed region' zijn
-
 - manifest -- expand with bowtie/map info
-	- schrijf files sectie voor SL
 
 - user/group validation
 - create screen process, web interface? Screen name volgens methode Lisa
 - csv file downloaden
 - SL analyse replicatie van gegevens Vincent
-- samengestelde score voor alle SL replicates in experiment
 - PICH2 analyse met HG19?
 - betere data cache controle
-- fix gene info dialog in SL

@@ -38,6 +38,27 @@ std::ostream& operator<<(std::ostream& os, CHROM chr)
 
 // --------------------------------------------------------------------
 
+uint32_t Transcript::length_exons() const
+{
+	uint32_t result = 0;
+
+	for (auto e: exons)
+	{
+		if (e.end > cds.end)
+			e.end = cds.end;
+		
+		if (e.start < cds.start)
+			e.start = cds.start;
+		
+		if (e.end > e.start)
+			result += e.end - e.start;
+	}
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
 struct splitted_range
 {
 	splitted_range(const std::string& s, char delim)

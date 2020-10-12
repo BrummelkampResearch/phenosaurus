@@ -588,7 +588,7 @@ int main_refseq(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
 		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest-transcript or longest-exon" },
+			{ "mode",		po::value<std::string>()->default_value("longest-transcript"),	"Mode, should be either collapse, longest-transcript or longest-exon" },
 			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },

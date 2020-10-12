@@ -79,13 +79,7 @@ struct Transcript
 		return ranges.empty() ? 0 : ranges.front().start;
 	}
 
-	uint32_t length_exons() const
-	{
-		return std::accumulate(exons.begin(), exons.end(), 0UL, [](uint32_t l, const Exon& exon)
-		{
-			return l + (exon.end - exon.start);
-		});
-	}
+	uint32_t length_exons() const;
 
 	void start(uint32_t v)
 	{

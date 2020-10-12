@@ -527,6 +527,19 @@ int main(int argc, char* const argv[])
 		{ ScreenType::SyntheticLethal, "sl" }
 	});
 
+	zeep::value_serializer<Mode>::init("mode", {
+		{ Mode::Collapse, 			"collapse" },
+		{ Mode::LongestTranscript, 	"longest-transcript" },
+		{ Mode::LongestExon,		"longest-exon" }
+	});
+
+	zeep::value_serializer<Direction>::init("direction", {
+		{ Direction::Sense, 	"sense" },
+		{ Direction::AntiSense, "antisense" },
+		{ Direction::Both, 		"both" }
+	});
+
+
 	zeep::value_serializer<CHROM>::init({
 		{ INVALID, 	"unk" },
 		{ CHR_1, 	"chr1" },
