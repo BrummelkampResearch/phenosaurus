@@ -385,6 +385,10 @@ class SLControlScreenPlot extends SLScreenPlot {
 
 		super.updateColors();
 	}
+
+	reload() {
+		return this.loadScreen("ControlData-HAP1", 0);
+	}
 }
 
 window.addEventListener('load', () => {
@@ -410,7 +414,7 @@ window.addEventListener('load', () => {
 	const plot = new SLScreenPlot(svg);
 
 	const controlSvg = d3.select("#plot-control");
-	new SLControlScreenPlot(controlSvg, plot);
+	const controlPlot = new SLControlScreenPlot(controlSvg, plot);
 
 	const screenList = document.getElementById("screenList");
 
@@ -469,10 +473,15 @@ window.addEventListener('load', () => {
 			evt.preventDefault();
 
 			const selected = screenList.selectedOptions;
-			if (selected.length === 1) {
-				const name = selected.item(0).dataset.screen;
-				plot.reloadScreen(name);
-			}
+
+			controlPlot
+				.reload()
+				.then(() => {
+					if (selected.length === 1) {
+						const name = selected.item(0).dataset.screen;
+						plot.reloadScreen(name);
+					}
+				});
 		})
 
 });
