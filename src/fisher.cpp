@@ -217,18 +217,22 @@ std::vector<double> adjustFDR_BH(const std::vector<double>& p)
 	std::vector<size_t> ix(N);
 	std::iota(ix.begin(), ix.end(), 0);
 
+	ix.erase(std::remove_if(ix.begin(), ix.end(), [&p](size_t ix) { return p[ix] == -1; }), ix.end());
+
+	const size_t M = ix.size();
+
 	std::sort(ix.begin(), ix.end(), [&p](size_t i, size_t j) { return p[i] < p[j]; });
 
-	std::vector<double> result(N);
+	std::vector<double> result(N, 0);
 
-	for (size_t i = 0; i < N; ++i)
+	for (size_t i = 0; i < M; ++i)
 	{
-		auto v = (N * p[ix[i]]) / (i + 1);
+		auto v = (M * p[ix[i]]) / (i + 1);
 		if (v > 1)
 			v = 1;
 		result[ix[i]] = v;
 	}
-		
+	
 	return result;
 }
 

@@ -146,6 +146,9 @@ struct splitted_range
 
 std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
 {
+	if (VERBOSE > 1)
+		std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
+
 	mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
 	if (not refseq)

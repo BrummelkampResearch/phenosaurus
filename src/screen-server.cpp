@@ -398,12 +398,12 @@ class SLScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
+			"id", "assembly", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
 
 		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	SLDataResult screenData(const std::string& screen, const std::string& assembly,
+	SLDataResult screenData(const std::string& screen, const std::string& assembly, std::string control,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction, float pvCutOff, float binomCutOff, float effectSize);
 
@@ -413,7 +413,7 @@ class SLScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly,
+SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
@@ -426,8 +426,11 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 		throw std::runtime_error("No such screen: " + screen);
 
 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
-// #warning "make control a parameter"
-	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / "ControlData-HAP1"));
+
+	if (control.empty())
+		control = "ControlData-HAP1";
+
+	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
 	
 	// -----------------------------------------------------------------------
 

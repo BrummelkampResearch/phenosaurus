@@ -1055,23 +1055,18 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 	{
 		size_t i = index[ix];
 
-		// calculate p-value for insertion
-		int x = static_cast<int>(insertions[i].sense);
-		int n = x + static_cast<int>(insertions[i].antiSense);
-		pvalues[0][ix] = binom_test(x, n);
-
-		auto& t = transcripts[i];
-
 		SLDataPoint& p = datapoints[i];
 
-		p.gene = t.geneName;
+		p.gene = transcripts[i].geneName;
 		p.sense = insertions[i].sense;
 		p.antisense = insertions[i].antiSense;
 		p.sense_normalized = normalized[i].sense;
 		p.antisense_normalized = normalized[i].antiSense;
 
-		// and calculate p-values for the screen vs controls
+		// calculate p-value for insertion
+		pvalues[0][ix] = binom_test(p.sense_normalized, p.sense_normalized + p.antisense_normalized);
 
+		// and calculate p-values for the screen vs controls
 		for (int j = 0; j < 4; ++j)
 		{
 			long v[2][2] = {
@@ -1079,7 +1074,10 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 				{ static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense) }
 			};
 
-			pvalues[j + 1][ix] = fisherTest2x2(v);
+			if (v[0][0] + v[0][1] == 0 or v[1][0] + v[1][1] == 0)
+				pvalues[j + 1][ix] = -1;
+			else
+				pvalues[j + 1][ix] = fisherTest2x2(v);
 		}
 	});
 
