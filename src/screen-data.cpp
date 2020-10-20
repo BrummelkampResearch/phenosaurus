@@ -770,12 +770,15 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		double minSenseRatio = std::numeric_limits<double>::max();
 		for (size_t j = 0; j < 4; ++j)
 		{
-			auto& nc = normalizedControlInsertions[0][i];
+			auto& nc = normalizedControlInsertions[j][i];
 			if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
 				minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
 		}
 
 		auto maxSenseRatio = std::numeric_limits<double>::lowest();
+		size_t n = 0;
+		size_t s_g = 0, a_g = 0;
+
 		for (auto& r: result.replicate)
 		{
 			auto& nc = r.data[i];
@@ -783,22 +786,48 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 			if (nc.binom_fdr > binomCutOff)
 				continue;
 			
-			if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
+			// if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
+			// 	continue;
+
+			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
 				continue;
 			
 			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
 			if (senseRatio >= 0.5)
 				continue;
 
+			++n;
+
+			s_g += nc.sense_normalized;
+			a_g += nc.antisense_normalized;
+
 			if (maxSenseRatio < senseRatio)
 				maxSenseRatio = senseRatio;
 		}
 
-		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
+		if (n == result.replicate.size())
 		{
-			std::unique_lock lock(m);
-			result.significant.insert(transcripts[i].geneName);
+			size_t s_wt = 0, a_wt = 0;
+
+			for (size_t j = 0; j < 4; ++j)
+			{
+				auto& nc = normalizedControlInsertions[j][i];
+				s_wt += nc.sense;
+				a_wt += nc.antiSense;
+			}
+
+			if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
+			{
+				std::unique_lock lock(m);
+				result.significant.insert(transcripts[i].geneName);
+			}
 		}
+
+		// if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
+		// {
+		// 	std::unique_lock lock(m);
+		// 	result.significant.insert(transcripts[i].geneName);
+		// }
 	// }
 	});
 
@@ -929,7 +958,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 			auto iSenseRatio = senseRatio[iix];
 
-			double f = iSenseRatio <= sample_median
+			double f = iSenseRatio < sample_median
 				? (ref_median * iSenseRatio) / sample_median
 				: 1 - ((1 - ref_median) * (1 - iSenseRatio)) / (1 - sample_median);
 
