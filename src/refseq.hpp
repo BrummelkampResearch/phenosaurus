@@ -4,12 +4,13 @@
 
 #include <string>
 #include <vector>
+#include <numeric>
 
 // --------------------------------------------------------------------
 
 enum class Mode
 {
-	Collapse, Longest, Start, End
+	Collapse, LongestTranscript, LongestExon
 };
 
 // -----------------------------------------------------------------------
@@ -77,6 +78,8 @@ struct Transcript
 	{
 		return ranges.empty() ? 0 : ranges.front().start;
 	}
+
+	uint32_t length_exons() const;
 
 	void start(uint32_t v)
 	{

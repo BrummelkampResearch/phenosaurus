@@ -398,10 +398,12 @@ class SLScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
+			"id", "assembly", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
+
+		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 	}
 
-	SLDataResult screenData(const std::string& screen, const std::string& assembly,
+	SLDataResult screenData(const std::string& screen, const std::string& assembly, std::string control,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction, float pvCutOff, float binomCutOff, float effectSize);
 
@@ -411,7 +413,7 @@ class SLScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly,
+SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
@@ -424,8 +426,11 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 		throw std::runtime_error("No such screen: " + screen);
 
 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
-#warning "make control a parameter"
-	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / "ControlData-HAP1"));
+
+	if (control.empty())
+		control = "ControlData-HAP1";
+
+	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
 	
 	// -----------------------------------------------------------------------
 
@@ -444,7 +449,8 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 	// --------------------------------------------------------------------
 	
 #warning "make groupSize a parameter"
-	unsigned groupSize = 500;
+	// unsigned groupSize = 500;
+	unsigned groupSize = 200;
 #warning "make trimLength a parameter"
 	unsigned trimLength = 50;
 
@@ -464,108 +470,106 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	// const int kWindowSize = 4000;
+	const int kWindowSize = 4000;
 
-	// auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
+	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
 
-	// Region result = {};
+	Region result = {};
 
-	// result.chrom = transcripts.front().chrom;
-	// result.start = std::numeric_limits<int>::max();
+	result.chrom = transcripts.front().chrom;
+	result.start = std::numeric_limits<int>::max();
 
-	// for (auto& t: transcripts)
-	// {
-	// 	auto& tn = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
-	// 	for (auto e: t.exons)
-	// 	{
-	// 		if (e.start >= t.cds.start and e.end <= t.cds.end)
-	// 		{
-	// 			tn.exons.emplace_back(GeneExon{e.start, e.end});
-	// 			continue;
-	// 		}
+	for (auto& t: transcripts)
+	{
+		auto& tn = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		for (auto e: t.exons)
+		{
+			if (e.start >= t.cds.start and e.end <= t.cds.end)
+			{
+				tn.exons.emplace_back(GeneExon{e.start, e.end});
+				continue;
+			}
 
-	// 		if (e.start < t.cds.start)
-	// 		{
-	// 			auto u = e;
-	// 			if (u.end > t.cds.start)
-	// 				u.end = t.cds.start;
+			if (e.start < t.cds.start)
+			{
+				auto u = e;
+				if (u.end > t.cds.start)
+					u.end = t.cds.start;
 				
-	// 			if (t.strand == '+')
-	// 				tn.utr3.emplace_back(GeneExon{ u.start, u.end });
-	// 			else
-	// 				tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+				if (t.strand == '+')
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+				else
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
 				
-	// 			e.start = t.cds.start;
-	// 			if (e.start >= e.end)
-	// 				continue;
-	// 		}
+				e.start = t.cds.start;
+				if (e.start >= e.end)
+					continue;
+			}
 
-	// 		if (e.end > t.cds.end)
-	// 		{
-	// 			auto u = e;
-	// 			if (u.start < t.cds.end)
-	// 				u.start = t.cds.end;
+			if (e.end > t.cds.end)
+			{
+				auto u = e;
+				if (u.start < t.cds.end)
+					u.start = t.cds.end;
 				
-	// 			if (t.strand == '+')
-	// 				tn.utr5.emplace_back(GeneExon{ u.start, u.end });
-	// 			else
-	// 				tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+				if (t.strand == '+')
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+				else
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
 				
-	// 			e.end = t.cds.end;
-	// 			if (e.start >= e.end)
-	// 				continue;
-	// 		}
+				e.end = t.cds.end;
+				if (e.start >= e.end)
+					continue;
+			}
 
-	// 		tn.exons.emplace_back(GeneExon{ e.start, e.end });
-	// 	}
+			tn.exons.emplace_back(GeneExon{ e.start, e.end });
+		}
 		
-	// 	if (t.geneName != gene)
-	// 		continue;
+		if (t.geneName != gene)
+			continue;
 
-	// 	if (result.start > t.tx.start)
-	// 		result.start = t.tx.start;
-	// 	if (result.end < t.tx.end)
-	// 		result.end = t.tx.end;
-	// }
+		if (result.start > t.tx.start)
+			result.start = t.tx.start;
+		if (result.end < t.tx.end)
+			result.end = t.tx.end;
+	}
 
-	// result.start -= kWindowSize;
-	// result.end += kWindowSize;
+	result.start -= kWindowSize;
+	result.end += kWindowSize;
 
-	// // screen data
+	// screen data
 
-	// fs::path screenDir = mScreenDir / screen;
+	fs::path screenDir = mScreenDir / screen;
 
-	// if (not fs::is_directory(screenDir))
-	// 	throw std::runtime_error("No such screen: " + screen);
+	if (not fs::is_directory(screenDir))
+		throw std::runtime_error("No such screen: " + screen);
 
-	// std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
-	
-	// result.insertions.assign({
-	// 	{ "+", "high" },
-	// 	{ "-", "high" },
-	// 	{ "+", "low" },
-	// 	{ "-", "low" }		
-	// });
+	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
 
-	// std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) = 
-	// 	data->insertions(assembly, result.chrom, result.start, result.end);
+	for (auto r: data->getReplicateNames())
+	{
+		std::vector<uint32_t> pos_p, pos_m;
+		std::tie(pos_p, pos_m) = data->getInsertionsForReplicate(r, assembly, result.chrom, result.start, result.end);
 
-	// // filter
-	// filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
+		result.insertions.emplace_back("+", r, std::move(pos_p));
+		result.insertions.emplace_back("-", r, std::move(pos_m));
+	}
 
-	// for (auto& t: transcripts)
-	// {
-	// 	if (t.geneName != gene)
-	// 		continue;
+	// filter
+	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
+
+	for (auto& t: transcripts)
+	{
+		if (t.geneName != gene)
+			continue;
 		
-	// 	result.geneStrand = { t.strand };
+		result.geneStrand = { t.strand };
 
-	// 	for (auto& r: t.ranges)
-	// 		result.area.emplace_back(GeneExon{r.start, r.end});
-	// }
+		for (auto& r: t.ranges)
+			result.area.emplace_back(GeneExon{r.start, r.end});
+	}
 
-	// return result;
-	return {};
+	return result;
 }
 
 class SLScreenHtmlController : public ScreenHtmlControllerBase
@@ -619,21 +623,6 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	{
 		std::cerr << "Unhandled exception in server" << std::endl;
 		std::abort();
-	});
-
-	// map enums
-
-	zeep::value_serializer<Mode>::init("mode", {
-		{ Mode::Collapse, 	"collapse" },
-		{ Mode::Longest, 	"longest" },
-		{ Mode::Start, 		"start" },
-		{ Mode::End, 		"end" }
-	});
-
-	zeep::value_serializer<Direction>::init("direction", {
-		{ Direction::Sense, 	"sense" },
-		{ Direction::AntiSense, "antisense" },
-		{ Direction::Both, 		"both" }
 	});
 
 	// init screen_service

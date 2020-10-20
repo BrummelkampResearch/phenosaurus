@@ -269,6 +269,7 @@ export default class ScreenPlot {
 	add(data, screenNr) {
 		this.cleanUp();
 
+		this.screen = data.screen;
 		this.screens.set(screenNr, data);
 
 		const [x, y] = this.adjustAxes();
@@ -330,6 +331,17 @@ export default class ScreenPlot {
 			const highlightGene = document.getElementById("highlightGene");
 			if (highlightGene != null)
 				highlightGene.dispatchEvent(new Event('highlight-gene'));
+
+			// dispatch another event for the genome-viewer to pick up
+			const plot = this.svg.node();
+
+			const e = new Event("clicked-gene");
+			e.gene = gene;
+			e.screen = this.screen;
+			if (this.replicate !== null)
+				e.replicate = this.replicate;
+
+			plot.dispatchEvent(e);
 		} else {
 			const clickedCircle = d3.event.target;
 

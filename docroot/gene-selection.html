@@ -43,7 +43,8 @@
 							
 											<select class="custom-select custom-select-sm" name="mode">
 												<option value="collapse" z:selected="${screenType=='ip'}">Collapse</option>
-												<option value="longest" z:selected="${screenType=='pa'}">Longest</option>
+												<option value="longest-transcript" z:selected="${screenType=='pa' or screenType=='sl'}">Longest Transcript</option>
+												<option value="longest-exon">Longest Exon</option>
 											</select>
 										</div>
 							
@@ -91,7 +92,7 @@
 												placeholder="offset..." />
 										</div>
 							
-										<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
+										<div z:if="${screenType!='sl'}" class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
 											<label class="btn btn-secondary active">
 												<input type="radio" name="direction" autocomplete="off"
 													value="sense" checked="checked"/>Sense

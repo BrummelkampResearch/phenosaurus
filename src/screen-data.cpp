@@ -110,14 +110,45 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 
 	fs::create_directories(dir);
 
-	std::ofstream manifest(dir / "manifest.json");
+	write_manifest();
+}
+
+void ScreenData::write_manifest()
+{
+	std::ofstream manifest(mDataDir / "manifest.json");
 	if (not manifest.is_open())
-		throw std::runtime_error("Could not create manifest file in " + dir.string());
+		throw std::runtime_error("Could not create manifest file in " + mDataDir.string());
 
 	zeep::json::element jInfo;
-	zeep::json::to_element(jInfo, info);
+	zeep::json::to_element(jInfo, mInfo);
 	manifest << jInfo;
 	manifest.close();
+}
+
+void ScreenData::addFile(const std::string& name, fs::path file)
+{
+	// follow links until we end up at the final destination
+	while (fs::is_symlink(file))
+		file = fs::read_symlink(file);
+	
+	// And then make these canonical/system_complete
+	file = fs::weakly_canonical(file);
+
+	checkIsFastQ(file);
+
+	auto ext = file.extension();
+
+	fs::path to;
+	if (ext == ".gz" or ext == ".bz2")
+		to = mDataDir / (name + ext.string());
+	else
+		to = mDataDir / name;
+		
+	fs::create_symlink(file, to);
+
+	mInfo.files.push_back({ name, file });
+
+	write_manifest();
 }
 
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
@@ -393,30 +424,8 @@ IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
 IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
 	: ScreenData(dir, info), mType(type)
 {
-	// follow links until we end up at the final destination
-	while (fs::exists(low) and fs::is_symlink(low))
-		low = fs::read_symlink(low);
-	
-	while (fs::exists(high) and fs::is_symlink(high))
-		low = fs::read_symlink(high);
-	
-	// And then make these canonical/system_complete
-	low = fs::weakly_canonical(low);
-	high = fs::weakly_canonical(high);
-
-	checkIsFastQ(low);
-	checkIsFastQ(high);
-
-	for (auto p: { std::make_pair("low.fastq", low), std::make_pair("high.fastq", high) })
-	{
-		fs::path to;
-		if (p.second.extension() == ".gz" or p.second.extension() == ".bz2")
-			to = mDataDir / (p.first + p.second.extension().string());
-		else
-			to = mDataDir / p.first;
-		
-		fs::create_symlink(p.second, to);
-	}	
+	addFile("low.fastq", low);
+	addFile("high.fastq", high);
 }
 
 void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
@@ -666,43 +675,22 @@ SLScreenData::SLScreenData(const fs::path& dir, const screen_info& info)
 {
 }
 
-void SLScreenData::addFile(fs::path file)
+std::vector<std::string> SLScreenData::getReplicateNames() const
 {
-	// follow links until we end up at the final destination
-	while (fs::is_symlink(file))
-		file = fs::read_symlink(file);
-	
-	// And then make these canonical/system_complete
-	file = fs::weakly_canonical(file);
+	std::vector<std::string> result;
 
-	checkIsFastQ(file);
+	for (auto& f: mInfo.files)
+		result.push_back(f.name);
 
-	auto ext = file.extension();
+	return result;
+}
 
-	int r = 1;
-	for (; r <= 4; ++r)
-	{
-		auto name = "replicate-" + std::to_string(r) + ".fastq";
-
-		if (fs::exists(mDataDir / name) or
-			fs::exists(mDataDir / (name + ".gz")) or
-			fs::exists(mDataDir / (name + ".bz2")))
-		{
-			continue;
-		}
-
-		fs::path to;
-		if (ext == ".gz" or ext == ".bz2")
-			to = mDataDir / (name + ext.string());
-		else
-			to = mDataDir / name;
-		
-		fs::create_symlink(file, to);
-		break;
-	}
-
-	if (r > 4)
+void SLScreenData::addFile(const std::string& name, fs::path file)
+{
+	if (mInfo.files.size() >= 4)
 		throw std::runtime_error("Screen already contains 4 fastq files");
+
+	ScreenData::addFile(name, file);
 }
 
 SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trimLength,
@@ -758,7 +746,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 			count_insertions(replicate.name, assembly, trimLength, transcripts, insertions);
 
 			// And now analyse this
-			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize, pvCutOff, binomCutOff, effectSize);
+			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
 
 			// // remove redundant datapoints
 			// replicate.data.erase(
@@ -782,12 +770,15 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		double minSenseRatio = std::numeric_limits<double>::max();
 		for (size_t j = 0; j < 4; ++j)
 		{
-			auto& nc = normalizedControlInsertions[0][i];
+			auto& nc = normalizedControlInsertions[j][i];
 			if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
 				minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
 		}
 
 		auto maxSenseRatio = std::numeric_limits<double>::lowest();
+		size_t n = 0;
+		size_t s_g = 0, a_g = 0;
+
 		for (auto& r: result.replicate)
 		{
 			auto& nc = r.data[i];
@@ -795,22 +786,48 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 			if (nc.binom_fdr > binomCutOff)
 				continue;
 			
-			if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
+			// if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
+			// 	continue;
+
+			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
 				continue;
 			
 			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
 			if (senseRatio >= 0.5)
 				continue;
 
+			++n;
+
+			s_g += nc.sense_normalized;
+			a_g += nc.antisense_normalized;
+
 			if (maxSenseRatio < senseRatio)
 				maxSenseRatio = senseRatio;
 		}
 
-		if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio)
+		if (n == result.replicate.size())
 		{
-			std::unique_lock lock(m);
-			result.significant.push_back(transcripts[i].geneName);
+			size_t s_wt = 0, a_wt = 0;
+
+			for (size_t j = 0; j < 4; ++j)
+			{
+				auto& nc = normalizedControlInsertions[j][i];
+				s_wt += nc.sense;
+				a_wt += nc.antiSense;
+			}
+
+			if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
+			{
+				std::unique_lock lock(m);
+				result.significant.insert(transcripts[i].geneName);
+			}
 		}
+
+		// if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
+		// {
+		// 	std::unique_lock lock(m);
+		// 	result.significant.insert(transcripts[i].geneName);
+		// }
 	// }
 	});
 
@@ -941,7 +958,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 			auto iSenseRatio = senseRatio[iix];
 
-			double f = iSenseRatio <= sample_median
+			double f = iSenseRatio < sample_median
 				? (ref_median * iSenseRatio) / sample_median
 				: 1 - ((1 - ref_median) * (1 - iSenseRatio)) / (1 - sample_median);
 
@@ -997,11 +1014,37 @@ void SLScreenData::count_insertions(const std::string& replicate, const std::str
 	}
 }
 
+std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> SLScreenData::getInsertionsForReplicate(const std::string& replicate,
+	const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end) const
+{
+	const unsigned readLength = 50;
+
+	std::vector<uint32_t> insP;
+	std::vector<uint32_t> insM;
+
+	auto bwt = read_insertions(assembly, readLength, replicate);
+
+	for (auto&& [chr, strand, pos]: bwt)
+	{
+		assert(chr != CHROM::INVALID);
+
+		if (chr == chrom and pos >= start and pos < end)
+		{
+			if (strand == '+')
+				insP.push_back(pos);
+			else
+				insM.push_back(pos);
+		}
+	}
+
+	return std::make_tuple(std::move(insP), std::move(insM));
+}
+
 // --------------------------------------------------------------------
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
 	const std::vector<InsertionCount>& insertions, const std::array<std::vector<InsertionCount>,4>& controlInsertions,
-	unsigned groupSize, float pvCutOff, float binomCutOff, float effectSize)
+	unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
@@ -1041,23 +1084,18 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 	{
 		size_t i = index[ix];
 
-		// calculate p-value for insertion
-		int x = static_cast<int>(insertions[i].sense);
-		int n = x + static_cast<int>(insertions[i].antiSense);
-		pvalues[0][ix] = binom_test(x, n);
-
-		auto& t = transcripts[i];
-
 		SLDataPoint& p = datapoints[i];
 
-		p.gene = t.geneName;
+		p.gene = transcripts[i].geneName;
 		p.sense = insertions[i].sense;
 		p.antisense = insertions[i].antiSense;
 		p.sense_normalized = normalized[i].sense;
 		p.antisense_normalized = normalized[i].antiSense;
 
-		// and calculate p-values for the screen vs controls
+		// calculate p-value for insertion
+		pvalues[0][ix] = binom_test(p.sense_normalized, p.sense_normalized + p.antisense_normalized);
 
+		// and calculate p-values for the screen vs controls
 		for (int j = 0; j < 4; ++j)
 		{
 			long v[2][2] = {
@@ -1065,7 +1103,10 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 				{ static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense) }
 			};
 
-			pvalues[j + 1][ix] = fisherTest2x2(v);
+			if (v[0][0] + v[0][1] == 0 or v[1][0] + v[1][1] == 0)
+				pvalues[j + 1][ix] = -1;
+			else
+				pvalues[j + 1][ix] = fisherTest2x2(v);
 		}
 	});
 
@@ -1092,17 +1133,6 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		dp.ref_fcpv[2]	= fcpv[3][ix];
 		dp.ref_pv[3]	= pvalues[4][ix];
 		dp.ref_fcpv[3]	= fcpv[4][ix];
-
-		// dp.insertions = dp.sense_normalized + dp.antisense_normalized;
-		// dp.senseratio = (dp.sense_normalized + 1.0f) / (dp.insertions + 2);
-
-		// dp.significant =
-		// 	dp.binom_fdr < binomCutOff and
-		// 	dp.ref_fcpv[0] < pvCutOff and
-		// 	dp.ref_fcpv[1] < pvCutOff and
-		// 	dp.ref_fcpv[2] < pvCutOff and
-		// 	dp.ref_fcpv[3] < pvCutOff and
-		// 	(minSenseRatio[i] - dp.senseratio) > effectSize;
 	});
 
 	return datapoints;

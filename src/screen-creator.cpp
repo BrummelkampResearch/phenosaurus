@@ -216,8 +216,9 @@ int main_create(int argc, char* const argv[])
 				throw std::runtime_error("For IP screens you should provide at least one replicate fastq file");
 
 			auto data = std::make_unique<SLScreenData>(screenDir, screen);
+			int nr = 1;
 			for (auto& replicate: vm["replicate"].as<std::vector<std::string>>())
-				data->addFile(replicate);
+				data->addFile("replicate-" + std::to_string(nr++) + ".fastq", replicate);
 			break;
 		}
 
@@ -281,12 +282,14 @@ int main_map(int argc, char* const argv[])
 int analyze_ip(po::variables_map& vm, IPPAScreenData& screenData)
 {
 	if (vm.count("assembly") == 0 or
-		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
 		std::cerr << R"(
-Mode longest means take the longest transcript for each gene
+Mode longest-transcript means take the longest transcript for each gene,
+
+Mode longest-exon means the longest expression region, which can be
+different from the longest-transcript.
 
 Mode collapse means, for each gene take the region between the first 
 start and last end.
@@ -300,7 +303,7 @@ the parts with overlap will be left out.
 
 Examples:
 
-	--mode=longest --start=cds-100 --end=cds
+	--mode=longest-transcript --start=cds-100 --end=cds
 
 		For each gene take the longest transcript. For these we take the 
 		cdsStart minus 100 basepairs as start and cdsEnd as end. This means
@@ -328,11 +331,7 @@ Examples:
 	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 		cutOverlap = false;
 	
-	Mode mode;
-	if (vm["mode"].as<std::string>() == "collapse")
-		mode = Mode::Collapse;
-	else // if (vm["mode"].as<std::string>() == "longest")
-		mode = Mode::Longest;
+	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
 
 	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 
@@ -430,7 +429,9 @@ or txEnd to have the start at the cdsEnd e.g.
 		transcripts = loadTranscripts(vm["gene-bed-file"].as<std::string>());
 	else
 	{
-		transcripts = loadTranscripts(assembly, Mode::Longest, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
+		Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
+
+		transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), true);
 		filterOutExons(transcripts);
 	}
 
@@ -480,8 +481,16 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
 
-	for (auto& dp: r.replicate[replicate].data)
+	if (replicate > r.replicate.size())
+		throw std::runtime_error("replicate number too high");
+
+	bool significantOnly = vm.count("significant");
+
+	for (auto& dp: r.replicate[replicate - 1].data)
 	{
+		if (significantOnly and not r.significant.count(dp.gene))
+			continue;
+
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
 				  << dp.antisense << '\t'
@@ -510,14 +519,15 @@ int main_analyze(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
 		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "mode",		po::value<std::string>()->default_value("longest-exon"),	"Mode, should be either collapse, longest-exon or longest-transcript" },
+			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
 			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 
 			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
 			{ "group-size",	po::value<unsigned short>(),"The group size to use for normalizing insertions counts in SL, default is 500"},
+			{ "significant", new po::untyped_value(true),	"The significant genes only, in case of synthetic lethal"},
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 			
@@ -578,9 +588,9 @@ int main_refseq(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
 		{
-			{ "mode",		po::value<std::string>(),	"Mode, should be either collapse, longest" },
-			{ "start",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
-			{ "end",		po::value<std::string>(),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "mode",		po::value<std::string>()->default_value("longest-transcript"),	"Mode, should be either collapse, longest-transcript or longest-exon" },
+			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
 			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
 			// { "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
 			{ "no-exons",	new po::untyped_value(true),"Leave out exons" },
@@ -589,12 +599,14 @@ int main_refseq(int argc, char* const argv[])
 		}, { "assembly" });
 
 	if (vm.count("assembly") == 0 or
-		vm.count("mode") == 0 or (vm["mode"].as<std::string>() != "collapse" and vm["mode"].as<std::string>() != "longest") or
 		vm.count("start") == 0 or vm.count("end") == 0 or
 		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
 	{
 		std::cerr << R"(
-Mode longest means take the longest transcript for each gene
+Mode longest-transcript means take the longest transcript for each gene,
+
+Mode longest-exon means the longest expression region, which can be
+different from the longest-transcript.
 
 Mode collapse means, for each gene take the region between the first 
 start and last end.
@@ -620,11 +632,7 @@ the parts with overlap will be left out.
 
 	std::string assembly = vm["assembly"].as<std::string>();
 
-	Mode mode;
-	if (vm["mode"].as<std::string>() == "collapse")
-		mode = Mode::Collapse;
-	else // if (vm["mode"].as<std::string>() == "longest")
-		mode = Mode::Longest;
+	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
 
 	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 	if (vm.count("no-exons"))

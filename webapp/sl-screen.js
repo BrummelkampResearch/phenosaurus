@@ -1,10 +1,11 @@
-import 'chosen-js/chosen.jquery';
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
 import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
+import { gene } from "./geneInfo";
 
 import * as d3 from 'd3';
-import { transition } from 'd3';
+
+import GenomeViewer from "./genome-viewer";
 
 const radius = 5;
 
@@ -99,8 +100,10 @@ const colorMap = new ColorMap();
 
 class SLScreenPlot extends ScreenPlot {
 
-	constructor(svg) {
+	constructor(svg, screenList) {
 		super(svg, 'sense ratio');
+
+		this.screenList = screenList;
 
 		this.data = null;
 		this.replicate = 0;
@@ -111,6 +114,14 @@ class SLScreenPlot extends ScreenPlot {
 
 		const btns = document.getElementById("graphColorBtns");
 		btns.addEventListener("change-color", () => this.updateColors());
+
+		screenList.addEventListener('change', () => {
+			const selected = screenList.selectedOptions;
+			if (selected.length === 1) {
+				const name = selected.item(0).dataset.screen;
+				this.loadScreen(name);
+			}
+		});
 	}
 
 	reloadScreen(name) {
@@ -118,8 +129,11 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	loadScreen(name, replicate = 0) {
+		this.screenList.selectedIndex = [...this.screenList.options].map(option => option.label).indexOf(name);
+
 		return new Promise((resolve, reject) => {
 			this.name = name;
+			this.screen = name;	// for click-genes -> genome-viewer
 
 			const plotTitle = this.parentColumn.getElementsByClassName("plot-title")[0];
 			if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
@@ -135,6 +149,9 @@ class SLScreenPlot extends ScreenPlot {
 			options.append("pvCutOff", pvCutOff);
 			options.append("binomCutOff", document.getElementById('binom_fdr').value);
 			options.append("effectSize", document.getElementById('effect-size').value);
+
+			if (this.control != null)
+				options.append("control", this.control.name);
 
 			fetch(`${context_name}sl/screen/${name}`,
 					{ credentials: "include", method: "post", body: options })
@@ -205,6 +222,11 @@ class SLScreenPlot extends ScreenPlot {
 			if (d.significant(pvCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
+	}
+
+	mouseOver(d) {
+		if (d.multiDot === undefined)
+			gene.setSL(d.values);
 	}
 
 	process(replicate) {
@@ -321,6 +343,7 @@ class SLScreenPlot extends ScreenPlot {
 
 		data
 			.filter(d => d.significant)
+			.sort((a, b) => a.gene > b.gene)
 			.forEach(d => {
 				const row = document.createElement("tr");
 				const col = (text) => {
@@ -331,7 +354,7 @@ class SLScreenPlot extends ScreenPlot {
 
 				col(d.gene);
 				col(d.senseratio.toFixed(2));
-				col(d.insertions);
+				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
 				col(fmt(d.ref_fcpv[0]));
 				col(fmt(d.ref_fcpv[1]));
@@ -354,18 +377,11 @@ class SLScreenPlot extends ScreenPlot {
 }
 
 class SLControlScreenPlot extends SLScreenPlot {
-	constructor(svg, plot) {
-		super(svg);
+	constructor(svg, plot, screenList) {
+		super(svg, screenList);
 
 		this.updateColorMap = (data) => colorMap.setControl(data, this);
 		plot.control = this;
-
-		const controlData = screenReplicates.find(e => e.name === 'ControlData-HAP1');
-
-		if (controlData == null)
-			throw "Missing control data set";
-
-		this.loadScreen("ControlData-HAP1", 0);
 	}
 
 	updateColors() {
@@ -383,9 +399,16 @@ class SLControlScreenPlot extends SLScreenPlot {
 
 		super.updateColors();
 	}
+
+	reload() {
+		return this.loadScreen(this.name, 0);
+	}
 }
 
+
 window.addEventListener('load', () => {
+
+	new GenomeViewer();
 
 	const query = window.location.search;
 	const params = query
@@ -401,22 +424,19 @@ window.addEventListener('load', () => {
 
 	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
-
-	const svg = d3.select("#plot-screen");
-	const plot = new SLScreenPlot(svg);
-
-	const controlSvg = d3.select("#plot-control");
-	new SLControlScreenPlot(controlSvg, plot);
+	const selectedControl = params["control"] || 'ControlData-HAP1';
 
 	const screenList = document.getElementById("screenList");
 
-	$(screenList).chosen().on('change', () => {
-		const selected = screenList.selectedOptions;
-		if (selected.length === 1) {
-			const name = selected.item(0).dataset.screen;
-			plot.loadScreen(name);
-		}
-	});
+	const svg = d3.select("#plot-screen");
+	const plot = new SLScreenPlot(svg, screenList, selectedScreen);
+
+	const controlList = document.getElementById("screenListControl");
+
+	const controlSvg = d3.select("#plot-control");
+	const controlPlot = new SLControlScreenPlot(controlSvg, plot, controlList);
+
+	controlPlot.loadScreen(selectedControl);
 
 	if (typeof selectedScreen === 'string')
 	{
@@ -465,10 +485,15 @@ window.addEventListener('load', () => {
 			evt.preventDefault();
 
 			const selected = screenList.selectedOptions;
-			if (selected.length === 1) {
-				const name = selected.item(0).dataset.screen;
-				plot.reloadScreen(name);
-			}
+
+			controlPlot
+				.reload()
+				.then(() => {
+					if (selected.length === 1) {
+						const name = selected.item(0).dataset.screen;
+						plot.reloadScreen(name);
+					}
+				});
 		})
 
 });

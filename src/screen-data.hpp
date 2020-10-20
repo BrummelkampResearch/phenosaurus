@@ -135,7 +135,7 @@ struct SLDataReplicate
 struct SLDataResult
 {
 	std::vector<SLDataReplicate> replicate;
-	std::vector<std::string> significant;
+	std::set<std::string> significant;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -190,6 +190,18 @@ struct InsertionInfo
 	std::string strand;
 	std::string name;
 	std::vector<uint32_t> pos;
+
+	InsertionInfo() = default;
+	InsertionInfo(const InsertionInfo&) = default;
+	InsertionInfo(InsertionInfo&&) = default;
+
+	InsertionInfo& operator=(const InsertionInfo&) = default;
+	InsertionInfo& operator=(InsertionInfo&&) = default;
+
+	InsertionInfo(const std::string& strand, const std::string& name)
+		: strand(strand), name(name) {}
+	InsertionInfo(const std::string& strand, const std::string& name, std::vector<uint32_t>&& pos)
+		: strand(strand), name(name), pos(std::move(pos)) {}
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -249,6 +261,8 @@ class ScreenData
 
 	ScreenType get_type() const					{ return mInfo.type; }
 
+	virtual void addFile(const std::string& name, std::filesystem::path file);
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
@@ -257,6 +271,8 @@ class ScreenData
 
 	ScreenData(const std::filesystem::path& dir);
 	ScreenData(const std::filesystem::path& dir, const screen_info& info);
+
+	void write_manifest();
 
 	std::filesystem::path	mDataDir;
 	screen_info mInfo;
@@ -342,11 +358,15 @@ class SLScreenData : public ScreenData
 
 	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
-	void addFile(std::filesystem::path file);
+	virtual void addFile(const std::string& name, std::filesystem::path file) override;
 
 	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
 		float pvCutOff, float binomCutOff, float effectSize);
+
+	std::vector<std::string> getReplicateNames() const;
+	std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> getInsertionsForReplicate(
+		const std::string& replicate, const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end) const;
 
   private:
 
@@ -358,6 +378,5 @@ class SLScreenData : public ScreenData
 
 	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<InsertionCount>& insertions,
-		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize,
-		float pvCutOff, float binomCutOff, float effectSize);
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 };

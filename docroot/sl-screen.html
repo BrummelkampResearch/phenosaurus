@@ -1,5 +1,6 @@
 <!DOCTYPE html SYSTEM "about:legacy-compat">
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
+
 <head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
 
 	<title>Fishtail Plot - Phenosaurus</title>
@@ -12,29 +13,18 @@
 	</script>
 
 </head>
+
 <body>
 	<nav z:replace="~{menu :: menu}"></nav>
 
 	<div class="container-fluid mt-3">
 
 		<div class="option-row">
-			<div class="option-col option-col-screenselector">
-				<div class="input-group input-group-sm">
-					<select id="screenList" data-placeholder="Choose a Screen...">
-						<option value=""></option>
-						<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
-							z:text="${screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
-					</select>
-				</div>
-			</div>
-
 			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<input type="text" id="highlightGene" size="10"
-						placeholder="Enter genename..."
-						z:value="${#request.getParameter('gene')}"
+					<input type="text" id="highlightGene" size="10" placeholder="Enter genename..." z:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
 
 					<div class="input-group-append" id="button-addon4">
@@ -72,7 +62,7 @@
 						<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					</div>
 					<input type="number" min="0" max="1" step="0.01" id="pv-cut-off" maxlength="8" size="5"
-							placeholder="0.05" class="form-control" value="0.05"/>
+							placeholder="0.05" class="form-control" value="0.1"/>
 				</div>
 			</div>
 
@@ -91,8 +81,8 @@
 					<div class="input-group-prepend">
 						<label class="input-group-text" for="effect-size">Effect size</label>
 					</div>
-					<input type="number" min="0" max="1" step="0.01" id="effect-size" maxlength="4" size="3"
-						value="0.2" class="form-control form-control-sm"/> 
+					<input type="number" min="0" max="10" step="0.1" id="effect-size" maxlength="4" size="3"
+						value="1.3" class="form-control form-control-sm"/> 
 				</div>
 			</div>
 
@@ -105,32 +95,38 @@
 		</div>
 
 		<div class="row mt-3">
-
-			<div class="col">
-
+			<div class="col ml-3">
 				<div class="row">
-					<div class="col">
+					<div class="col option-col-screenselector">
+						<div class="input-group input-group-sm">
+							<select id="screenList" data-placeholder="Choose a Screen...">
+								<option value=""></option>\
+								<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
+								z:text="${screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
+							</select>
+						</div>
+					</div>
+
+					<div class="col-2">
 						<form class="replicateBtnForm">
-							<label>Replicate
-								<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
-									<label class="btn btn-secondary active">
-										<input type="radio" name="replicate" autocomplete="off" data-replicate="1"
-											checked="checked"/>1
-									</label>
+							<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
+								<label class="btn btn-secondary active">
+									<input type="radio" name="replicate" autocomplete="off" data-replicate="1"
+										checked="checked"/>1
+								</label>
 
-									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="2" autocomplete="off"/>2
-									</label>
+								<label class="btn btn-secondary">
+									<input type="radio" name="replicate" data-replicate="2" autocomplete="off"/>2
+								</label>
 
-									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="3" autocomplete="off"/>3
-									</label>
+								<label class="btn btn-secondary">
+									<input type="radio" name="replicate" data-replicate="3" autocomplete="off"/>3
+								</label>
 
-									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="4" autocomplete="off"/>4
-									</label>
-								</div>
-							</label>
+								<label class="btn btn-secondary">
+									<input type="radio" name="replicate" data-replicate="4" autocomplete="off"/>4
+								</label>
+							</div>
 						</form>
 					</div>
 
@@ -145,17 +141,26 @@
 
 
 				<div class="plot-container">
-					<svg width="100%" height="100%" id="plot-screen"></svg>
+					<svg width="100%" height="100%" id="plot-screen" class="fishtail"></svg>
 				</div>
 			</div>
 			<div class="col">
-
-
 				<div class="row">
 					<div class="col">
+						<div class="option-col option-col-screenselector">
+							<div class="input-group input-group-sm">
+								<select id="screenListControl" data-placeholder="Choose a Screen...">
+									<option value=""></option>\
+									<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
+									z:text="${screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
+								</select>
+							</div>
+						</div>
+					</div>
+
+					<div class="col-2">
 						<form class="replicateBtnForm">
-							<label>Replicate
-								<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
+							<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
 									<label class="btn btn-secondary active">
 										<input type="radio" name="replicate" autocomplete="off" data-replicate="1"
 											checked="checked"/>1
@@ -173,7 +178,7 @@
 										<input type="radio" name="replicate" data-replicate="4" autocomplete="off"/>4
 									</label>
 								</div>
-							</label>
+							
 						</form>
 					</div>
 
@@ -188,14 +193,16 @@
 
 
 				<div class="plot-container">
-					<svg width="100%" height="100%" id="plot-control"></svg>
+					<svg width="100%" height="100%" id="plot-control" class="fishtail"></svg>
 				</div>
 			</div>
 		</div>
 
-		<br/>
+		<div id="genome-viewer-container">
+			<!-- <svg width="100%" height="60" id="genome-viewer"></svg> -->
+		</div>
 
-		<h5>Significant Genes</h5>
+		<h5 class="mt-2">Significant Genes</h5>
 		<table class="table table-hover table-sm">
 			<thead>
 			<tr>

@@ -38,6 +38,27 @@ std::ostream& operator<<(std::ostream& os, CHROM chr)
 
 // --------------------------------------------------------------------
 
+uint32_t Transcript::length_exons() const
+{
+	uint32_t result = 0;
+
+	for (auto e: exons)
+	{
+		if (e.end > cds.end)
+			e.end = cds.end;
+		
+		if (e.start < cds.start)
+			e.start = cds.start;
+		
+		if (e.end > e.start)
+			result += e.end - e.start;
+	}
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
 struct splitted_range
 {
 	splitted_range(const std::string& s, char delim)
@@ -125,6 +146,9 @@ struct splitted_range
 
 std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
 {
+	if (VERBOSE > 1)
+		std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
+
 	mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
 	if (not refseq)
@@ -508,7 +532,44 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 	switch (mode)
 	{
-		case Mode::Longest:
+		case Mode::LongestExon:
+			// Find the longest transcript for each gene
+			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+			{
+				auto ix_a = index[i];
+				auto& a = transcripts[ix_a];
+
+				auto l = ix_a;
+
+				// auto len_a = a.end() - a.start();
+				auto len_a = a.length_exons();
+
+				for (size_t j = i + 1; j < transcripts.size(); ++j)
+				{
+					auto ix_b = index[j];
+					auto& b = transcripts[ix_b];
+
+					if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
+						break;
+
+					++i;
+
+					// auto len_b = b.end() - b.start();
+					auto len_b = b.length_exons();
+					if (len_b > len_a)
+						l = ix_b;
+				}
+
+				transcripts[l].longest = true;
+			}
+
+			transcripts.erase(
+				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+				transcripts.end()
+			);			
+			break;
+		
+		case Mode::LongestTranscript:
 			// Find the longest transcript for each gene
 			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
 			{
@@ -518,7 +579,6 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 				auto l = ix_a;
 
 				auto len_a = a.end() - a.start();
-
 				for (size_t j = i + 1; j < transcripts.size(); ++j)
 				{
 					auto ix_b = index[j];
@@ -542,7 +602,6 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 				transcripts.end()
 			);			
 			break;
-		
 
 		case Mode::Collapse:
 			// Find the longest possible span for each gene, i.e. min start - max end
