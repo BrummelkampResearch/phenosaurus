@@ -356,9 +356,13 @@ class SLScreenPlot extends ScreenPlot {
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
+				col(fmt(d.ref_pv[0]));
 				col(fmt(d.ref_fcpv[0]));
+				col(fmt(d.ref_pv[1]));
 				col(fmt(d.ref_fcpv[1]));
+				col(fmt(d.ref_pv[2]));
 				col(fmt(d.ref_fcpv[2]));
+				col(fmt(d.ref_pv[3]));
 				col(fmt(d.ref_fcpv[3]));
 
 				table.appendChild(row);
