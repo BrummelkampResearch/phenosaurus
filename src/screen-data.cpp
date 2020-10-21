@@ -154,7 +154,7 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
-#pragma warning "store bowtie version in manifest, along with parameters"
+#warning "store bowtie version in manifest, along with parameters"
 
 	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(trimLength);
 	if (not fs::exists(assemblyDataPath))
@@ -239,20 +239,20 @@ std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, 
 			{
 				if (ni == eni)
 				{
-					result.push_back(Insertion{ chr, '+', static_cast<int32_t>(*pi++) });
+					result.push_back(Insertion{ chr, '+', *pi++ });
 					continue;
 				}
 
 				if (pi == epi)
 				{
-					result.push_back(Insertion{ chr, '-', static_cast<int32_t>(*ni++) });
+					result.push_back(Insertion{ chr, '-', *ni++ });
 					continue;
 				}
 
 				if (*pi <= *ni)
-					result.push_back(Insertion{ chr, '+', static_cast<int32_t>(*pi++) });
+					result.push_back(Insertion{ chr, '+', *pi++ });
 				else
-					result.push_back(Insertion{ chr, '-', static_cast<int32_t>(*ni++) });
+					result.push_back(Insertion{ chr, '-', *ni++ });
 			}
 		}
 	}
@@ -767,6 +767,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 	std::mutex m;
 	parallel_for(transcripts.size(), [&](size_t i) {
 	// for (size_t i = 0; i < transcripts.size(); ++ i) {
+
 		double minSenseRatio = std::numeric_limits<double>::max();
 		for (size_t j = 0; j < 4; ++j)
 		{
@@ -782,6 +783,9 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		for (auto& r: result.replicate)
 		{
 			auto& nc = r.data[i];
+
+			if (transcripts[i].geneName == "NAA30")
+				std::cerr << "NAA30" << std::endl;
 
 			if (nc.binom_fdr > binomCutOff)
 				continue;
@@ -872,34 +876,34 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
 {
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
-	std::vector<InsertionCount> result(insertions.size());
+	std::vector<InsertionCount> result(insertions);
 
 	parallel_for(insertions.size(), [&](size_t i)
 	{
 		int sense = insertions[i].sense;
 		int antisense = insertions[i].antiSense;
 
-		int ref_sense = 
-			controlInsertions[0][i].sense +
-			controlInsertions[1][i].sense +
-			controlInsertions[2][i].sense +
-			controlInsertions[3][i].sense;
+		if (sense + antisense >= 20 and
+			((controlInsertions[0][i].sense + controlInsertions[0][i].antiSense) >= 20) and
+			((controlInsertions[1][i].sense + controlInsertions[1][i].antiSense) >= 20) and
+			((controlInsertions[2][i].sense + controlInsertions[2][i].antiSense) >= 20) and
+			((controlInsertions[3][i].sense + controlInsertions[3][i].antiSense) >= 20))
+		{
+			int ref_sense = 
+				controlInsertions[0][i].sense +
+				controlInsertions[1][i].sense +
+				controlInsertions[2][i].sense +
+				controlInsertions[3][i].sense;
 
-		int ref_antisense = 
-			controlInsertions[0][i].antiSense +
-			controlInsertions[1][i].antiSense +
-			controlInsertions[2][i].antiSense +
-			controlInsertions[3][i].antiSense;
+			int ref_antisense = 
+				controlInsertions[0][i].antiSense +
+				controlInsertions[1][i].antiSense +
+				controlInsertions[2][i].antiSense +
+				controlInsertions[3][i].antiSense;
 
-		if (sense or antisense)
 			senseRatio[i] = (sense + 1.0f) / (sense + antisense + 2);
-		else
-			senseRatio[i] = -1;
-		
-		if (ref_sense or ref_antisense)
 			refSenseRatio[i] = (ref_sense + 1.0f) / (ref_sense + ref_antisense + 2);
-		else
-			refSenseRatio[i] = -1;
+		}
 	});
 
 	// collect the datapoints with both counts in sample and in reference
@@ -1084,29 +1088,31 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 	{
 		size_t i = index[ix];
 
-		SLDataPoint& p = datapoints[i];
+		SLDataPoint& dp = datapoints[i];
 
-		p.gene = transcripts[i].geneName;
-		p.sense = insertions[i].sense;
-		p.antisense = insertions[i].antiSense;
-		p.sense_normalized = normalized[i].sense;
-		p.antisense_normalized = normalized[i].antiSense;
+		dp.gene = transcripts[i].geneName;
+		dp.sense = insertions[i].sense;
+		dp.antisense = insertions[i].antiSense;
+		dp.sense_normalized = normalized[i].sense;
+		dp.antisense_normalized = normalized[i].antiSense;
 
 		// calculate p-value for insertion
-		pvalues[0][ix] = binom_test(p.sense_normalized, p.sense_normalized + p.antisense_normalized);
+		pvalues[0][ix] = binom_test(dp.sense_normalized, dp.sense_normalized + dp.antisense_normalized);
 
 		// and calculate p-values for the screen vs controls
 		for (int j = 0; j < 4; ++j)
 		{
 			long v[2][2] = {
-				{ p.sense_normalized, p.antisense_normalized },
+				{ dp.sense_normalized, dp.antisense_normalized },
 				{ static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense) }
 			};
 
 			if (v[0][0] + v[0][1] == 0 or v[1][0] + v[1][1] == 0)
-				pvalues[j + 1][ix] = -1;
+				dp.ref_pv[j] = -1;
 			else
-				pvalues[j + 1][ix] = fisherTest2x2(v);
+				dp.ref_pv[j] = fisherTest2x2(v);
+			
+			pvalues[j + 1][ix] = dp.ref_pv[j];
 		}
 	});
 
@@ -1125,13 +1131,9 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		// dp.pv = pvalues[0][ix];
 		dp.binom_fdr = fcpv[0][ix];
 
-		dp.ref_pv[0]	= pvalues[1][ix];
 		dp.ref_fcpv[0]	= fcpv[1][ix];
-		dp.ref_pv[1]	= pvalues[2][ix];
 		dp.ref_fcpv[1]	= fcpv[2][ix];
-		dp.ref_pv[2]	= pvalues[3][ix];
 		dp.ref_fcpv[2]	= fcpv[3][ix];
-		dp.ref_pv[3]	= pvalues[4][ix];
 		dp.ref_fcpv[3]	= fcpv[4][ix];
 	});
 

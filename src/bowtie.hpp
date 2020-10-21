@@ -21,7 +21,7 @@ struct Insertion
   public:
 	CHROM		chr;
 	char		strand;
-	int32_t		pos;
+	uint32_t	pos;
 
 	bool operator<(const Insertion& rhs) const
 	{

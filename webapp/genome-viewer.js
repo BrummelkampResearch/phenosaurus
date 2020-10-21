@@ -242,7 +242,7 @@ export default class GenomeViewer {
 			.text(`position at chromosome ${data.chrom}`);
 
 		const f = document.geneSelectionForm;
-		const direction = f['direction'].value;
+		const direction = f['direction'] ? f['direction'].value : 'sense';
 
 		const x = this.adjustAxis();
 

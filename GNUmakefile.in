@@ -146,6 +146,9 @@ endif
 $(subst .js,%js,$(SCRIPT_FILES)): $(subst .js,%js,$(WEBAPP_FILES))
 	yarn webpack $(WEBPACK_OPTIONS)
 
+$(SCRIPT_FILES): \
+	webapp/genome-viewer.js
+
 $(OBJDIR)/$(APPLICATION)_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 	$(MRC) -o $@ $(RSRC) --verbose
 

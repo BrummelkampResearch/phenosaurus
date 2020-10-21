@@ -215,7 +215,7 @@ struct InsertionInfo
 struct Region
 {
 	CHROM chrom;
-	int start, end;
+	uint32_t start, end;
 	std::string geneStrand;
 	std::vector<GeneExon> area;
 	std::vector<Gene> genes;
