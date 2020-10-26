@@ -150,7 +150,7 @@ float InsertionCounts::zscore(const std::string& screen, size_t bin) const
 
 // --------------------------------------------------------------------
 
-InsertionCounts createIndex(RefSeqInfo& refseq, std::vector<fs::path>& files, size_t nrOfThreads)
+InsertionCounts createIndex(RefSeqInfo& refseq, std::vector<std::tuple<std::string,fs::path>>& files, size_t nrOfThreads)
 {
 	if (VERBOSE)
 		std::cout << "About to read " << files.size() << " files" << std::endl;
@@ -176,7 +176,7 @@ InsertionCounts createIndex(RefSeqInfo& refseq, std::vector<fs::path>& files, si
 				if (ix >= files.size())
 					break;
 
-				fs::path file = files[ix];
+				const auto& [name, file] = files[ix];
 
 				try
 				{
@@ -195,7 +195,7 @@ InsertionCounts createIndex(RefSeqInfo& refseq, std::vector<fs::path>& files, si
 
 					std::lock_guard lock(m);
 
-					inscnt.add(file.string(), move(counts));
+					inscnt.add(name, move(counts));
 					std::cout << '.';
 					std::cout.flush();
 				}
@@ -356,7 +356,7 @@ screen_qc_data::screen_qc_data()
 {
 	RefSeqInfo refseq(kBinSize);
 
-	std::vector<fs::path> files;
+	std::vector<std::tuple<std::string,fs::path>> files;
 	
 	auto screensDir = screen_service::instance().get_screen_data_dir();
 
@@ -368,7 +368,7 @@ screen_qc_data::screen_qc_data()
 		{
 			auto f = screenDir / (file.name + ".sq");
 			if (fs::exists(f))
-				files.push_back(f);
+				files.push_back(std::make_tuple(screen.name + '-' + file.name, f));
 		}
 	}
 
@@ -588,7 +588,7 @@ std::map<std::string,std::vector<float>> screen_qc_data::emptiness(const ChromBi
 	}
 	assert(bin == N);
 
-	std::regex rx(R"(-(high|low)$)");
+	std::regex rx(R"(-(high|low|replicate-\d)$)");
 
 	std::map<std::string,std::vector<uint32_t>> insertions;
 	for (auto screen: m_screenData)
@@ -909,7 +909,7 @@ void screen_qc_html_controller::index(const zeep::http::request& request, const 
 	sub.put("chromosomes", data.chromosomes());
 	
 	std::set<std::string> screens;
-	std::regex r(R"(-(?:high|low)$)");
+	std::regex r(R"(-(?:high|low|replicate-\d)$)");
 
 	for (auto screen: data.screens())
 		screens.insert(std::regex_replace(screen, r, ""));
