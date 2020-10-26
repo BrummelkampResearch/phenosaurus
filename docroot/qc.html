@@ -1,0 +1,134 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:z2="http://www.hekkelman.com/libzeep/m2" xml:lang="en" lang="en">
+
+<head>
+	<link rel="stylesheet" type="text/css" z2:href="@{/css/sa-style.css}" />
+	<link rel="stylesheet" type="text/css" z2:href="@{/css/qc.css}" />
+	<script z2:src="@{/scripts/qc.js}" type="text/javascript"></script>
+
+<script type="text/javascript" z2:inline="javascript">
+// <![CDATA[
+	const chromosomes = [[${chromosomes}]];
+	const screens = [[${screens}]];
+//]]>
+</script>
+</head>
+
+<body>
+	<nav z2:replace="menu :: menu"></nav>
+
+	<!-- <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+		<a href="/" class="navbar-brand">Screen Quality Control</a>
+
+		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+			aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+
+		<div class="collapse navbar-collapse" id="navbarSupportedContent">
+			<ul class="navbar-nav mr-auto">
+				<li class="nav-item ${page == 'index' ? 'active' : ''}">
+					<a class="nav-link" href="/index">All Chromosomes</a>
+				</li>
+			</ul>
+		</div>
+	</nav> -->
+
+	<div class="container-fluid mt-3">
+		<div class="option-row">
+			<div class="option-col">
+				<div class="input-group input-group-sm mb-3">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for='chromosomeList'>Chromosome</label>
+					</div>
+					<select class="custom-select" id="chromosomeList">
+						<option value="all">All</option>
+						<option z2:each="chr: ${chromosomes}" z2:attr="data-chr=${chr}" z2:text="${chr}"></option>
+					</select>
+				</div>
+			</div>
+
+			<div class="option-col">
+				<div class="input-group input-group-sm mb-3">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for="zoomLevel">Zoom level</label>
+					</div>
+					<select class="custom-select" id="zoomLevel">
+						<option value="1">1</option>
+						<option value="2">2</option>
+						<option value="4">4</option>
+						<option value="8">8</option>
+						<option value="16">16</option>
+					</select>
+				</div>
+			</div>
+
+			<div class="option-col">
+				<button type="button" class="btn btn-sm btn-primary" data-toggle="modal"
+					data-target="#selectScreensModal">Select Screens</button>
+			</div>
+
+
+			<!-- <div class="col-sm-1 mb-3">
+				<div class="btn-group-toggle" data-toggle="buttons">
+					<label class="btn btn-secondary active">
+						<input id="winsorize" type="checkbox" checked="checked" autocomplete="off"/>
+						Winsorize
+					</label>
+				</div>
+			</div> -->
+
+			<div class="option-col">
+				<form class="mb-3" name="graphTypeForm">
+					<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons">
+						<label class="btn btn-secondary active">
+							<input type="radio" name="graphType" data-type="heatmap" autocomplete="off" checked="checked"/> Heatmap
+						</label>
+						<label class="btn btn-secondary">
+							<input type="radio" name="graphType" data-type="emptybins" autocomplete="off"/> Emptiness
+						</label>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="container-fluid plot-title">
+		<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading data
+			for <span class="chr-name"></span>...</span>
+		<span class="loaded">Quality plot for <span class="chr-name"></span></span>
+		<span class="failed">Quality plot for <span class="chr-name"></span> could not be loaded.</span>
+	</div>
+
+	<div class="container-fluid plot-container"></div>
+
+	<!-- Modal -->
+	<div class="modal fade" id="selectScreensModal" tabindex="-1" role="dialog" aria-labelledby="screenModalLabel"
+		aria-hidden="true">
+		<div class="modal-dialog modal-dialog-scrollable" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLabel">Select screens</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&#xD7;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					<ul class="list-group">
+						<li class="list-group-item" z2:each="screen: ${screens}">
+							<input type="checkbox" z2:value="${screen}" z2:id="'screen-'+${screen}" checked='checked'/>
+							<label z2:text="${screen}" z2:for="'screen-'+${screen}"></label>
+						</li>
+					</ul>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+					<button type="button" class="btn btn-primary" id="updateSelectedScreens">Update</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+</html>

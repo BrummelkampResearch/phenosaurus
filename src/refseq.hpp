@@ -46,6 +46,9 @@ enum CHROM : int8_t
 
 std::ostream& operator<<(std::ostream& os, CHROM chr);
 
+std::string to_string(CHROM chr);
+CHROM from_string(const std::string& chr);
+
 struct Transcript
 {
 	std::string	name;

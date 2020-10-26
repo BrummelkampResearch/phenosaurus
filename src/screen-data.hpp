@@ -263,6 +263,9 @@ class ScreenData
 
 	virtual void addFile(const std::string& name, std::filesystem::path file);
 
+	// convenience, should probably moved elsewhere
+	static std::vector<Insertion> read_insertions(std::filesystem::path file);
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;

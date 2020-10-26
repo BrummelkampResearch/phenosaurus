@@ -183,29 +183,27 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 
 // --------------------------------------------------------------------
 
-std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const
+std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 {
-	fs::path p = mDataDir / assembly / std::to_string(readLength) / file;
-
-	bool compressed = p.extension() == ".sq";
+	bool compressed = file.extension() == ".sq";
 	if (not compressed)	// see if a compressed version exists
 	{
-		auto psq = p.parent_path() / (p.filename().string() + ".sq");
+		auto psq = file.parent_path() / (file.filename().string() + ".sq");
 		if (fs::exists(psq))
 		{
 			compressed = true;
-			p = psq;
+			file = psq;
 		}
 	}
 
-	if (not fs::exists(p))
-		throw std::runtime_error("File does not exist: " + p.string());
+	if (not fs::exists(file))
+		throw std::runtime_error("File does not exist: " + file.string());
 
-	std::ifstream infile(p, std::ios::binary);
+	std::ifstream infile(file, std::ios::binary);
 	if (not infile.is_open())
-		throw std::runtime_error("Could not open " + p.string() + " file");
+		throw std::runtime_error("Could not open " + file.string() + " file");
 
-	auto size = fs::file_size(p);
+	auto size = fs::file_size(file);
 
 	std::vector<Insertion> result;
 
@@ -267,6 +265,13 @@ std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, 
 	infile.close();
 
 	return result;
+}
+
+// --------------------------------------------------------------------
+
+std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const
+{
+	return read_insertions(mDataDir / assembly / std::to_string(readLength) / file);
 }
 
 void ScreenData::write_insertions(const std::string& assembly, unsigned readLength, const std::string& file,

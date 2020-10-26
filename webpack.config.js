@@ -30,7 +30,9 @@ module.exports = {
 		'admin-screen': SCRIPTS + "admin-screen.js",
 		'user-screen': SCRIPTS + "user-screen.js",
 
-		'genome-browser': SCRIPTS + "genome-browser.js"
+		'genome-browser': SCRIPTS + "genome-browser.js",
+
+		'qc': SCRIPTS + "qc.js"
 	},
 
 	output: {
