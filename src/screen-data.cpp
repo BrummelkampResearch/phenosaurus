@@ -429,8 +429,8 @@ IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
 IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
 	: ScreenData(dir, info), mType(type)
 {
-	addFile("low.fastq", low);
-	addFile("high.fastq", high);
+	addFile("low", low);
+	addFile("high", high);
 }
 
 void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
