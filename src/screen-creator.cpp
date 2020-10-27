@@ -218,7 +218,7 @@ int main_create(int argc, char* const argv[])
 			auto data = std::make_unique<SLScreenData>(screenDir, screen);
 			int nr = 1;
 			for (auto& replicate: vm["replicate"].as<std::vector<std::string>>())
-				data->addFile("replicate-" + std::to_string(nr++) + ".fastq", replicate);
+				data->addFile("replicate-" + std::to_string(nr++), replicate);
 			break;
 		}
 
