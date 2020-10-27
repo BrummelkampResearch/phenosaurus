@@ -789,9 +789,6 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		{
 			auto& nc = r.data[i];
 
-			if (transcripts[i].geneName == "NAA30")
-				std::cerr << "NAA30" << std::endl;
-
 			if (nc.binom_fdr > binomCutOff)
 				continue;
 			
