@@ -140,9 +140,9 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 
 	fs::path to;
 	if (ext == ".gz" or ext == ".bz2")
-		to = mDataDir / (name + ext.string());
+		to = mDataDir / (name + ".fastq" + ext.string());
 	else
-		to = mDataDir / name;
+		to = mDataDir / (name + ".fastq");
 		
 	fs::create_symlink(file, to);
 
