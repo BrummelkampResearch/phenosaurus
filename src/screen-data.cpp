@@ -154,8 +154,6 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
-#warning "store bowtie version in manifest, along with parameters"
-
 	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(trimLength);
 	if (not fs::exists(assemblyDataPath))
 		fs::create_directories(assemblyDataPath);
@@ -179,6 +177,29 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 
 		write_insertions(assembly, trimLength, name, hits);
 	}
+
+	std::string version = bowtieVersion(bowtie);
+	if (version.empty())
+		version = "(unknown, path is " + bowtie.string() + ')';
+
+	bool isSet = false;
+
+	for (auto& mi: mInfo.mapped_info)
+	{
+		if (mi.assembly == assembly and mi.trimlength == trimLength)
+		{
+			mi.bowtie_version = version;
+			mi.bowtie_index = bowtieIndex;
+			mi.bowtie_params = "-m 1 --best";
+			isSet = true;
+			break;
+		}
+	}
+
+	if (not isSet)
+		mInfo.mapped_info.push_back({ assembly, trimLength, version, "-m 1 --best", bowtieIndex });
+
+	write_manifest();
 }
 
 // --------------------------------------------------------------------

@@ -41,6 +41,25 @@ struct screen_file
 	}
 };
 
+struct mapped_info
+{
+	std::string assembly;
+	unsigned trimlength;
+	std::string	bowtie_version;
+	std::string bowtie_params;
+	std::string bowtie_index;
+
+	template<typename Archive>
+	void serialize(Archive& ar, unsigned long version)
+	{
+		ar & zeep::name_value_pair("assembly", assembly)
+		   & zeep::name_value_pair("trim-length", trimlength)
+		   & zeep::name_value_pair("bowtie-version", bowtie_version)
+		   & zeep::name_value_pair("bowtie-params", bowtie_params)
+		   & zeep::name_value_pair("bowtie-index", bowtie_index);
+	}
+};
+
 struct screen_info
 {
 	std::string name;
@@ -53,6 +72,7 @@ struct screen_info
 	boost::posix_time::ptime created;
 	std::vector<std::string> groups;
 	std::vector<screen_file> files;
+	std::vector<mapped_info> mapped_info;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -68,7 +88,8 @@ struct screen_info
 		   & zeep::name_value_pair("scientist", scientist)
 		   & zeep::name_value_pair("groups", groups)
 		   & zeep::name_value_pair("created", created)
-		   & zeep::name_value_pair("files", files);
+		   & zeep::name_value_pair("files", files)
+		   & zeep::name_value_pair("mapped", mapped_info);
 	}
 };
 

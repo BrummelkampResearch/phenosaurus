@@ -53,6 +53,8 @@ static_assert(sizeof(Insertion) == 8);
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned trimLength);
 
+std::string bowtieVersion(std::filesystem::path bowtie);
+
 namespace std
 {
 template<std::size_t N>
