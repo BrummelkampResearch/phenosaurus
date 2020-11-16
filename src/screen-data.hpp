@@ -72,7 +72,7 @@ struct screen_info
 	boost::posix_time::ptime created;
 	std::vector<std::string> groups;
 	std::vector<screen_file> files;
-	std::vector<mapped_info> mapped_info;
+	std::vector<mapped_info> mappedInfo;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -89,7 +89,7 @@ struct screen_info
 		   & zeep::name_value_pair("groups", groups)
 		   & zeep::name_value_pair("created", created)
 		   & zeep::name_value_pair("files", files)
-		   & zeep::name_value_pair("mapped", mapped_info);
+		   & zeep::name_value_pair("mapped", mappedInfo);
 	}
 };
 

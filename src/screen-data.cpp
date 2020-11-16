@@ -184,7 +184,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 
 	bool isSet = false;
 
-	for (auto& mi: mInfo.mapped_info)
+	for (auto& mi: mInfo.mappedInfo)
 	{
 		if (mi.assembly == assembly and mi.trimlength == trimLength)
 		{
@@ -197,7 +197,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	}
 
 	if (not isSet)
-		mInfo.mapped_info.push_back({ assembly, trimLength, version, "-m 1 --best", bowtieIndex });
+		mInfo.mappedInfo.push_back({ assembly, trimLength, version, "-m 1 --best", bowtieIndex });
 
 	write_manifest();
 }
