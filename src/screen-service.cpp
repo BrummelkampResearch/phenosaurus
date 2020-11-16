@@ -458,9 +458,9 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 	distance_map D(geneCount);
 
-	parallel_for(geneCount, [&](int x)
+	parallel_for(geneCount, [&](size_t x)
 	{
-		for (int y = x + 1; y < geneCount; ++y)
+		for (size_t y = x + 1; y < geneCount; ++y)
 			D.set(x, y, distance(x, y));
 	});
 
@@ -469,7 +469,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	// using secondary distance 
 	// https://doi.org/10.1007%2F978-3-642-13818-8_34
 
-	enum : int { noise = -1, undefined = 0 };
+	enum : size_t { noise = ~0UL, undefined = 0 };
 
 	struct gene
 	{
@@ -554,9 +554,9 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 	// the actual DBSCAN implementation
 
-	int clusterNr = 0;
+	size_t clusterNr = 0;
 
-	std::vector<int> label(geneCount, undefined);
+	std::vector<size_t> label(geneCount, undefined);
 
 	auto RangeQuery = [&secD,&D,eps,geneCount](size_t q)
 	{

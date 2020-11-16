@@ -36,6 +36,35 @@ std::ostream& operator<<(std::ostream& os, CHROM chr)
 	return os;
 }
 
+std::string to_string(CHROM chr)
+{
+	switch (chr)
+	{
+		case INVALID:	return "invalid";
+		case CHR_X:		return "chrX";
+		case CHR_Y:		return "chrY";
+		default:		return "chr" + std::to_string(static_cast<int>(chr));
+	}
+}
+
+CHROM from_string(const std::string& chr)
+{
+	std::smatch m;
+
+	if (std::regex_match(chr, m, kChromRx))
+	{
+		if (m[1] == "X")
+			return CHR_X;
+
+		if (m[1] == "Y")
+			return CHR_Y;
+		
+		return static_cast<CHROM>(stoi(m[1]));
+	}
+
+	return INVALID;
+}
+
 // --------------------------------------------------------------------
 
 uint32_t Transcript::length_exons() const

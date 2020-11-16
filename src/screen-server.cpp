@@ -13,6 +13,7 @@
 #include "screen-server.hpp"
 #include "screen-data.hpp"
 #include "screen-service.hpp"
+#include "screen-qc.hpp"
 #include "fisher.hpp"
 #include "utils.hpp"
 #include "user-service.hpp"
@@ -667,6 +668,9 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 
 	server->add_controller(new genome_browser_html_controller());
 	server->add_controller(new genome_browser_rest_controller());
+
+	server->add_controller(new screen_qc_html_controller());
+	server->add_controller(new screen_qc_rest_controller());
 
 	// admin
 	server->add_controller(new user_admin_rest_controller());

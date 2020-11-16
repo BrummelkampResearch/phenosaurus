@@ -21,7 +21,7 @@ struct Insertion
   public:
 	CHROM		chr;
 	char		strand;
-	int32_t		pos;
+	uint32_t	pos;
 
 	bool operator<(const Insertion& rhs) const
 	{
@@ -52,6 +52,8 @@ static_assert(sizeof(Insertion) == 8);
 
 std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 	std::filesystem::path fastq, unsigned threads, unsigned trimLength);
+
+std::string bowtieVersion(std::filesystem::path bowtie);
 
 namespace std
 {

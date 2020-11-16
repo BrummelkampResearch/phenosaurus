@@ -236,18 +236,27 @@ std::vector<double> adjustFDR_BH(const std::vector<double>& p)
 	return result;
 }
 
-// int main()
-// {
-// 	// long p[2][2] = { { 7, 1876460 }, { 6, 2137355 }};
-// 	long p[2][2] = { { 186, 3229712 }, {	95,	2208992} };
+#if defined(FISHER_MAIN)
+int main(int argc, char* const argv[])
+{
+	if (argc == 5)
+	{
+		// long p[2][2] = { { 7, 1876460 }, { 6, 2137355 }};
+		long p[2][2] = {};
+		p[0][0] = std::stol(argv[1]);
+		p[0][1] = std::stol(argv[2]);
+		p[1][0] = std::stol(argv[3]);
+		p[1][1] = std::stol(argv[4]);
 
-// 	std::cout << std::fixed << fisherTest2x2(p) << std::endl;
+		std::cout << std::fixed << fisherTest2x2(p) << std::endl;
+	}
 
-// 	std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });
-// 	auto a = adjustFDR_BH(pv);
+	// std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });
+	// auto a = adjustFDR_BH(pv);
 
-// 	for (size_t i = 0; i < pv.size(); ++i)
-// 		std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
+	// for (size_t i = 0; i < pv.size(); ++i)
+	// 	std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
 
-// 	return 0;
-// }
+	return 0;
+}
+#endif

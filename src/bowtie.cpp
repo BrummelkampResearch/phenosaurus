@@ -8,6 +8,10 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <string.h>
+#include <regex>
+#include <future>
+#include <fstream>
+#include <sys/uio.h>
 
 #include <cassert>
 
@@ -16,13 +20,8 @@
 #include <filesystem>
 #include <functional>
 
-// #include <thread>
-// Don't use GNU's version, it crashes...
-#include <boost/thread.hpp>
-
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
-#include <boost/process.hpp>
 
 #include "bowtie.hpp"
 #include "utils.hpp"
@@ -422,4 +421,127 @@ std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::
 	}
 
 	return result;
+}
+
+// --------------------------------------------------------------------
+
+std::string bowtieVersion(std::filesystem::path bowtie)
+{
+
+	if (not fs::exists(bowtie))
+		throw std::runtime_error("The executable '" + bowtie.string() + "' does not seem to exist");
+
+	std::vector<const char*> args = {
+		bowtie.c_str(),
+		"--version",
+		nullptr
+	};
+
+	// ready to roll
+	int ofd[2], efd[2], err;
+
+	err = pipe2(ofd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(efd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+
+	int pid = fork();
+
+	if (pid == 0)    // the child
+	{
+		setpgid(0, 0);        // detach from the process group, create new
+
+		signal(SIGCHLD, SIG_IGN);    // block child died signals
+
+		dup2(ofd[1], STDOUT_FILENO);
+		close(ofd[0]);
+		close(ofd[1]);
+
+		dup2(efd[1], STDERR_FILENO);
+		close(efd[0]);
+		close(efd[1]);
+
+		const char* env[] = { nullptr };
+		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
+		exit(-1);
+	}
+
+	if (pid == -1)
+	{
+		close(ofd[0]);
+		close(ofd[1]);
+		close(efd[0]);
+		close(efd[1]);
+
+		throw std::runtime_error("fork failed: "s + strerror(errno));
+	}
+
+	close(ofd[1]);
+	close(efd[1]);
+
+	// OK, so now the executable is started and the pipes are set up
+	// read from the pipes until done.
+
+	std::promise<std::string> p;
+	std::future<std::string> f = p.get_future();
+
+	std::thread t([fd = ofd[0], efd = efd[0], &p]()
+	{
+		try
+		{
+			std::string line, result;
+
+			const std::regex rx(R"(/\S+ version (\d+\.\d+\.\d+)\n)");
+
+			char buffer[8192];
+
+			for (;;)
+			{
+				int r = read(fd, buffer, sizeof(buffer) - 1);
+				if (r <= 0)
+					break;
+
+				if (not result.empty())
+					continue;
+
+				buffer[r] = 0;
+
+				std::cmatch m;
+
+				if (std::regex_search(buffer, m, rx) and m[1].matched)
+					result.assign(m[1].str());
+			}
+
+			// drain stderr
+			for (;;)
+			{
+				int r = read(efd, buffer, sizeof(buffer));
+				if (r <= 0)
+					break;
+
+				std::cerr.write(buffer, r);
+			}
+
+			close(fd);
+			close(efd);
+
+			p.set_value(result);
+		}
+		catch(const std::exception& e)
+		{
+			p.set_exception(std::current_exception());
+		}
+	});
+
+	// no zombies please, removed the WNOHANG. the forked application should really stop here.
+	int status = 0;
+	int r = waitpid(pid, &status, 0);
+
+	if (r == pid and WIFEXITED(status))
+		r = WEXITSTATUS(status);
+	
+	if (r != 0)
+		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
+
+	t.join();
+
+	return f.get();
 }
