@@ -809,11 +809,10 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		{
 			size_t s_wt = 0, a_wt = 0;
 
-			for (size_t j = 0; j < 4; ++j)
+			for (auto& nc: normalizedControlInsertions)
 			{
-				auto& nc = normalizedControlInsertions[j][i];
-				s_wt += nc.sense;
-				a_wt += nc.antiSense;
+				s_wt += nc[i].sense;
+				a_wt += nc[i].antiSense;
 			}
 
 			if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)

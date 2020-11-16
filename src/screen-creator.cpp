@@ -454,10 +454,9 @@ or txEnd to have the start at the cdsEnd e.g.
 	if (vm.count("group-size"))
 		groupSize = vm["group-size"].as<unsigned short>();
 
-#warning "make options"
-	float pvCutOff = 0.05f;
-	float binom_fdrCutOff = 0.05f;
-	float effectSize = 0.2f;
+	float pvCutOff = vm["pv-cut-off"].as<float>();
+	float binom_fdrCutOff = vm["binom-fd-cut-off"].as<float>();
+	float effectSize = vm["effect-size"].as<float>();
 
 	// -----------------------------------------------------------------------
 
@@ -490,7 +489,7 @@ or txEnd to have the start at the cdsEnd e.g.
 	{
 		if (significantOnly and not r.significant.count(dp.gene))
 			continue;
-
+		
 		std::cout << dp.gene << '\t'
 				  << dp.sense << '\t'
 				  << dp.antisense << '\t'
@@ -528,6 +527,15 @@ int main_analyze(int argc, char* const argv[])
 			{ "replicate",	po::value<unsigned short>(),"The replicate to use, in case of synthetic lethal"},
 			{ "group-size",	po::value<unsigned short>(),"The group size to use for normalizing insertions counts in SL, default is 500"},
 			{ "significant", new po::untyped_value(true),	"The significant genes only, in case of synthetic lethal"},
+
+			{ "pv-cut-off",	po::value<float>()->default_value(0.05f),
+														"P-value cut off"},
+			{ "binom-fdr-cut-off",
+							po::value<float>()->default_value(0.05f),
+														"binom FDR cut off" },
+			{ "effect-size",
+							po::value<float>()->default_value(0.2f),
+														"effect size" },
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 			

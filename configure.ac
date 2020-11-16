@@ -94,7 +94,7 @@ AC_ARG_WITH([zeep],
 			LDFLAGS="$LDFLAGS -L${withval}/lib"
 		])
 
-AX_CHECK_LIBRARY([LIBZEEP], [zeep/config.hpp], [zeep-xml],
+AX_CHECK_LIBRARY([LIBZEEP], [zeep/config.hpp], [zeep],
 	[],
 	[AC_MSG_ERROR([libzeep not found - cannot continue])])
 

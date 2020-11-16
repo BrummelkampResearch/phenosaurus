@@ -474,6 +474,17 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 
 	auto transcripts = loadTranscripts(assembly, gene, kWindowSize);
 
+	filterOutExons(transcripts);
+
+	// reorder transcripts based on chr > end-position, makes code easier and faster
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.start() - b.start();
+		return d < 0;
+	});
+
 	Region result = {};
 
 	result.chrom = transcripts.front().chrom;
