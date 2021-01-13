@@ -7,9 +7,9 @@ const SCSS = __dirname + "/scss/";
 const DEST = __dirname + "/docroot/";
 
 module.exports = {
-	node: {
-		fs: 'empty'
-	},
+	// node: {
+	// 	fs: 'empty'
+	// },
 
 	mode: "development",
 	entry: {
@@ -31,6 +31,8 @@ module.exports = {
 		'user-screen': SCRIPTS + "user-screen.js",
 
 		'genome-browser': SCRIPTS + "genome-browser.js",
+
+		'create-screen': SCRIPTS + "screen-creator.js",
 
 		'qc': SCRIPTS + "qc.js"
 	},

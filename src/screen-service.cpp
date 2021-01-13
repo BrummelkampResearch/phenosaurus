@@ -986,6 +986,7 @@ screen_user_html_controller::screen_user_html_controller()
 	: zeep::http::html_controller("/")
 {
 	mount("screens", &screen_user_html_controller::handle_screen_user);
+	mount("create-screen", &screen_user_html_controller::handle_create_screen_user);
 }
 
 void screen_user_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
@@ -1033,6 +1034,27 @@ void screen_user_html_controller::handle_screen_user(const zeep::http::request& 
 	sub.put("screens", screens);
 
 	get_template_processor().create_reply_from_template("user-screens.html", sub, reply);
+}
+
+void screen_user_html_controller::handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	zeep::http::scope sub(scope);
+
+	zeep::json::element users;
+	auto u = user_service::instance().get_all_users();
+	to_element(users, u);
+	sub.put("users", users);
+
+	zeep::json::element groups;
+	auto g = user_service::instance().get_all_groups();
+	to_element(groups, g);
+	sub.put("groups", groups);
+
+	auto credentials = get_credentials();
+	// auto username = credentials["username"].as<std::string>();
+	sub.put("user", credentials);
+
+	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
 
 // --------------------------------------------------------------------

@@ -23,3 +23,8 @@ config.log
 *.csv
 *.bed
 src/config.hpp.in~
+.gdb_history
+fisher
+aclocal.m4
+*.ods
+*.xlsx

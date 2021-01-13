@@ -7,7 +7,6 @@ AX_CXX_COMPILE_STDCXX_17([noext])
 AC_CONFIG_SRCDIR([src/screen-analyzer.cpp])
 AC_CONFIG_HEADERS([src/config.hpp])
 AC_CONFIG_AUX_DIR(config)
-AC_CONFIG_MACRO_DIR([config/m4])
 
 AC_PREFIX_DEFAULT(/usr/local)
 
@@ -34,16 +33,13 @@ AC_CHECK_PROG([HAVE_YARN], [yarn], [yes],
 AC_CHECK_PROG([HAVE_GOOGLE_FONT_DOWNLOADER], [google-font-downloader], [yes],
 	[AC_MSG_ERROR([google-font-downloader was not found.])])
 
-AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+PKG_PROG_PKG_CONFIG
 
 AX_PKG_CHECK_MODULES([PQXX], [libpqxx >= 7.1], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
 AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package libpq-dev is not installed])])
-# AX_PKG_CHECK_MODULES([BZ2], [libbz2], [], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AC_CHECK_HEADER([bzlib.h], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AC_CHECK_LIB([bz2], [BZ2_bzCompressInit], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AX_PKG_CHECK_MODULES([Z], [zlib], [], [], [AC_MSG_ERROR([the required package libz-dev is not installed])])
 AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
 AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
+AX_PKG_CHECK_MODULES([ZEEP], [libzeep], [], [], [AC_MSG_ERROR([the required package libzeep-dev is not installed])])
 
 AX_PTHREAD
 
@@ -84,19 +80,6 @@ AX_BOOST_ASIO
 AX_BOOST_IOSTREAMS
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_DATE_TIME
-
-AC_ARG_WITH([zeep],
-	AS_HELP_STRING([--with-zeep=@<:@location@:>@],
-		[Use the zeep library as specified.]),
-		[
-			CPPFLAGS="$CPPFLAGS -I ${withval}/include"
-			CXXFLAGS="$CXXFLAGS -I ${withval}/include"
-			LDFLAGS="$LDFLAGS -L${withval}/lib"
-		])
-
-AX_CHECK_LIBRARY([LIBZEEP], [zeep/config.hpp], [zeep],
-	[],
-	[AC_MSG_ERROR([libzeep not found - cannot continue])])
 
 dnl check whether to build xattr support
 

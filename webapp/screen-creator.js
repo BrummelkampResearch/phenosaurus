@@ -1,90 +1,69 @@
-import 'bootstrap/js/dist/modal';
 
-export default class ScreenEditor {
 
-	constructor(action) {
-		this.action = action;
+class ScreenCreator {
 
-		this.dialog = document.getElementById("screen-dialog");
-		this.form = document.getElementById("screen-edit-form");
+	constructor() {
+
+		this.nextPage(null, 1);
+
 		this.csrf = this.form.elements['_csrf'].value;
-
-		this.form.addEventListener("submit", (evt) => this.saveScreen(evt));
-
-		const submit = document.getElementById("submit-btn");
-		if (submit)
-			submit.addEventListener("click", ev => this.saveScreen(ev));
 
 		const btn = document.getElementById("upload-datafile-btn");
 		if (btn != null)
 			btn.addEventListener("click", (e) => this.uploadDataFile(e))
 	}
 
-	static init(url) {
-		/* global context_name */
+	nextPage(evt, pageNr) {
+		if (evt)
+			evt.preventDefault();
 
-		window.addEventListener("load", () => {
+		if (this.form)
+		{
+			this.form.classList.add('d-none');
 
-			const editor = new ScreenEditor(`${context_name}/${url}`);
+			switch (+this.form['page-nr'].value)
+			{
+				case 1: {
+					this.scientist = this.form['scientist'].value;
+					this.screenType = this.form['screen-type'].value;
+					break;
+				}
 
-			Array.from(document.getElementsByClassName("edit-screen-btn"))
-				.forEach(btn => btn.addEventListener("click", () => editor.editScreen(btn.dataset.id)));
+				case 2: {
+					this.detectedSignal = this.form['detected-signal'].value;
+					this.genotype = this.form['genotype'].value;
+					this.treatment = this.form['treatment'].value;
+					this.treatmentDetails = this.form['treatment-details'].value;
+					this.cellLineClone = this.form['cell-line-clone'].value;
+					this.description = this.form['description'].value;
 
-			Array.from(document.getElementsByClassName("delete-screen-btn"))
-				.forEach(btn => btn.addEventListener("click", () => {
-					return editor.deleteScreen(btn.dataset.id, btn.dataset.name);
-				}));
+					if (typeof this.treatment == 'string' && this.treatment.length)
+						this.screenName = `${this.detectedSignal}-in-${this.genotype} (${this.treatment})`;
+					else
+						this.screenName = `${this.detectedSignal}-in-${this.genotype}`;
 
-			document.getElementById("add-screen-btn")
-				.addEventListener("click", () => editor.createScreen());
-		});
-	}
+					this.screenName = this.screenName.replaceAll(' ', '_');
+					break;
+				}
+			}
+		}
 
-	editScreen(id) {
-		this.id = id;
+		const newPage = `create-screen-form-${pageNr}`;
 
-		fetch(`${this.action}/${id}`, {credentials: "include", method: "get"})
-			.then(async response => {
-				if (response.ok)
-					return response.json();
+		this.form = document.forms[newPage];
+		this.form.classList.remove('d-none');
 
-				const error = await response.json();
-				console.log(error);
-				throw error.error;
-			})
-			.then(data => {
+		this.form.addEventListener("submit", (evt) => this.nextPage(evt, pageNr + 1));
+		const backBtn = document.getElementById(`back-btn-${pageNr}`);
+		if (backBtn)
+			backBtn.addEventListener("click", (e) => this.nextPage(e, pageNr - 1));
 
-				this.screen = data;
-
-				// this.form.reset();
-
-				this.form.elements["name"].value = this.screen.name;
-				this.form.elements["screen-type"].value = this.screen.type;
-				document.getElementById("description").value = this.screen.description;
-				this.form.elements["induced"].checked = this.screen.induced;
-				this.form.elements["knockout"].checked = this.screen.knockout;
-				this.form.elements["ignored"].checked = this.screen.ignored;
-				this.form.elements["cell-line"].value = this.screen.cell_line;
-				this.form.elements["genome"].value = this.screen.genome;
-				this.form.elements["directory"].value = this.screen.directory;
-				document.getElementById("long-description").value = this.screen.long_description;
-				document.getElementById("sequence-ids").value = this.screen.sequenceIds;
-
-				if (this.form.elements["scientist"] != null)
-					this.form.elements["scientist"].value = this.screen.scientist;
-
-				const g = new Set(this.screen.groups);
-				[...this.form.getElementsByClassName("group-checkbox")].forEach(e => {
-					e.checked = g.has(e.name);
-				});
-
-				// this.screen.groups.forEach(group => this.form.elements[group].checked = true);
-
-				document.getElementById('data-file-block').style.display = 'none';
-
-				$(this.dialog).modal();
-			})
-			.catch(err => alert(err));
+		switch (pageNr)
+		{
+			case 3:
+				this.form['screen-name'].value = this.screenName;
+				break;
+		}
 	}
 
 	saveScreen(e) {
@@ -255,3 +234,7 @@ export default class ScreenEditor {
 		return false;
 	}
 }
+
+window.addEventListener("load", () => {
+	new ScreenCreator();
+});

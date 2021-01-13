@@ -3,96 +3,107 @@
 <html xmlns:z="http://www.hekkelman.com/libzeep/m2"
 	  lang="en">
 
-<nav z:fragment="menu" class="navbar navbar-expand-sm bg-dark navbar-dark">
+<nav z:fragment="menu" class="navbar navbar-expand-md bg-dark navbar-dark">
+	<div class="container-fluid">
+	
+		<a href="/" z:href="@{/}" class="navbar-brand">Phenosaurus</a>
 
-	<form name="logoutForm" z:action="@{/logout}" method="post"></form>
+		<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+				aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+	
+		<div  class="collapse navbar-collapse" id="navbarSupportedContent">
 
-	<a href="/" z:href="@{/}" class="navbar-brand">Phenosaurus</a>
+			<ul class="navbar-nav me-auto mb-2 mb-lg-0">
+				<li class="nav-item dropdown">
+					<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-bs-toggle="dropdown"
+					   href="#">Intracellular Phenotype</a>
+					<div class="dropdown-menu">
+						<a class="dropdown-item" href="/simpleplot" z:href="@{/ip/screen}">Fishtail Plot</a>
+						<a class="dropdown-item" href="/finder" z:href="@{/ip/finder}">Gene Search</a>
+						<a class="dropdown-item" href="/similar" z:href="@{/ip/similar}">Find Similar</a>
+						<a class="dropdown-item" href="/cluster" z:href="@{/ip/cluster}">Find Clusters</a>
+						<div class="dropdown-divider"></div>
+						<!-- <a class="dropdown-item" href="/ip/compare-1" z:href="@{/ip/compare-1}">Compare Screens I</a>
+						<a class="dropdown-item" href="/ip/compare-2" z:href="@{/ip/compare-2}">Compare Screens II</a>
+						<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens III</a> -->
+						<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens</a>
+					</div>
+				</li>
+		
+				<li class="nav-item dropdown">
+					<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-bs-toggle="dropdown"
+					   href="#">Intracellular Phenotype Activation</a>
+					<div class="dropdown-menu">
+						<a class="dropdown-item" href="/simpleplot" z:href="@{/pa/screen}">Fishtail Plot</a>
+						<a class="dropdown-item" href="/finder" z:href="@{/pa/finder}">Gene Search</a>
+						<a class="dropdown-item" href="/similar" z:href="@{/pa/similar}">Find Similar</a>
+						<a class="dropdown-item" href="/cluster" z:href="@{/pa/cluster}">Find Clusters</a>
+						<div class="dropdown-divider"></div>
+						<!-- <a class="dropdown-item" href="/pa/compare-1" z:href="@{/pa/compare-1}">Compare Screens I</a>
+						<a class="dropdown-item" href="/pa/compare-2" z:href="@{/pa/compare-2}">Compare Screens II</a>
+						<a class="dropdown-item" href="/pa/compare-3" z:href="@{/pa/compare-3}">Compare Screens III</a> -->
+						<a class="dropdown-item" href="/pa/compare-3" z:href="@{/pa/compare-3}">Compare Screens</a>
+					</div>
+				</li>
+		
+		
+				<!-- <li class="nav-item dropdown">
+					<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
+					   href="#">Synthetic Lethal</a>
+					<div class="dropdown-menu">
+						<a class="dropdown-item" href="/sl/screen" z:href="@{/sl/screen}">Fishtail Plots</a>
+						<a class="dropdown-item" href="/geneFinder" z:href="@{/sl/geneFinder}">Gene Search</a>
+					</div>
+				</li> -->
+		
+				<li class="nav-item">
+					<a class="nav-link" href="/sl/screen" z:href="@{/sl/screen}">Synthetic Lethal</a>
+				</li>
+		
+				<li class="nav-item">
+					<a class="nav-link" href="/qc" z:href="@{/qc}">QC</a>
+				</li>
+		
+				<!-- <li class="nav-item">
+					<a class="nav-link" href="/browse" z:href="@{/browse}">Genome Browser</a>
+				</li> -->
+		
+				<li class="nav-item">
+					<a class="nav-link" href="/screens" z:href="@{/screens}">Screens</a>
+				</li>
+		
+				<li class="nav-item dropdown" z:if="${#security.hasRole('ADMIN')}">
+					<a aria-expanded="false" aria-haspopup="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+					   href="#">Admin</a>
+					<div class="dropdown-menu" id="admin-menu">
+						<a class="dropdown-item" href="/admin/users" z:href="@{/admin/users}">Users</a>
+						<a class="dropdown-item" href="/admin/groups" z:href="@{/admin/groups}">Groups</a>
+						<div class="dropdown-divider"></div>
+						<!-- <a class="dropdown-item" href="/admin/reference" z:href="@{/admin/reference}">Reference Genome</a> -->
+						<a class="dropdown-item" href="/admin/screens" z:href="@{/admin/screens}">Screens</a>
+					</div>
+				</li>
+		
+				<li z:if="${not #security.authorized()}" class="nav-item">
+					<a class="item-content" href="/login" z:href="@{/login}">
+						<span class="nav-link">login</span>
+					</a>
+				</li>
+		
+				<li z:if="${#security.authorized()}" class="nav-item">
+					<a class="nav-link" href="#" onclick="document.logoutForm.submit()">
+						<span>Log out</span>
+					</a>
+				</li>
+		
+			</ul>
+		</div>
 
-	<ul class="navbar-nav">
-		<li class="nav-item dropdown">
-			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
-			   href="#">Intracellular Phenotype</a>
-			<div class="dropdown-menu">
-				<a class="dropdown-item" href="/simpleplot" z:href="@{/ip/screen}">Fishtail Plot</a>
-				<a class="dropdown-item" href="/finder" z:href="@{/ip/finder}">Gene Search</a>
-				<a class="dropdown-item" href="/similar" z:href="@{/ip/similar}">Find Similar</a>
-				<a class="dropdown-item" href="/cluster" z:href="@{/ip/cluster}">Find Clusters</a>
-				<div class="dropdown-divider"></div>
-				<!-- <a class="dropdown-item" href="/ip/compare-1" z:href="@{/ip/compare-1}">Compare Screens I</a>
-				<a class="dropdown-item" href="/ip/compare-2" z:href="@{/ip/compare-2}">Compare Screens II</a>
-				<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens III</a> -->
-				<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens</a>
-			</div>
-		</li>
-
-		<li class="nav-item dropdown">
-			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
-			   href="#">Intracellular Phenotype Activation</a>
-			<div class="dropdown-menu">
-				<a class="dropdown-item" href="/simpleplot" z:href="@{/pa/screen}">Fishtail Plot</a>
-				<a class="dropdown-item" href="/finder" z:href="@{/pa/finder}">Gene Search</a>
-				<a class="dropdown-item" href="/similar" z:href="@{/pa/similar}">Find Similar</a>
-				<a class="dropdown-item" href="/cluster" z:href="@{/pa/cluster}">Find Clusters</a>
-				<div class="dropdown-divider"></div>
-				<!-- <a class="dropdown-item" href="/pa/compare-1" z:href="@{/pa/compare-1}">Compare Screens I</a>
-				<a class="dropdown-item" href="/pa/compare-2" z:href="@{/pa/compare-2}">Compare Screens II</a>
-				<a class="dropdown-item" href="/pa/compare-3" z:href="@{/pa/compare-3}">Compare Screens III</a> -->
-				<a class="dropdown-item" href="/pa/compare-3" z:href="@{/pa/compare-3}">Compare Screens</a>
-			</div>
-		</li>
-
-
-		<!-- <li class="nav-item dropdown">
-			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
-			   href="#">Synthetic Lethal</a>
-			<div class="dropdown-menu">
-				<a class="dropdown-item" href="/sl/screen" z:href="@{/sl/screen}">Fishtail Plots</a>
-				<a class="dropdown-item" href="/geneFinder" z:href="@{/sl/geneFinder}">Gene Search</a>
-			</div>
-		</li> -->
-
-		<li class="nav-item">
-			<a class="nav-link" href="/sl/screen" z:href="@{/sl/screen}">Synthetic Lethal</a>
-		</li>
-
-		<li class="nav-item">
-			<a class="nav-link" href="/qc" z:href="@{/qc}">QC</a>
-		</li>
-
-		<!-- <li class="nav-item">
-			<a class="nav-link" href="/browse" z:href="@{/browse}">Genome Browser</a>
-		</li> -->
-
-		<li class="nav-item">
-			<a class="nav-link" href="/screens" z:href="@{/screens}">Screens</a>
-		</li>
-
-		<li class="nav-item dropdown" z:if="${#security.hasRole('ADMIN')}">
-			<a aria-expanded="false" aria-haspopup="false" class="nav-link dropdown-toggle" data-toggle="dropdown"
-			   href="#">Admin</a>
-			<div class="dropdown-menu" id="admin-menu">
-				<a class="dropdown-item" href="/admin/users" z:href="@{/admin/users}">Users</a>
-				<a class="dropdown-item" href="/admin/groups" z:href="@{/admin/groups}">Groups</a>
-				<div class="dropdown-divider"></div>
-				<!-- <a class="dropdown-item" href="/admin/reference" z:href="@{/admin/reference}">Reference Genome</a> -->
-				<a class="dropdown-item" href="/admin/screens" z:href="@{/admin/screens}">Screens</a>
-			</div>
-		</li>
-
-		<li z:if="${not #security.authorized()}" class="nav-item">
-			<a class="item-content" href="/login" z:href="@{/login}">
-				<span class="nav-link">login</span>
-			</a>
-		</li>
-
-		<li z:if="${#security.authorized()}" class="nav-item">
-			<a class="nav-link" href="#" onclick="document.logoutForm.submit()">
-				<span>Log out</span>
-			</a>
-		</li>
-
-	</ul>
+		<form name="logoutForm" z:action="@{/logout}" method="post"></form>
+	
+	</div>
 </nav>
 
 </html>
