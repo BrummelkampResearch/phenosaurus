@@ -142,18 +142,7 @@ export default class ScreenEditor {
 	}
 
 	createScreen() {
-		this.id = null;
-		this.screen = {};
-
-		// Array.from(this.form.elements)
-		// 	.filter(i => i.tagName === 'INPUT')
-		// 	.forEach(input => this.screen[input.name] = '');
-
-		this.form.reset();
-
-		document.getElementById('data-file-block').style.display = 'unset';
-
-		$(this.dialog).modal();
+		window.location = 'create-screen';
 	}
 
 	deleteScreen(id, name) {

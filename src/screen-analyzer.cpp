@@ -394,121 +394,6 @@ int main_dump(int argc, char* const argv[])
 
 // --------------------------------------------------------------------
 
-int main_update_manifests(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( update-manifests [options])", {});
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-
-	screen_service::init(screenDir);
-
-	// --------------------------------------------------------------------
-	
-	std::vector<std::string> vConn;
-	for (std::string opt: { "db-host", "db-port", "db-dbname", "db-user", "db-password" })
-	{
-		if (vm.count(opt) == 0)
-			continue;
-		
-		vConn.push_back(opt.substr(3) + "=" + vm[opt].as<std::string>());
-	}
-
-	db_connection::init(ba::join(vConn, " "));
-
-	// --------------------------------------------------------------------
-
-    pqxx::work tx(db_connection::instance());
-
-    const zeep::value_serializer<ScreenType> s;
-
-	std::vector<screen_info> screens;
-
-    for (const auto[name, type, cell_line, description, long_description, ignore, scientist, created ]:
-            tx.stream<std::string, std::string, std::string, std::string, std::string, bool, std::string, std::optional<std::string>>(
-        R"(SELECT name, screen_type, cell_line, description, long_description, ignored,
-            (SELECT username FROM auth.users WHERE id = scientist_id), trim(both '"' from to_json(screen_date)::text) AS created FROM screens)"))
-    {
-        screen_info screen;
-
-        if (type == "IP")
-            screen.type = ScreenType::IntracellularPhenotype;
-        else if (type == "PA")
-            screen.type = ScreenType::IntracellularPhenotypeActivation;
-        else if (type == "SL")
-            screen.type = ScreenType::SyntheticLethal;
-        else
-            continue;
-
-        screen.name = name;
-	    screen.cell_line = cell_line;
-	    screen.description = description;
-	    screen.long_description = long_description;
-	    screen.ignore = ignore;
-	    screen.scientist = scientist;
-
-        if (created)
-    	    screen.created = zeep::value_serializer<boost::posix_time::ptime>::from_string(*created);
-		else
-			screen.created = boost::posix_time::second_clock::local_time();
-
-		fs::path sdir = screenDir / screen.name;
-		if (not fs::is_directory(sdir))
-		{
-			std::cout << "Screen " << screen.name << " does not exist" << std::endl;
-			continue;
-		}
-		
-		if (fs::exists(sdir / "manifest.json"))
-		{
-			std::cout << "Manifest for " << screen.name << " already exists" << std::endl;
-			continue;
-		}
-
-		for (auto di = fs::directory_iterator(sdir); di != fs::directory_iterator(); ++di)
-		{
-			if (di->is_directory())
-				continue;
-			
-			auto name = di->path().filename();
-			if (name.extension() == ".gz")
-				name = name.stem();
-			if (name.extension() != ".fastq")
-				continue;
-			
-			std::error_code ec;
-			auto cp = fs::canonical(di->path(), ec);
-			if (ec)
-				cp = di->path();
-
-			screen.files.emplace_back(screen_file{name.stem(), cp });
-		}
-
-		screens.push_back(screen);
-	}
-
-	tx.commit();
-
-	for (auto& screen: screens)
-	{
-        try
-        {
-			screen_service::instance().update_screen(screen.name, screen);
-
-            std::cout << "Updated " << screen.name << std::endl;
-        }
-        catch (const std::exception& ex)
-        {
-            std::cerr << ex.what() << std::endl;
-        }
-    }
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
 int main(int argc, char* const argv[])
 {
 	int result = 0;
@@ -578,22 +463,21 @@ int main(int argc, char* const argv[])
 		}
 
 		std::string command = argv[1];
-		if (command == "create")
-			result = main_create(argc - 1, argv + 1);
-		else if (command == "map")
-			result = main_map(argc - 1, argv + 1);
-		else if (command == "analyze")
-			result = main_analyze(argc - 1, argv + 1);
-		else if (command == "refseq")
-			result = main_refseq(argc - 1, argv + 1);
-		else if (command == "server")
+		// if (command == "create")
+		// 	result = main_create(argc - 1, argv + 1);
+		// else if (command == "map")
+		// 	result = main_map(argc - 1, argv + 1);
+		// else if (command == "analyze")
+		// 	result = main_analyze(argc - 1, argv + 1);
+		// else if (command == "refseq")
+		// 	result = main_refseq(argc - 1, argv + 1);
+		// else
+		 if (command == "server")
 			result = main_server(argc - 1, argv + 1);
 		else if (command == "compress")
 			result = main_compress(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
-		else if (command == "update-manifest")
-			result = main_update_manifests(argc - 1, argv + 1);
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
 			usage();
 		else if (command == "version" or command == "-v" or command == "--version")

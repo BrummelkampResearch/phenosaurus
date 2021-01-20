@@ -108,7 +108,33 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 	if (fs::exists(dir))
 		throw std::runtime_error("Screen already exists");
 
+	mInfo.created = boost::posix_time::second_clock().local_time();
+
 	fs::create_directories(dir);
+
+	for (auto& fi: mInfo.files)
+	{
+		fs::path file = fi.source;
+
+		// follow links until we end up at the final destination
+		while (fs::is_symlink(file))
+			file = fs::read_symlink(file);
+		
+		// And then make these canonical/system_complete
+		file = fs::weakly_canonical(file);
+
+		checkIsFastQ(file);
+
+		auto ext = file.extension();
+
+		fs::path to;
+		if (ext == ".gz" or ext == ".bz2")
+			to = mDataDir / (fi.name + ".fastq" + ext.string());
+		else
+			to = mDataDir / (fi.name + ".fastq");
+			
+		fs::create_symlink(file, to);
+	}
 
 	write_manifest();
 }
@@ -449,11 +475,9 @@ IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info, fs::path low, fs::path high)
+IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info)
 	: ScreenData(dir, info), mType(type)
 {
-	addFile("low", low);
-	addFile("high", high);
 }
 
 void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
@@ -711,14 +735,6 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 		result.push_back(f.name);
 
 	return result;
-}
-
-void SLScreenData::addFile(const std::string& name, fs::path file)
-{
-	if (mInfo.files.size() >= 4)
-		throw std::runtime_error("Screen already contains 4 fastq files");
-
-	ScreenData::addFile(name, file);
 }
 
 SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trimLength,

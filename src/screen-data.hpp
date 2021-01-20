@@ -12,6 +12,10 @@
 
 // --------------------------------------------------------------------
 
+void checkIsFastQ(std::filesystem::path infile);
+
+// --------------------------------------------------------------------
+
 enum class ScreenType
 {
 	Unspecified,
@@ -63,12 +67,15 @@ struct mapped_info
 struct screen_info
 {
 	std::string name;
-	ScreenType type;
-	std::string cell_line;
-	std::string description;
-	std::string long_description;
-	bool induced, knockout, ignore;
 	std::string scientist;
+	ScreenType type;
+	std::string detected_signal;
+	std::string genotype;
+	std::optional<std::string> treatment;
+	std::optional<std::string> treatment_details;
+	std::string cell_line;
+	std::optional<std::string> description;
+	bool ignore;
 	boost::posix_time::ptime created;
 	std::vector<std::string> groups;
 	std::vector<screen_file> files;
@@ -78,16 +85,17 @@ struct screen_info
 	void serialize(Archive& ar, unsigned long version)
 	{
 		ar & zeep::name_value_pair("name", name)
+		   & zeep::name_value_pair("scientist", scientist)
 		   & zeep::name_value_pair("type", type)
+		   & zeep::name_value_pair("detected_signal", detected_signal)
+		   & zeep::name_value_pair("genotype", genotype)
+		   & zeep::name_value_pair("treatment", treatment)
+		   & zeep::name_value_pair("treatment_details", treatment_details)
 		   & zeep::name_value_pair("cell_line", cell_line)
 		   & zeep::name_value_pair("description", description)
-		   & zeep::name_value_pair("long_description", long_description)
-		   & zeep::name_value_pair("induced", induced)
-		   & zeep::name_value_pair("knockout", knockout)
 		   & zeep::name_value_pair("ignore", ignore)
-		   & zeep::name_value_pair("scientist", scientist)
-		   & zeep::name_value_pair("groups", groups)
 		   & zeep::name_value_pair("created", created)
+		   & zeep::name_value_pair("groups", groups)
 		   & zeep::name_value_pair("files", files)
 		   & zeep::name_value_pair("mapped", mappedInfo);
 	}
@@ -335,8 +343,7 @@ class IPPAScreenData : public ScreenData
   protected:
 
 	IPPAScreenData(ScreenType type, const std::filesystem::path& dir);
-	IPPAScreenData(ScreenType type, const std::filesystem::path& dir, const screen_info& info,
-		std::filesystem::path low, std::filesystem::path high);
+	IPPAScreenData(ScreenType type, const std::filesystem::path& dir, const screen_info& info);
 
 	ScreenType mType;
 };
@@ -348,9 +355,8 @@ class IPScreenData : public IPPAScreenData
 
 	IPScreenData(const std::filesystem::path& dir)
 		: IPPAScreenData(ScreenType::IntracellularPhenotype, dir) {}
-	IPScreenData(const std::filesystem::path& dir, const screen_info& info,
-		std::filesystem::path low, std::filesystem::path high)
-		: IPPAScreenData(ScreenType::IntracellularPhenotype, dir, info, low, high) {}
+	IPScreenData(const std::filesystem::path& dir, const screen_info& info)
+		: IPPAScreenData(ScreenType::IntracellularPhenotype, dir, info) {}
 };
 
 class PAScreenData : public IPPAScreenData
@@ -360,9 +366,8 @@ class PAScreenData : public IPPAScreenData
 
 	PAScreenData(const std::filesystem::path& dir)
 		: IPPAScreenData(ScreenType::IntracellularPhenotypeActivation, dir) {}
-	PAScreenData(const std::filesystem::path& dir, const screen_info& info,
-		std::filesystem::path low, std::filesystem::path high)
-		: IPPAScreenData(ScreenType::IntracellularPhenotypeActivation, dir, info, low, high) {}
+	PAScreenData(const std::filesystem::path& dir, const screen_info& info)
+		: IPPAScreenData(ScreenType::IntracellularPhenotypeActivation, dir, info) {}
 };
 
 // --------------------------------------------------------------------
@@ -381,8 +386,6 @@ class SLScreenData : public ScreenData
 	SLScreenData(const std::filesystem::path& dir, const screen_info& info);
 
 	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
-
-	virtual void addFile(const std::string& name, std::filesystem::path file) override;
 
 	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,

@@ -27,8 +27,6 @@ LIBS				= @LIBS@ \
 					  @MAILIO_LIBS@ \
 					  @SSL_LIBS@
 
-LIBS				+= -lzeep
-
 prefix				= @prefix@
 exec_prefix			= @exec_prefix@
 libdir				= @libdir@

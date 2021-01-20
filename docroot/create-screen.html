@@ -13,87 +13,81 @@
 
 	<nav z:replace="~{menu :: menu}"></nav>
 	
-	<!-- page 1 -->
-
-	<form id="create-screen-form-1" z:action="@{/admin-ajax/create-screen?page=1}" method="post" enctype="multipart/form-data"
-		name="create-screen-form-1" class="container mt-5">
-		<input type="hidden" name="page-nr" value="1"/>
+	<form id="create-screen-form" z:action="@{/admin-ajax/create-screen?page=1}" method="post" enctype="multipart/form-data"
+		name="create-screen-form" class="container mt-5">
 		
-		<div z:switch="${admin ? true : false}" class="mb-3">
-			<div z:case="true">
-				<label for="scientist" class="form-label">Scientist</label>
-				<select class="form-control" id="scientist" aria-describedby="scientistHelp" name="scientist">
-					<option z:each="user: ${users}" z:value="${user.username}" z:text="${user.username}"></option>
-				</select>
-				<div id="scientistHelp" class="form-text">Select the user that 'created' the screen</div>
-			</div>
-			<div z:case="false">
-				<label for="scientist2" class="form-label">Scientist</label>
-				<input type="text" disabled="disabled" class="form-control" id="scientist2" z:value="${user.username}"
-					aria-describedby="scientistHelp2" name="scientist" />
-				<div id="scientistHelp2" class="form-text">Only admin can assign screens to other users</div>
-			</div>
-		</div>
+		<div class="form-row">
 
-		<div class="mb-3">
-			<label for="screen-type">Screen Type</label>
-			<select class="form-select" id="screen-type" name="screen-type">
-				<option value="ip">Intracellular Phenotype</option>
-				<option value="sl">Synthetic Lethal</option>
-				<option value="ps">Positive Selection</option>
-			</select>
+			<div z:switch="${#security.hasRole('ADMIN')}" class="col-md-6">
+				<div z:case="true">
+					<label for="scientist" class="form-label">Scientist</label>
+					<select class="form-control custom-select" id="scientist" aria-describedby="scientistHelp" name="scientist">
+						<option z:each="user: ${users}" z:value="${user.username}" z:text="${user.username}" z:selected="${user.username == #security.username()}"></option>
+					</select>
+					<div id="scientistHelp" class="form-text text-muted">Select the user that 'created' the screen</div>
+				</div>
+				<div z:case="false">
+					<label for="scientist2" class="form-label">Scientist</label>
+					<input type="text" disabled="disabled" class="form-control" id="scientist2" z:value="${#security.username()}"
+						aria-describedby="scientistHelp2" name="scientist" />
+					<div id="scientistHelp2" class="form-text text-muted">Only admin can assign screens to other users</div>
+				</div>
+			</div>
+	
+			<div class="col-md-6">
+				<label for="screen-type">Screen Type</label>
+				<select class="form-select custom-select" id="screen-type" name="screen-type">
+					<option value="ip">Intracellular Phenotype</option>
+					<option value="sl">Synthetic Lethal</option>
+					<option value="ps">Positive Selection</option>
+				</select>
+			</div>
 		</div>
 
 		<hr/>
 
-		<div class="clearfix container-fluid">
-			<!-- <button id="back-btn-1" form="create-screen-form-1"
-				class="btn btn float-start disabled">Previous</button> -->
+		<div class="form-row">
 
-			<button id="submit-btn-1" type="submit" form="create-screen-form-1"
-				class="btn btn-primary float-end">Next</button>
-		</div>
-	</form>
+			<div class="mb-3 col-md-3">
+				<label for="detected-signal" class="form-label">Detected signal</label>
+				<input type="text" class="form-control" id="detected-signal" required="required"
+					aria-describedby="detectedSignalHelp" name="detected-signal" />
+				<div id="detectedSignalHelp" class="form-text text-muted">First part of the screen name</div>
+			</div>
+	
+			<div class="mb-3 col-md-3">
+				<label for="genotype" class="form-label">Genotype</label>
+				<input type="text" class="form-control" id="genotype" required="required"
+					aria-describedby="genotypeHelp" name="genotype" />
+				<div id="genotypeHelp" class="form-text text-muted">Second part of the screen name</div>
+			</div>
+	
+			<div class="mb-3 col-md-3">
+				<label for="treatment" class="form-label">Treatment</label>
+				<input type="text" class="form-control" id="treatment"
+					aria-describedby="treatmentHelp" name="treatment" />
+				<div id="treatmentHelp" class="form-text text-muted">Optional</div>
+			</div>
 
-	<!-- page 2 -->
+			<div class="mb-3 col-md-3">
+				<label for="cell-line-clone" class="form-label">Cell line clone</label>
+				<input type="text" class="form-control" id="cell-line-clone" pattern="TB[0-9]+" placeholder="TB...."
+					aria-describedby="cell-line-cloneHelp" name="cell-line-clone" required="required" />
+				<div id="cell-line-cloneHelp" class="form-text text-muted">Cryobase number</div>
+			</div>
 
-	<form id="create-screen-form-2" z:action="@{/admin-ajax/create-screen?page=1}" method="post" enctype="multipart/form-data"
-		name="create-screen-form-2" class="container mt-5 d-none">
-		<input type="hidden" name="page-nr" value="2"/>
-
-		<div class="mb-3">
-			<label for="detected-signal" class="form-label">Detected signal</label>
-			<input type="text" class="form-control" id="detected-signal" required="required"
-				aria-describedby="detectedSignalHelp" name="detected-signal" />
-			<div id="detectedSignalHelp" class="form-text">Will form the first part of the screen name</div>
-		</div>
-
-		<div class="mb-3">
-			<label for="genotype" class="form-label">Genotype</label>
-			<input type="text" class="form-control" id="genotype" required="required"
-				aria-describedby="genotypeHelp" name="genotype" />
-			<div id="genotypeHelp" class="form-text">Will form the second part of the screen name</div>
-		</div>
-
-		<div class="mb-3">
-			<label for="treatment" class="form-label">Treatment</label>
-			<input type="text" class="form-control" id="treatment"
-				aria-describedby="treatmentHelp" name="treatment" />
-			<div id="treatmentHelp" class="form-text">Optional</div>
 		</div>
 
 		<div class="mb-3">
+			<label for="screen-name" class="form-label">Screen name</label>
+			<input type="text" disabled="disabled" class="form-control" id="screen-name"
+				aria-describedby="screenName" name="screen-name" />
+		</div>
+
+		<div class="mb-3 d-none">
 			<label for="treatment-details" class="form-label">Treatment details</label>
 			<input type="text" class="form-control" id="treatment-details"
 				aria-describedby="treatment-detailsHelp" name="treatment-details" />
-			<div id="treatmentDetailsHelp" class="form-text">Optional, only needed when treatment is filled in</div>
-		</div>
-
-		<div class="mb-3">
-			<label for="cell-line-clone" class="form-label">Cell line clone</label>
-			<input type="text" class="form-control" id="cell-line-clone" pattern="TB[0-9]{4}" placeholder="TB...."
-				aria-describedby="cell-line-cloneHelp" name="cell-line-clone" required="required" />
-			<div id="cell-line-cloneHelp" class="form-text">Cryobase number</div>
 		</div>
 
 		<div class="mb-3">
@@ -103,144 +97,63 @@
 
 		<hr/>
 
-		<div class="clearfix container-fluid">
-			<button id="back-btn-2" class="btn btn-secondary float-start">Previous</button>
+		<div class="form-row" id='fastq-ip'>
+			<div class="mb-3 col-md-6">
+				<label for="fastq-low" class="form-label">FastQ file for low</label>
+				<input type="text" class="form-control" id="fastq-low" required="required"
+					aria-describedby="fastQLowHelp" name="fastq-low" />
+				<div id="fastQLowHelp" class="form-text text-muted">Full path to the FastQ file for the low channel</div>
+			</div>
 
-			<button id="submit-btn-2" type="submit" form="create-screen-form-2"
-				class="btn btn-primary float-end">Next</button>
+			<div class="mb-3 col-md-6">
+				<label for="fastq-high" class="form-label">FastQ file for high</label>
+				<input type="text" class="form-control" id="fastq-high" required="required"
+					aria-describedby="fastQhighHelp" name="fastq-high" />
+				<div id="fastQhighHelp" class="form-text text-muted">Full path to the FastQ file for the high channel</div>
+			</div>
 		</div>
-	</form>
 
-	<!-- page 3 -->
-
-	<form id="create-screen-form-3" z:action="@{/admin-ajax/create-screen?page=1}" method="post" enctype="multipart/form-data"
-		name="create-screen-form-3" class="container mt-5 d-none">
-		<input type="hidden" name="page-nr" value="3"/>
+		<div id='fastq-sl'>
+			<div class="form-row">
+				<div class="mb-3 col-md-6">
+					<label for="fastq-replicate-1" class="form-label">FastQ file for replicate-1</label>
+					<input type="text" class="form-control" id="fastq-replicate-1"
+						aria-describedby="fastQreplicate-1Help" name="fastq-replicate-1" />
+					<div id="fastQreplicate-1Help" class="form-text text-muted">Full path to the FastQ file for the replicate-1 channel</div>
+				</div>
 	
-		<div class="mb-3">
-			<label for="screen-name" class="form-label">Screen name</label>
-			<input type="text" disabled="disabled" class="form-control" id="screen-name"
-				aria-describedby="screenName" name="screen-name" />
-			<div id="screenName" class="form-text">Screen name is automatically calculated based on previous input</div>
+				<div class="mb-3 col-md-6">
+					<label for="fastq-replicate-2" class="form-label">FastQ file for replicate-2</label>
+					<input type="text" class="form-control" id="fastq-replicate-2"
+						aria-describedby="fastQreplicate-2Help" name="fastq-replicate-2" />
+					<div id="fastQreplicate-2Help" class="form-text text-muted">Full path to the FastQ file for the replicate-2 channel</div>
+				</div>
+			</div>
+
+			<div class="form-row">
+				<div class="mb-3 col-md-6">
+					<label for="fastq-replicate-3" class="form-label">FastQ file for replicate-3</label>
+					<input type="text" class="form-control" id="fastq-replicate-3"
+						aria-describedby="fastQreplicate-3Help" name="fastq-replicate-3" />
+					<div id="fastQreplicate-3Help" class="form-text text-muted">Full path to the FastQ file for the replicate-3 channel</div>
+				</div>
+	
+				<div class="mb-3 col-md-6">
+					<label for="fastq-replicate-4" class="form-label">FastQ file for replicate-4</label>
+					<input type="text" class="form-control" id="fastq-replicate-4"
+						aria-describedby="fastQreplicate-4Help" name="fastq-replicate-4" />
+					<div id="fastQreplicate-4Help" class="form-text text-muted">Full path to the FastQ file for the replicate-4 channel</div>
+				</div>
+			</div>
 		</div>
 
 		<hr/>
 
 		<div class="clearfix container-fluid">
-			<button id="back-btn-3" class="btn btn-secondary float-start">Previous</button>
-			<button id="submit-btn-3" type="submit" form="create-screen-form-3"
-				class="btn btn-primary float-end">Next</button>
+			<button id="submit-btn" type="submit" form="create-screen-form"
+				class="btn btn-primary float-right">Create</button>
 		</div>
 	</form>
-
-
-
-	<!-- 
-						<div class="form-group col-sm-12">
-							<label for="cell-line">Cell line</label>
-							<input class="form-control" id="cell-line" maxlength="254" name="cell-line"
-								placeholder="Cell line" type="text" required="" />
-						</div>
-
-						<div class="form-group col-sm-12">
-							<label for="genome">Reference Genome</label>
-							<select class="form-control" id="genome">
-								<option z:each="genome: ${genomes}" z:value="${genome.id}" z:text="${genome.name}">
-								</option>
-							</select>
-						</div>
-
-						<div class="col-sm-12">
-
-							<div class="form-group row col-sm-12">
-
-								<div class="form-check col-sm-4">
-									<input class="form-check-input" id="id-induced" name="induced" type="checkbox" />
-									<label for="id-induced">Induced</label>
-								</div>
-
-								<div class="form-check col-sm-4">
-									<input class="form-check-input" id="knockout" name="knockout" type="checkbox" />
-									<label for="knockout">Knockout</label>
-								</div>
-
-								<div class="form-check col-sm-4">
-									<input class="form-check-input" id="id-ignored" name="ignored" type="checkbox" />
-									<label for="id-ignored">Inactive</label>
-								</div>
-
-							</div>
-	-->
-
-					<!-- <div z:switch="${admin}">
-						<div z:case="${true}" class="form-group col-sm-12"><label for="scientist">Scientist</label> <select
-								class="form-control" id="scientist">
-								<option z:each="user: ${users}" z:value="${user.username}" z:text="${user.username}">
-								</option>
-							</select></div>
-						<div z:case="${false}" class="form-group col-sm-12"><label for="scientist2">Scientist</label>
-							<input type="text" disabled="disabled" class="form-control" id="scientist2"
-								z:value="${user.username}" /></div>
-					</div>
-					<div class="form-group col-sm-12"><label for="selected-groups">Groups</label>
-						<div class="border" style="height: 16em; overflow-y: auto">
-							<table class="table table-sm" id="selected-groups">
-								<tbody>
-									<tr z:each="group: ${groups}">
-										<td><input type="checkbox" z:name="${group.name}" class="group-checkbox"
-												z:id="${'grp-' + group.name}" />
-											<label class="mb-0 ml-1" z:text="${group.name}"
-												z:for="${'grp-' + group.name}"></label>
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="form-group"><label for="description">Description</label>
-				<textarea class="form-control" id="description" maxlength="254" name="description" placeholder="Description"
-					rows="2" form="create-screen-form-1" required=""></textarea>
-			</div>
-			<div class="form-group"><label for="long-description">Long
-					Description</label>
-				<textarea class="form-control" id="long-description" maxlength="254" name="long-description"
-					placeholder="Description" rows="3" form="create-screen-form-1" required=""></textarea>
-			</div>
-			<div class="form-group"><label for="sequence-ids">Sequence
-					IDs</label>
-				<textarea class="form-control" id="sequence-ids" maxlength="254" name="sequence-ids"
-					placeholder="Sequence IDs" rows="2" form="create-screen-form-1" required=""></textarea>
-			</div>
-			<div class="form-group"><label for="directory">Directory</label>
-				<input class="form-control" id="directory" maxlength="254" name="directory" placeholder="Directory"
-					type="text" required="" />
-			</div>
-			<div class="form-group border-light" id="data-file-block">
-				<div class="row col-sm-12"><label for="data-file">Data file</label>
-					<input type="file" id="data-file" class="form-control-file col" name="dataFile" required="" /> <button
-						id="upload-datafile-btn" class="btn btn-primary float-right" type="button">Upload</button>
-				</div>
-				<div class="form-row mt-3 col-sm-12">
-					<table id="uploadedFilesTbl" class="table table-sm" style="display: none">
-						<thead>
-							<tr>
-								<th>Nr</th>
-								<th>File</th>
-								<th>Data points</th>
-								<th></th>
-							</tr>
-						</thead>
-						<tbody></tbody>
-					</table>
-				</div>
-			</div> -->
-
-
-		<!-- Page 2 -->
-
-
 
 	<footer z:replace="~{footer :: content}"></footer>
 

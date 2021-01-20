@@ -1,237 +1,201 @@
+import "core-js/stable";
+import { timeHours } from "d3";
+import "regenerator-runtime/runtime";
 
+// const FileLoader = require("file-loader");
 
 class ScreenCreator {
 
 	constructor() {
-
-		this.nextPage(null, 1);
-
+		this.form = document.forms['create-screen-form'];
 		this.csrf = this.form.elements['_csrf'].value;
 
-		const btn = document.getElementById("upload-datafile-btn");
-		if (btn != null)
-			btn.addEventListener("click", (e) => this.uploadDataFile(e))
+		this.form['screen-type'].addEventListener('input', () => this.updateFastQBox());
+		this.form["detected-signal"].addEventListener("input", () => this.updateScreenName());
+		this.form["genotype"].addEventListener("input", () => this.updateScreenName());
+		this.form["treatment"].addEventListener("input", () => this.updateScreenName());
+
+		for (let f of ['low', 'high', 'replicate-1', 'replicate-2', 'replicate-3', 'replicate-4']) {
+			const fn = `fastq-${f}`;
+			this.form[fn].addEventListener('change', () => this.validateFile(f));
+		}
+
+		this.updateFastQBox();
+		this.updateScreenName();
+
+		this.form.addEventListener('submit', (e) => this.submitForm(e));
 	}
 
-	nextPage(evt, pageNr) {
-		if (evt)
-			evt.preventDefault();
+	updateScreenName() {
+		const detectedSignal = this.form['detected-signal'].value;
+		const genotype = this.form['genotype'].value;
+		const treatment = this.form['treatment'].value;
 
-		if (this.form)
-		{
-			this.form.classList.add('d-none');
+		let screenName;
 
-			switch (+this.form['page-nr'].value)
-			{
-				case 1: {
-					this.scientist = this.form['scientist'].value;
-					this.screenType = this.form['screen-type'].value;
-					break;
-				}
+		if (this.form['screen-type'].value == 'sl') {
+			if (typeof treatment == 'string' && treatment.length)
+				screenName = `${genotype} (${treatment})`;
+			else
+				screenName = `${genotype}`;
+		}
+		else {
+			if (typeof treatment == 'string' && treatment.length)
+				screenName = `${detectedSignal}-in-${genotype} (${treatment})`;
+			else
+				screenName = `${detectedSignal}-in-${genotype}`;
+		}
 
-				case 2: {
-					this.detectedSignal = this.form['detected-signal'].value;
-					this.genotype = this.form['genotype'].value;
-					this.treatment = this.form['treatment'].value;
-					this.treatmentDetails = this.form['treatment-details'].value;
-					this.cellLineClone = this.form['cell-line-clone'].value;
-					this.description = this.form['description'].value;
+		this.form['screen-name'].value = screenName
+			.replaceAll(/[ \n\r\t]/g, '-')
+			.replaceAll(/[:<>|&]/g, '')
+			.replaceAll(/--+/g, '-');
 
-					if (typeof this.treatment == 'string' && this.treatment.length)
-						this.screenName = `${this.detectedSignal}-in-${this.genotype} (${this.treatment})`;
-					else
-						this.screenName = `${this.detectedSignal}-in-${this.genotype}`;
+		this.form['treatment-details'].parentNode.classList.toggle('d-none', treatment.length == 0);
+		this.form['treatment-details'].required = treatment.length > 0;
+	}
 
-					this.screenName = this.screenName.replaceAll(' ', '_');
-					break;
-				}
+	updateFastQBox() {
+		const type = this.form['screen-type'].value;
+		switch (type) {
+			case 'ip': {
+				this.form['fastq-low'].required = true;
+				this.form['fastq-high'].required = true;
+
+				document.getElementById('fastq-ip').classList.remove('d-none');
+				document.getElementById('fastq-sl').classList.add('d-none');
+
+				this.form['detected-signal'].parentNode.classList.remove('invisible');
+				this.form['detected-signal'].required = true;
+				break;
+			}
+			case 'sl': {
+				this.form['fastq-low'].required = false;
+				this.form['fastq-high'].required = false;
+
+				document.getElementById('fastq-sl').classList.remove('d-none');
+				document.getElementById('fastq-ip').classList.add('d-none');
+
+				this.form['detected-signal'].parentNode.classList.add('invisible');
+				this.form['detected-signal'].required = false;
+				break;
 			}
 		}
-
-		const newPage = `create-screen-form-${pageNr}`;
-
-		this.form = document.forms[newPage];
-		this.form.classList.remove('d-none');
-
-		this.form.addEventListener("submit", (evt) => this.nextPage(evt, pageNr + 1));
-		const backBtn = document.getElementById(`back-btn-${pageNr}`);
-		if (backBtn)
-			backBtn.addEventListener("click", (e) => this.nextPage(e, pageNr - 1));
-
-		switch (pageNr)
-		{
-			case 3:
-				this.form['screen-name'].value = this.screenName;
-				break;
-		}
 	}
 
-	saveScreen(e) {
-		if (e)
-			e.preventDefault();
+	validateFile(f) {
+		const input = this.form[`fastq-${f}`];
 
-		this.screen.name = this.form.elements["name"].value;
-		this.screen.screenType = this.form.elements["screen-type"].value;
-		this.screen.description = document.getElementById("description").value;
-		this.screen.induced = this.form.elements["induced"].checked;
-		this.screen.knockout = this.form.elements["knockout"].checked;
-		this.screen.ignored = this.form.elements["ignored"].checked;
-		this.screen.cellLine = this.form.elements["cell-line"].value;
-		this.screen.genome = this.form.elements["genome"].value;
-		this.screen.directory = this.form.elements["directory"].value;
-		this.screen.longDescription = document.getElementById("long-description").value;
-		this.screen.sequenceIds = document.getElementById("sequence-ids").value;
-		if (this.form.elements["scientist"] != null)
-			this.screen.scientist = this.form.elements["scientist"].value;
-		this.screen.groups = Array.from(document.getElementsByClassName("group-checkbox"))
-			.filter(input => input.checked)
-			.map(input => input.name);
+		const fd = new FormData();
+		fd.append('file', input.value);
 
-		const files = document
-				.getElementById("uploadedFilesTbl")
-			.tBodies[0]
-			.getElementsByTagName("tr");
-		this.screen.dataFileNrs = [...files].map(tr => tr.querySelector("td").textContent);
-
-		const url = this.id ? `${this.action}/${this.id}` : this.action;
-		const method = this.id ? 'put' : 'post';
-
-		fetch(url, {
-			credentials: "include",
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-CSRF-Token': this.csrf
-			},
-			method: method,
-			body: JSON.stringify(this.screen)
-		}).then(async response => {
-			if (response.ok)
-				return response.json();
-
-			const error = await response.json();
-			console.log(error);
-			throw error.error;
+		let wasOK;
+		fetch(`screen/validate/fastq?file=${input.value}`, {
+			credentials: "include", method: 'POST', body: fd
 		}).then(r => {
-			console.log(r);
-			$(this.dialog).modal('hide');
-
-			window.location.reload();
-		}).catch(err => alert(err));
+			wasOK = r.ok;
+			return r.json();
+		})
+		.then(r => {
+			if (wasOK)
+				input.setCustomValidity('');
+			else if (r.error)
+				input.setCustomValidity(`Failed to validate FastQ file: ${r.error}`);
+			else
+			input.setCustomValidity("Failed to validate FastQ file, no error message");
+		}).catch((e) => {
+			alert(`Could not validate fastq file: ${e}`);
+		})
 	}
 
-	createScreen() {
-		this.id = null;
-		this.screen = {};
+	validateScreenName() {
+		return new Promise(async (resolve, reject) => {
 
-		// Array.from(this.form.elements)
-		// 	.filter(i => i.tagName === 'INPUT')
-		// 	.forEach(input => this.screen[input.name] = '');
+			try {
+				const screenName = this.form['screen-name'];
+				const fd = new FormData();
+				fd.append('name', screenName);
+				
+				let r = await fetch(`screen/validate/name?name=${screenName.value}`, {
+					credentials: "include", method: 'POST', body: fd
+				});
 
-		this.form.reset();
-
-		document.getElementById('data-file-block').style.display = 'unset';
-
-		$(this.dialog).modal();
+				if (r.ok == false)
+					reject('Invalid response from server');
+				
+				r = await r.json();
+				r === true ? resolve() : reject(`unexpected result from server: ${r}`);
+			}
+			catch (err) {
+				reject(err);
+			}
+		});
 	}
 
-	deleteScreen(id, name) {
-		if (confirm(`Are you sure you want to delete screen ${name}?`)) {
-			fetch(`${this.action}/${id}`, {
-				credentials: "include",
-				method: "delete",
-				headers: {
-					'Accept': 'application/json',
-					// 'Content-Type': 'application/json',
-					'X-CSRF-Token': this.csrf
-				}
-			}).then(async response => {
-				if (response.ok)
-					return response.json();
-
-				const error = await response.json();
-				console.log(error);
-				throw error.error;
-			}).then(data => {
-				console.log(data);
-
-				window.location.reload();
-			})
-				.catch(err => alert(err));
-		}
-	}
-
-	uploadDataFile(e) {
+	submitForm(e) {
 		if (e) e.preventDefault();
 
-		const screenName = this.form.elements["name"].value;
-		if (screenName == null || screenName === "") {
-			alert("Please enter the screen name first");
-			return;
-		}
+		this.validateScreenName()
+			.then(() => {
+		
+				const screen = {
+					name: this.form['screen-name'].value,
+					scientist: this.form['scientist'].value,
+					type: this.form['screen-type'].value,
+					detected_signal: this.form['detected-signal'].value,
+					genotype: this.form['genotype'].value,
+					treatment: this.form['treatment'].value,
+					treatment_details: this.form['treatment-details'].value,
+					cell_line: this.form['cell-line-clone'].value,
+					description: this.form['description'].value,
+					ignore: false,
+					files: []
+				};
 
-		const file = this.form.elements['dataFile'].files[0];
+				if (screen.type == 'sl') {
+					for (let r of [1, 2, 3, 4]) {
+						const fn = `fastq-replicate-${r}`;
+						const fv = this.form[fn].value;
+						if (fv.length > 0)
+							screen.files.push({ name: `replicate-${r}`, source: fv});
+					}
+				} else {
+					for (let c of ['low', 'high']) {
+						const fn = `fastq-${c}`;
+						const fv = this.form[fn].value;
+						if (fv.length > 0)
+							screen.files.push({ name: c, source: fv});
+					}
+				}
 
-		const formData = new FormData();
-		formData.append("name", screenName);
-		formData.append("genome", this.form.elements["genome"].value);
-		formData.append("dataFile", file);
-		formData.append("screen-type", this.form.elements["screen-type"].value);
-
-		fetch(`${this.action}/data`, {
-			credentials: "include",
-			method: "post",
-			headers: {
-				'Accept': 'application/json',
-				// 'Content-Type': 'multipart/form-data',
-				// 'Content-Type': 'application/json',
-				'X-CSRF-Token': this.csrf
-			},
-			body: formData
-		}).then(async response => {
-			if (response.ok)
-				return response.json();
-
-			const error = await response.json();
-			console.log(error);
-			throw error.error;
-		}).then(data => {
-			console.log(data);
-
-			// document.getElementById("data-count").textContent = data.count;
-			// document.getElementById("count-alert").style.display = 'unset';
-
-			const tbl = document.getElementById("uploadedFilesTbl");
-			const tr = document.createElement("tr");
-			tbl.tBodies[0].appendChild(tr);
-
-			let td = document.createElement("td");
-			td.appendChild(document.createTextNode(data.fileId));
-			tr.appendChild(td);
-
-			td = document.createElement("td");
-			td.appendChild(document.createTextNode(file.name));
-			tr.appendChild(td);
-
-			td = document.createElement("td");
-			td.appendChild(document.createTextNode(data.count));
-			tr.appendChild(td);
-
-			td = document.createElement("td");
-			let i = document.createElement("i");
-			i.classList.add("fa", "fa-trash");
-			td.appendChild(i);
-			tr.appendChild(td);
-			td.addEventListener("click", ev => {
-				if (ev) ev.preventDefault();
-				tbl.tBodies[0].removeChild(tr);
+				let wasOK;
+				fetch(`screen`, {
+					body: JSON.stringify(screen),
+					credentials: "include",
+					method: 'POST',
+					headers: {
+						'X-CSRF-Token': this.csrf,
+						'Content-Type': 'application/json'
+					}
+				}).then(r => {
+					wasOK = r.ok;
+					return r.json();
+				}).then(r => {
+					if (r.error)
+						throw r.error;
+					if (wasOK == false)
+						throw 'server returned an error';
+					
+					this.form.reset();
+				}).catch(err => {
+					console.log(err);
+					alert(`Failed to submit form: ${err}`);
+				});
+			})
+			.catch(err => {
+				console.log(err);
+				alert("The screen name is not valid, is it unique?");
 			});
-
-			tbl.style.display = 'unset';
-
-		}).catch(err => alert(err));
-
-		return false;
 	}
 }
 

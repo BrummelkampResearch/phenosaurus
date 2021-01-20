@@ -281,9 +281,13 @@ class screen_service
 	std::vector<screen_info> get_all_screens_for_user(const std::string& user) const;
 	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const;
 
+	bool exists(const std::string& name) const noexcept;
+	static bool is_valid_name(const std::string& name);
+
 	screen_info retrieve_screen(const std::string& name);
 	bool is_owner(const std::string& name, const std::string& username);
 
+	void create_screen(const screen_info& screen);
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 
@@ -345,8 +349,11 @@ class screen_user_rest_controller : public zeep::http::rest_controller
   public:
 	screen_user_rest_controller();
 
-	uint32_t create_screen(const screen_info& screen);
+	std::string create_screen(const screen_info& screen);
 	screen_info retrieve_screen(const std::string& name);
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
+
+	bool validateFastQFile(const std::string& filename);
+	bool validateScreenName(const std::string& name);
 };

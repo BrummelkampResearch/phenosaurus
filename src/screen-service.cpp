@@ -782,6 +782,18 @@ screen_info screen_service::retrieve_screen(const std::string& name)
 	return screen;
 }
 
+bool screen_service::exists(const std::string& name) const noexcept
+{
+	std::error_code ec;
+	return fs::exists(m_screen_data_dir / name / "manifest.json", ec);
+}
+
+bool screen_service::is_valid_name(const std::string& name)
+{
+	const std::regex rx(R"([\n\r\t :<>|&])");
+	return not std::regex_search(name.begin(), name.end(), rx);
+}
+
 bool screen_service::is_owner(const std::string& name, const std::string& username)
 {
 	bool result = false;
@@ -807,6 +819,36 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 	}
 	
 	return result;
+}
+
+void screen_service::create_screen(const screen_info& screen)
+{
+	auto screenDir = m_screen_data_dir / screen.name;
+
+	switch (screen.type)
+	{
+		case ScreenType::IntracellularPhenotype:
+		{
+			auto data = std::make_unique<IPScreenData>(screenDir, screen);
+			break;
+		}
+
+		case ScreenType::IntracellularPhenotypeActivation:
+		{
+			auto data = std::make_unique<PAScreenData>(screenDir, screen);
+			break;
+		}
+
+		case ScreenType::SyntheticLethal:
+		{
+			auto data = std::make_unique<SLScreenData>(screenDir, screen);
+			break;
+		}
+
+		case ScreenType::Unspecified:
+			throw std::runtime_error("Unknown screen type");
+			break;
+	}	
 }
 
 void screen_service::update_screen(const std::string& name, const screen_info& screen)
@@ -1062,16 +1104,20 @@ void screen_user_html_controller::handle_create_screen_user(const zeep::http::re
 screen_user_rest_controller::screen_user_rest_controller()
 	: zeep::http::rest_controller("/")
 {
-	// map_post_request("screen", &screen_user_rest_controller::create_screen, "screen");
+	map_post_request("screen/validate/fastq", &screen_user_rest_controller::validateFastQFile, "file");
+	map_post_request("screen/validate/name", &screen_user_rest_controller::validateScreenName, "name");
+
+	map_post_request("screen", &screen_user_rest_controller::create_screen, "screen");
 	map_get_request("screen/{id}", &screen_user_rest_controller::retrieve_screen, "id");
 	map_put_request("screen/{id}", &screen_user_rest_controller::update_screen, "id", "screen");
 	map_delete_request("screen/{id}", &screen_user_rest_controller::delete_screen, "id");
 }
 
-// uint32_t screen_user_rest_controller::create_screen(const screen& screen)
-// {
-// 	return screen_service::instance().create_screen(screen);
-// }
+std::string screen_user_rest_controller::create_screen(const screen_info& screen)
+{
+	screen_service::instance().create_screen(screen);
+	return screen.name;
+}
 
 screen_info screen_user_rest_controller::retrieve_screen(const std::string& name)
 {
@@ -1095,4 +1141,15 @@ void screen_user_rest_controller::delete_screen(const std::string& name)
 		throw zeep::http::forbidden;
 
 	screen_service::instance().delete_screen(name);
+}
+
+bool screen_user_rest_controller::validateFastQFile(const std::string& filename)
+{
+	checkIsFastQ(filename);
+	return true;
+}
+
+bool screen_user_rest_controller::validateScreenName(const std::string& name)
+{
+	return screen_service::is_valid_name(name) and not screen_service::instance().exists(name);
 }
