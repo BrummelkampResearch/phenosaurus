@@ -262,6 +262,30 @@ Command should be either:
 	user_service::init(smtpServer, smtpPort, smtpUser, smtpPassword);
 
 	// --------------------------------------------------------------------
+	
+	if (vm.count("bowtie") == 0)
+		throw std::runtime_error("Bowtie executable not specified");
+	fs::path bowtie = vm["bowtie"].as<std::string>();
+
+	std::map<std::string,fs::path> assemblyIndices;
+	for (auto assembly: { "hg19", "hg38" })
+	{
+		if (vm.count("bowtie-index-"s + assembly) == 0)
+			continue;
+		assemblyIndices[assembly] = vm["bowtie-index-"s + assembly].as<std::string>();
+	}
+
+	unsigned trimLength = 50;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
+	
+	unsigned threads = std::thread::hardware_concurrency();
+	if (vm.count("threads"))
+		threads = vm["threads"].as<unsigned>();
+
+	bowtie_parameters::init(bowtie, threads, trimLength, assemblyIndices);
+
+	// --------------------------------------------------------------------
 
 	fs::path docroot;
 
@@ -423,7 +447,6 @@ int main(int argc, char* const argv[])
 		{ Direction::AntiSense, "antisense" },
 		{ Direction::Both, 		"both" }
 	});
-
 
 	zeep::value_serializer<CHROM>::init({
 		{ INVALID, 	"unk" },

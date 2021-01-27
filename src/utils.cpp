@@ -309,7 +309,7 @@ void progress_impl::PrintDone()
 	std::chrono::duration<double> elapsed = std::chrono::system_clock::now() - mStart;
 
 	std::ostringstream msgstr;
-	msgstr << mAction << " done in " << elapsed << " cpu / %ws wall";
+	msgstr << mAction << " done in " << elapsed << " secs";
 	auto msg = msgstr.str();
 
 	if (msg.length() < width)

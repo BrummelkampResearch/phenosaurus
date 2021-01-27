@@ -83,6 +83,7 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(OBJDIR)/db-connection.o \
 	$(OBJDIR)/fisher.o \
 	$(OBJDIR)/genome-browser.o \
+	$(OBJDIR)/job-scheduler.o \
 	$(OBJDIR)/refseq.o \
 	$(OBJDIR)/screen-analyzer.o \
 	$(OBJDIR)/screen-creator.o \

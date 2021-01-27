@@ -177,6 +177,12 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 	write_manifest();
 }
 
+void ScreenData::map(const std::string& assembly)
+{
+	auto& params = bowtie_parameters::instance();
+	map(assembly, params.trimLength(), params.bowtie(), params.bowtieIndex(assembly), params.threads());
+}
+
 void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
@@ -185,7 +191,9 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	fs::path assemblyDataPath = mDataDir / assembly / std::to_string(trimLength);
 	if (not fs::exists(assemblyDataPath))
 		fs::create_directories(assemblyDataPath);
-	
+
+	fs::path bowtieLogFile = assemblyDataPath / "bowtie.log";
+
 	for (auto fi = fs::directory_iterator(mDataDir); fi != fs::directory_iterator(); ++fi)
 	{
 		if (fi->is_directory())
@@ -200,8 +208,11 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 			continue;
 		name = name.stem();
 
-		auto hits = runBowtie(bowtie, bowtieIndex, p, threads, trimLength);
-		std::cout << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
+		auto hits = runBowtie(bowtie, bowtieIndex, p, bowtieLogFile, threads, trimLength);
+
+		std::ofstream logFile(bowtieLogFile, std::ios::app);
+		if (logFile.is_open())
+			logFile << std::endl << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
 		write_insertions(assembly, trimLength, name, hits);
 	}

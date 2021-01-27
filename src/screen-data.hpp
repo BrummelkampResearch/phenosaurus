@@ -285,9 +285,12 @@ class ScreenData
 		std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
 		unsigned threads);
 
+	virtual void map(const std::string& assembly);
+
 	void dump_map(const std::string& assembly, unsigned readLength, const std::string& file);
 	void compress_map(const std::string& assembly, unsigned readLength, const std::string& file);
 
+	const std::string& name() const				{ return mInfo.name; }
 	ScreenType get_type() const					{ return mInfo.type; }
 
 	virtual void addFile(const std::string& name, std::filesystem::path file);

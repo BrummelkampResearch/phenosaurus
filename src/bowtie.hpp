@@ -50,10 +50,59 @@ struct Insertion
 
 static_assert(sizeof(Insertion) == 8);
 
-std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned trimLength);
+// --------------------------------------------------------------------
 
+class bowtie_parameters
+{
+  public:
+
+	static bowtie_parameters& instance()
+	{
+		if (not s_instance)
+			throw std::logic_error("You should initialize the bowtie parameters before using them");
+		return *s_instance;
+	}
+
+	static void init(std::filesystem::path bowtie, unsigned threads, unsigned trimLength,
+		const std::map<std::string,std::filesystem::path>& assemblyIndices)
+	{
+		s_instance.reset(new bowtie_parameters(bowtie, threads, trimLength, assemblyIndices));
+	}
+
+	std::filesystem::path	bowtie() const				{ return m_bowtie; }
+	std::filesystem::path	bowtieIndex(const std::string& assembly) const
+														{ return m_assemblyIndices.at(assembly); }
+	unsigned				threads() const				{ return m_threads; }
+	unsigned				trimLength() const			{ return m_trimLength; }
+
+  private:
+
+	bowtie_parameters(std::filesystem::path bowtie, unsigned threads, unsigned trimLength,
+		const std::map<std::string,std::filesystem::path>& assemblyIndices)
+		: m_bowtie(bowtie), m_threads(threads), m_trimLength(trimLength), m_assemblyIndices(assemblyIndices) {}
+
+	static std::unique_ptr<bowtie_parameters> s_instance;
+
+	std::filesystem::path m_bowtie;
+	unsigned m_threads;
+	unsigned m_trimLength;
+	std::map<std::string,std::filesystem::path> m_assemblyIndices;
+};
+
+// --------------------------------------------------------------------
+
+/// \brief Return the version string of the specified bowtie executable
 std::string bowtieVersion(std::filesystem::path bowtie);
+
+/// \brief First version of runBowtie, with all the possible parameters
+std::vector<Insertion> runBowtie(const std::filesystem::path& bowtie,
+	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
+	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength);
+
+// /// \brief Alternative for runBowtie, using predefined parameters
+// std::vector<Insertion> runBowtie(const std::string& assembly, std::filesystem::path fastq);
+
+// --------------------------------------------------------------------
 
 namespace std
 {

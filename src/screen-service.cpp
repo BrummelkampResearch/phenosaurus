@@ -14,6 +14,7 @@
 #include "user-service.hpp"
 #include "screen-service.hpp"
 #include "db-connection.hpp"
+#include "job-scheduler.hpp"
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
@@ -821,34 +822,38 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 	return result;
 }
 
-void screen_service::create_screen(const screen_info& screen)
+std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& screen)
 {
 	auto screenDir = m_screen_data_dir / screen.name;
+
+	std::unique_ptr<ScreenData> data;
 
 	switch (screen.type)
 	{
 		case ScreenType::IntracellularPhenotype:
 		{
-			auto data = std::make_unique<IPScreenData>(screenDir, screen);
+			data = std::make_unique<IPScreenData>(screenDir, screen);
 			break;
 		}
 
 		case ScreenType::IntracellularPhenotypeActivation:
 		{
-			auto data = std::make_unique<PAScreenData>(screenDir, screen);
+			data = std::make_unique<PAScreenData>(screenDir, screen);
 			break;
 		}
 
 		case ScreenType::SyntheticLethal:
 		{
-			auto data = std::make_unique<SLScreenData>(screenDir, screen);
+			data = std::make_unique<SLScreenData>(screenDir, screen);
 			break;
 		}
 
 		case ScreenType::Unspecified:
 			throw std::runtime_error("Unknown screen type");
 			break;
-	}	
+	}
+
+	return data;
 }
 
 void screen_service::update_screen(const std::string& name, const screen_info& screen)
@@ -939,6 +944,15 @@ std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type
 	}
 	
 	return result;
+}
+
+void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
+{
+	std::unique_lock lock(m_mutex);
+
+	m_ip_data_cache.erase(
+		std::remove_if(m_ip_data_cache.begin(), m_ip_data_cache.end(), [name=screen->name()](auto i) { return i->contains_data_for_screen(name); }),
+		m_ip_data_cache.end());
 }
 
 // --------------------------------------------------------------------
@@ -1092,10 +1106,6 @@ void screen_user_html_controller::handle_create_screen_user(const zeep::http::re
 	to_element(groups, g);
 	sub.put("groups", groups);
 
-	auto credentials = get_credentials();
-	// auto username = credentials["username"].as<std::string>();
-	sub.put("user", credentials);
-
 	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
 
@@ -1115,7 +1125,8 @@ screen_user_rest_controller::screen_user_rest_controller()
 
 std::string screen_user_rest_controller::create_screen(const screen_info& screen)
 {
-	screen_service::instance().create_screen(screen);
+	job_scheduler::instance().push(new map_job(screen_service::instance().create_screen(screen), "hg38"));
+
 	return screen.name;
 }
 

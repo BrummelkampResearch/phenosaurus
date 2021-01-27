@@ -287,7 +287,7 @@ class screen_service
 	screen_info retrieve_screen(const std::string& name);
 	bool is_owner(const std::string& name, const std::string& username);
 
-	void create_screen(const screen_info& screen);
+	std::unique_ptr<ScreenData> create_screen(const screen_info& screen);
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 
@@ -297,6 +297,8 @@ class screen_service
 
 	std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
+
+	void screen_mapped(const std::unique_ptr<ScreenData>& screen);
 
   private:
 	screen_service(const std::string& screen_data_dir);

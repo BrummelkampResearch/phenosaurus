@@ -45,6 +45,10 @@ double system_time()
 
 // --------------------------------------------------------------------
 
+std::unique_ptr<bowtie_parameters> bowtie_parameters::s_instance;
+
+// --------------------------------------------------------------------
+
 Insertion parseLine(const char* line, unsigned readLength)
 {
 	// result
@@ -110,38 +114,39 @@ Insertion parseLine(const char* line, unsigned readLength)
 	return result;
 }
 
-// --------------------------------------------------------------------
+// // --------------------------------------------------------------------
 
-struct progress_filter
-{
-	progress_filter() = delete;
-	progress_filter(progress& p) : m_progress(p) {}
+// struct progress_filter
+// {
+// 	progress_filter() = delete;
+// 	progress_filter(progress& p) : m_progress(p) {}
 	
-	progress_filter(const progress_filter& cf)
-		: m_progress(const_cast<progress&>(cf.m_progress)) {}
+// 	progress_filter(const progress_filter& cf)
+// 		: m_progress(const_cast<progress&>(cf.m_progress)) {}
 
-	progress_filter& operator=(const progress_filter& cf) = delete;
+// 	progress_filter& operator=(const progress_filter& cf) = delete;
 
-	typedef char char_type;
-	typedef io::multichar_input_filter_tag category;
+// 	typedef char char_type;
+// 	typedef io::multichar_input_filter_tag category;
 
-	template<typename Source>
-	std::streamsize read(Source& src, char* s, std::streamsize n)
-	{
-		auto r = boost::iostreams::read(src, s, n);
-		if (r > 0)
-			m_progress.consumed(r);
+// 	template<typename Source>
+// 	std::streamsize read(Source& src, char* s, std::streamsize n)
+// 	{
+// 		auto r = boost::iostreams::read(src, s, n);
+// 		if (r > 0)
+// 			m_progress.consumed(r);
 		
-		return r;
-	}
+// 		return r;
+// 	}
 
-	progress& m_progress;
-};
+// 	progress& m_progress;
+// };
 
 // -----------------------------------------------------------------------
 
-std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned trimLength,
+std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
+	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
+	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength,
 	int maxmismatch = 0, std::filesystem::path mismatchfile = {})
 {
 	auto p = std::to_string(threads);
@@ -169,19 +174,21 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
 
 	// ready to roll
-	int ifd[2], ofd[2], efd[2], err;
+	int ifd[2], ofd[2], err;
 
 	err = pipe2(ifd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
 	err = pipe2(ofd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe2(efd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+
+	// open log file for appending
+	int efd = open(logFile.c_str(), O_CREAT | O_APPEND | O_RDWR, 0644);
+	const auto log_head = "\nbowtie output for " + fastq.string() + "\n" + std::string(18 + fastq.string().length(), '-') + "\n";
+	write(efd, log_head.data(), log_head.size());
 
 	int pid = fork();
 
 	if (pid == 0)    // the child
 	{
 		setpgid(0, 0);        // detach from the process group, create new
-
-		signal(SIGCHLD, SIG_IGN);    // block child died signals
 
 		dup2(ifd[0], STDIN_FILENO);
 		close(ifd[0]);
@@ -191,9 +198,8 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		close(ofd[0]);
 		close(ofd[1]);
 
-		dup2(efd[1], STDERR_FILENO);
-		close(efd[0]);
-		close(efd[1]);
+		dup2(efd, STDERR_FILENO);
+		close(efd);
 
 		const char* env[] = { nullptr };
 		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
@@ -206,106 +212,95 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 		close(ifd[1]);
 		close(ofd[0]);
 		close(ofd[1]);
-		close(efd[0]);
-		close(efd[1]);
+		close(efd);
 
 		throw std::runtime_error("fork failed: "s + strerror(errno));
 	}
 
 	close(ifd[0]);
 
+	std::exception_ptr ep;
+
 	// always assume we have to trim (we used to check for trim length==read length, but that complicated the code too much)
-	std::thread thread([trimLength, &fastq, fd = ifd[1]]()
+	std::thread thread([trimLength, &fastq, fd = ifd[1], &ep]()
 	{
-		progress p(fastq.string(), fs::file_size(fastq));
-		p.message(fastq.filename().string());
-
-		std::ifstream file(fastq, std::ios::binary);
-
-		if (not file.is_open())
-			throw std::runtime_error("Could not open file " + fastq.string());
-
-		io::filtering_stream<io::input> in;
-		std::string ext = fastq.extension().string();
-		
-		if (fastq.extension() == ".gz")
+		try
 		{
-			in.push(io::gzip_decompressor());
-			ext = fastq.stem().extension().string();
-		}
+			// progress p(fastq.string(), fs::file_size(fastq));
+			// p.message(fastq.filename().string());
 
-		in.push(progress_filter(p));
-		
-		in.push(file);
+			std::ifstream file(fastq, std::ios::binary);
 
-		char nl[1] = { '\n' };
+			if (not file.is_open())
+				throw std::runtime_error("Could not open file " + fastq.string());
 
-		while (not in.eof())
-		{
-			// readLength != trimLength
-			// read four lines
-
-			std::string line[4];
-			if (not std::getline(in, line[0]) or 
-				not std::getline(in, line[1]) or 
-				not std::getline(in, line[2]) or 
-				not std::getline(in, line[3]))
+			io::filtering_stream<io::input> in;
+			std::string ext = fastq.extension().string();
+			
+			if (fastq.extension() == ".gz")
 			{
-				break;
-				// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
+				in.push(io::gzip_decompressor());
+				ext = fastq.stem().extension().string();
 			}
 
-			if (line[0].length() < 2 or line[0][0] != '@')
-				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
+			// in.push(progress_filter(p));
+			
+			in.push(file);
 
-			if (line[2].empty() or line[2][0] != '+')
-				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
+			char nl[1] = { '\n' };
 
-			if (line[1].length() != line[3].length() or line[1].empty())
-				throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
-
-			iovec v[8] = {
-				{ line[0].data(), line[0].length() },
-				{ nl, 1 },
-				{ line[1].data(), trimLength },
-				{ nl, 1 },
-				{ line[2].data(), line[2].length() },
-				{ nl, 1 },
-				{ line[3].data(), trimLength },
-				{ nl, 1 },
-			};
-
-			int r = writev(fd, v, 8);
-			if (r < 0)
+			while (not in.eof())
 			{
-				std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
-				break;
-			}
-		}
+				// readLength != trimLength
+				// read four lines
 
-	    close(fd);
+				std::string line[4];
+				if (not std::getline(in, line[0]) or 
+					not std::getline(in, line[1]) or 
+					not std::getline(in, line[2]) or 
+					not std::getline(in, line[3]))
+				{
+					break;
+					// throw std::runtime_error("Could not read from " + fastq.string() + ", invalid file?");
+				}
+
+				if (line[0].length() < 2 or line[0][0] != '@')
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", first line not valid");
+
+				if (line[2].empty() or line[2][0] != '+')
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
+
+				if (line[1].length() != line[3].length() or line[1].empty())
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+
+				iovec v[8] = {
+					{ line[0].data(), line[0].length() },
+					{ nl, 1 },
+					{ line[1].data(), trimLength },
+					{ nl, 1 },
+					{ line[2].data(), line[2].length() },
+					{ nl, 1 },
+					{ line[3].data(), trimLength },
+					{ nl, 1 },
+				};
+
+				int r = writev(fd, v, 8);
+				if (r < 0)
+				{
+					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+					break;
+				}
+			}
+
+			close(fd);
+		}
+		catch (const std::exception& ex)
+		{
+			ep = std::current_exception();
+		}
 	});
 
 	close(ofd[1]);
-	close(efd[1]);
-
-	// OK, so now the executable is started and the pipes are set up
-	// read from the pipes until done.
-
-	// start a thread to read stderr, can be used for logging
-
-	std::thread err_thread([fd = efd[0]]()
-	{
-		char buffer[1024];
-		for (;;)
-		{
-			int r = read(fd, buffer, sizeof(buffer));
-			if (r <= 0)
-				break;
-
-			std::cerr.write(buffer, r);
-		}
-	});
 
 	char buffer[8192];
 	std::string line;
@@ -373,39 +368,41 @@ std::vector<Insertion> runBowtieInt(std::filesystem::path bowtie, std::filesyste
 	result.erase(std::unique(result.begin(), result.end()), result.end());
 
 	thread.join();
-	err_thread.join();
 
 	close(ofd[0]);
-	close(efd[0]);
+	close(efd);
 
 	// no zombies please, removed the WNOHANG. the forked application should really stop here.
 	int status = 0;
-	waitpid(pid, &status, 0);
+	int r = waitpid(pid, &status, 0);
 
-	int r = -1;
-	if (WIFEXITED(status))
-		r = WEXITSTATUS(status);
-	
-	if (r != 0)
-		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
+	if (r == pid and WIFEXITED(status))
+		status = WEXITSTATUS(status);
+
+	if (status != 0)
+		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(status));
+
+	if (ep)
+		std::rethrow_exception(ep);
 
 	return result;
 }
 
 // -----------------------------------------------------------------------
 
-std::vector<Insertion> runBowtie(std::filesystem::path bowtie, std::filesystem::path bowtieIndex,
-	std::filesystem::path fastq, unsigned threads, unsigned trimLength)
+std::vector<Insertion> runBowtie(const std::filesystem::path& bowtie,
+	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
+	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength)
 {
 	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + ".fastq");
 
-	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, threads, trimLength, 1, m);
+	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, logFile, threads, trimLength, 1, m);
 
 	if (fs::exists(m))
 	{
 		if (fs::file_size(m) > 0)
 		{
-			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, threads, trimLength);
+			auto ins_2 = runBowtieInt(bowtie, bowtieIndex, m, logFile, threads, trimLength);
 
 			std::vector<Insertion> merged;
 			merged.reserve(result.size() + ins_2.size());
@@ -449,6 +446,20 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 	{
 		setpgid(0, 0);        // detach from the process group, create new
 
+		// it is dubious if this is needed:
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGCHLD, SIG_IGN);    // block child died signals
+
+		// fork again, to avoid being able to attach to a terminal device
+		pid = fork();
+
+		if (pid == -1)
+			std::cerr << "Fork failed" << std::endl;
+
+		if (pid != 0)
+			_exit(0);
+
+		signal(SIGHUP, SIG_IGN);
 		signal(SIGCHLD, SIG_IGN);    // block child died signals
 
 		dup2(ofd[1], STDOUT_FILENO);
@@ -535,13 +546,22 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 	int status = 0;
 	int r = waitpid(pid, &status, 0);
 
-	if (r == pid and WIFEXITED(status))
-		r = WEXITSTATUS(status);
-	
-	if (r != 0)
-		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(r));
-
 	t.join();
+
+	if (r == pid and WIFEXITED(status))
+		status = WEXITSTATUS(status);
+	
+	if (status != 0)
+		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(status));
 
 	return f.get();
 }
+
+// // --------------------------------------------------------------------
+
+// std::vector<Insertion> runBowtie(const std::string& assembly, std::filesystem::path fastq)
+// {
+// 	auto params = bowtie_parameters::instance();
+// 	return runBowtie(params.bowtie(), params.bowtieIndex(assembly), fastq, params.threads(), params.trimLength());
+// }
+

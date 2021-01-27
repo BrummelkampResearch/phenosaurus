@@ -57,29 +57,25 @@ class ScreenCreator {
 
 	updateFastQBox() {
 		const type = this.form['screen-type'].value;
-		switch (type) {
-			case 'ip': {
-				this.form['fastq-low'].required = true;
-				this.form['fastq-high'].required = true;
-
-				document.getElementById('fastq-ip').classList.remove('d-none');
-				document.getElementById('fastq-sl').classList.add('d-none');
-
-				this.form['detected-signal'].parentNode.classList.remove('invisible');
-				this.form['detected-signal'].required = true;
-				break;
-			}
-			case 'sl': {
-				this.form['fastq-low'].required = false;
-				this.form['fastq-high'].required = false;
-
-				document.getElementById('fastq-sl').classList.remove('d-none');
-				document.getElementById('fastq-ip').classList.add('d-none');
-
-				this.form['detected-signal'].parentNode.classList.add('invisible');
-				this.form['detected-signal'].required = false;
-				break;
-			}
+		if (type == 'sl') {
+			this.form['fastq-low'].required = false;
+			this.form['fastq-high'].required = false;
+	
+			document.getElementById('fastq-sl').classList.remove('d-none');
+			document.getElementById('fastq-ip').classList.add('d-none');
+	
+			this.form['detected-signal'].parentNode.classList.add('invisible');
+			this.form['detected-signal'].required = false;
+		}
+		else {
+			this.form['fastq-low'].required = true;
+			this.form['fastq-high'].required = true;
+	
+			document.getElementById('fastq-ip').classList.remove('d-none');
+			document.getElementById('fastq-sl').classList.add('d-none');
+	
+			this.form['detected-signal'].parentNode.classList.remove('invisible');
+			this.form['detected-signal'].required = true;
 		}
 	}
 
