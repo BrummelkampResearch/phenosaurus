@@ -86,7 +86,7 @@
 		<div class="mb-3 d-none">
 			<label for="treatment-details" class="form-label">Treatment details</label>
 			<input type="text" class="form-control" id="treatment-details"
-				aria-describedby="treatment-detailsHelp" name="treatment-details" />
+				name="treatment-details" />
 		</div>
 
 		<div class="mb-3">
@@ -98,7 +98,7 @@
 			<div class="col-md-6 form-check form-check-inline">
 				<input type="checkbox" class="form-check-input" id="ignore"
 					aria-describedby="ignoreHelp" name="ignore" />
-				<label for="ignore" class="form-check-label">Ignore screen</label>
+				<label for="ignore" class="form-check-label">Inactive screen <span  class="text-muted">ignore in uniqueness e.g.</span></label>
 			</div>
 		</div>
 
@@ -157,6 +157,7 @@
 		<hr/>
 
 		<div class="clearfix container-fluid">
+			<button id='cancel-btn' class="btn btn-secondary" onclick="js:window.location='screens'">Cancel</button>
 			<button id="submit-btn" type="submit" form="create-screen-form"
 				class="btn btn-primary float-right">Create</button>
 		</div>

@@ -23,8 +23,14 @@ class ScreenEditor {
 			cell_line: this.form['cell-line-clone'].value,
 			description: this.form['description'].value,
 			ignore: this.form['ignore'].checked,
+			groups: []
 			// files: []
 		};
+
+		[...document.querySelectorAll('#selected-groups input')]
+			.filter(g => g.checked)
+			.map(g => g.name)
+			.forEach(g => screen.groups.push(g));
 
 		let wasOK;
 		fetch(`screen/${this.form['screen-name'].value}`, {
@@ -44,12 +50,11 @@ class ScreenEditor {
 			if (wasOK == false)
 				throw 'server returned an error';
 			
-			this.form.reset();
+			window.location = 'screens';
 		}).catch(err => {
 			console.log(err);
 			alert(`Failed to submit form: ${err}`);
 		});
-
 	}
 }
 

@@ -66,30 +66,54 @@
 
 		</div>
 
-		<div class="mb-3">
-			<label for="screen-name" class="form-label">Screen name</label>
-			<input type="text" disabled="disabled" class="form-control" id="screen-name"
-				aria-describedby="screenName" name="screen-name" z:value="${screen.name}" />
-		</div>
+		<div class="form-row">
+			<div class="col-md-9">
+				<div class="mb-3">
+					<label for="screen-name" class="form-label">Screen name</label>
+					<input type="text" disabled="disabled" class="form-control" id="screen-name"
+						aria-describedby="screenName" name="screen-name" z:value="${screen.name}" />
+				</div>
+		
+				<div class="mb-3" z:classappend="${screen.treatment?:'d-none'}">
+					<label for="treatment-details" class="form-label">Treatment details</label>
+					<input type="text" class="form-control" id="treatment-details" z:value="${screen.treatment_details}"
+						aria-describedby="treatment-detailsHelp" name="treatment-details" />
+				</div>
+		
+				<div class="mb-3">
+					<label for="description" class="form-label">Description</label>
+					<textarea class="form-control" id="description" name="description" rows="3" z:value="${screen.description}"></textarea>
+				</div>
+		
+				<div class="form-row mb-5">
+					<div class="col-md-6 form-check form-check-inline">
+						<input type="checkbox" class="form-check-input" id="ignore"
+							aria-describedby="ignoreHelp" name="ignore" z:checked="${screen.ignore}" />
+						<label for="ignore" class="form-check-label">Inactive screen <span  class="text-muted">ignore in uniqueness e.g.</span></label>
+					</div>
+				</div>
+			</div>
 
-		<div class="mb-3" z:classappend="${screen.treatment?:'d-none'}">
-			<label for="treatment-details" class="form-label">Treatment details</label>
-			<input type="text" class="form-control" id="treatment-details" z:value="${screen.treatment_details}"
-				aria-describedby="treatment-detailsHelp" name="treatment-details" />
-		</div>
-
-		<div class="mb-3">
-			<label for="description" class="form-label">Description</label>
-			<textarea class="form-control" id="description" name="description" rows="3" z:value="${screen.description}"></textarea>
-		</div>
-
-		<div class="form-row mb-5">
-			<div class="col-md-6 form-check form-check-inline">
-				<input type="checkbox" class="form-check-input" id="ignore"
-					aria-describedby="ignoreHelp" name="ignore" />
-				<label for="ignore" class="form-check-label">Ignore screen</label>
+			<div class="col-md-3 mb-5">
+				<label for="selected-groups">Groups</label>
+				<div class="border" style="height: 16em; overflow-y: auto">
+					<table class="table table-sm" id="selected-groups">
+						<tbody>
+							<tr z:each="group: ${groups}">
+								<td><input type="checkbox" z:name="${group.name}"
+										class="group-checkbox"
+										z:id="${'grp-' + group.name}"
+										z:checked="${#list.contains(screen.groups, group.name)}" />
+									<label class="mb-0 ml-1"
+										z:text="${group.name}"
+										z:for="${'grp-' + group.name}"></label></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</div>
+
 
 		<table class="table table-sm">
 			<caption>Processed FastQ files</caption>
@@ -108,6 +132,7 @@
 		<hr/>
 
 		<div class="clearfix container-fluid">
+			<button id='cancel-btn' class="btn btn-secondary" onclick="js:window.location='screens'">Cancel</button>
 			<button id="submit-btn" type="submit" form="create-screen-form"
 				class="btn btn-primary float-right">Update</button>
 		</div>

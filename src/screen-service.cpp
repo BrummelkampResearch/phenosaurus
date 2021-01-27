@@ -963,6 +963,39 @@ void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 
 // --------------------------------------------------------------------
 
+class screen_analyzer_list_utility_object : public zeep::http::expression_utility_object<screen_analyzer_list_utility_object>
+{
+  public:
+
+	static constexpr const char* name() { return "list"; }
+
+	virtual zeep::http::object evaluate(const zeep::http::scope& scope, const std::string& methodName,
+		const std::vector<zeep::http::object>& parameters) const
+	{
+		zeep::http::object result;
+
+		if (methodName == "contains" and parameters.size() == 2)
+		{
+			auto list = parameters[0];
+			auto q = parameters[1];
+
+			for (const auto& i: list)
+			{
+				if (i != q)
+					continue;
+				
+				result = true;
+				break;
+			}
+		}
+
+		return result;
+	}
+	
+} s_screen_analyzer_list_utility_object;
+
+// --------------------------------------------------------------------
+
 screen_html_controller::screen_html_controller()
 	: zeep::http::html_controller("/")
 {
@@ -1049,6 +1082,11 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request& 
 	to_element(screen, info);
 	sub.put("screen", screen);
 
+	zeep::json::element groups;
+	auto g = user_service::instance().get_all_groups();
+	to_element(groups, g);
+	sub.put("groups", groups);
+
 	get_template_processor().create_reply_from_template("edit-screen", sub, reply);
 }
 
@@ -1095,6 +1133,7 @@ void screen_rest_controller::update_screen(const std::string& name, const screen
 	info.cell_line = screen.cell_line;
 	info.description = screen.description;
 	info.ignore = screen.ignore;
+	info.groups = screen.groups;
 
 	screen_service::instance().update_screen(name, info);
 }

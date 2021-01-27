@@ -193,33 +193,6 @@ class ip_screen_data_cache : public screen_data_cache
 
 // --------------------------------------------------------------------
 
-struct sl_data_point
-{
-	std::string gene;
-	float binom_fdr;
-	uint32_t sense;
-	uint32_t antisense;
-	uint32_t sense_normalized;
-	uint32_t antisense_normalized;
-	std::array<float,4> pv;
-	std::array<float,4> fcpv;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("binom_fdr", binom_fdr)
-		   & zeep::make_nvp("sense", sense)
-		   & zeep::make_nvp("antisense", antisense)
-		   & zeep::make_nvp("sense_normalized", sense_normalized)
-		   & zeep::make_nvp("antisense_normalized", antisense_normalized)
-		   & zeep::make_nvp("pv", pv)
-		   & zeep::make_nvp("fcpv", fcpv);
-	}
-};
-
-// --------------------------------------------------------------------
-
 class screen_service
 {
   public:
