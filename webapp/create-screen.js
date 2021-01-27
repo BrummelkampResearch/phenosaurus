@@ -1,5 +1,4 @@
 import "core-js/stable";
-import { timeHours } from "d3";
 import "regenerator-runtime/runtime";
 
 // const FileLoader = require("file-loader");

@@ -32,7 +32,8 @@ module.exports = {
 
 		'genome-browser': SCRIPTS + "genome-browser.js",
 
-		'create-screen': SCRIPTS + "screen-creator.js",
+		'create-screen': SCRIPTS + "create-screen.js",
+		'edit-screen': SCRIPTS + "edit-screen.js",
 
 		'qc': SCRIPTS + "qc.js"
 	},

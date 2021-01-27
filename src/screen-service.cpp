@@ -15,6 +15,7 @@
 #include "screen-service.hpp"
 #include "db-connection.hpp"
 #include "job-scheduler.hpp"
+#include "bowtie.hpp"
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
@@ -1043,6 +1044,7 @@ screen_user_html_controller::screen_user_html_controller()
 {
 	mount("screens", &screen_user_html_controller::handle_screen_user);
 	mount("create-screen", &screen_user_html_controller::handle_create_screen_user);
+	mount("edit-screen", &screen_user_html_controller::handle_edit_screen_user);
 }
 
 void screen_user_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
@@ -1109,6 +1111,20 @@ void screen_user_html_controller::handle_create_screen_user(const zeep::http::re
 	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
 
+void screen_user_html_controller::handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	zeep::http::scope sub(scope);
+
+	const std::string screenID = request.get_parameter("screen-id");
+
+	auto info = screen_service::instance().retrieve_screen(screenID);
+	zeep::json::element screen;
+	to_element(screen, info);
+	sub.put("screen", screen);
+
+	get_template_processor().create_reply_from_template("edit-screen", sub, reply);
+}
+
 // --------------------------------------------------------------------
 
 screen_user_rest_controller::screen_user_rest_controller()
@@ -1125,7 +1141,9 @@ screen_user_rest_controller::screen_user_rest_controller()
 
 std::string screen_user_rest_controller::create_screen(const screen_info& screen)
 {
-	job_scheduler::instance().push(new map_job(screen_service::instance().create_screen(screen), "hg38"));
+	const auto& params = bowtie_parameters::instance();
+
+	job_scheduler::instance().push(new map_job(screen_service::instance().create_screen(screen), params.assembly()));
 
 	return screen.name;
 }

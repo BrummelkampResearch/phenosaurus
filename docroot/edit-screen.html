@@ -1,0 +1,112 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat" [
+<!ENTITY nbsp "&#160;">
+]>
+<html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+<head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
+
+	<title>Create Screen - Phenosaurus</title>
+
+	<script src="/scripts/edit-screen.js" type="application/ecmascript" z:src="@{/scripts/edit-screen.js}"></script>
+</head>
+
+<body>
+
+	<nav z:replace="~{menu :: menu}"></nav>
+	
+	<form id="create-screen-form" method="post" enctype="multipart/form-data" name="edit-screen-form" class="container mt-5">
+		
+		<div class="form-row">
+
+			<div class="col-md-6">
+				<label for="scientist2" class="form-label">Scientist</label>
+				<input type="text" disabled="disabled" class="form-control" id="scientist2"
+					aria-describedby="scientistHelp2" name="scientist" z:value="${screen.scientist}" />
+				<div id="scientistHelp2" class="form-text text-muted">Only admin can assign screens to other users</div>
+			</div>
+	
+			<div class="col-md-6">
+				<label for="screen-type">Screen Type</label>
+				<input type="text" disabled="disabled" class="form-control" id="screen-type" name="screen-type"
+					   z:value="${screen.type}" />
+			</div>
+		</div>
+
+		<hr/>
+
+		<div class="form-row">
+
+			<div class="mb-3 col-md-3">
+				<label for="detected-signal" class="form-label">Detected signal</label>
+				<input type="text" disabled="disabled" class="form-control" id="detected-signal" required="required"
+					aria-describedby="detectedSignalHelp" name="detected-signal" z:value="${screen.detected_signal}" />
+				<div id="detectedSignalHelp" class="form-text text-muted">First part of the screen name</div>
+			</div>
+	
+			<div class="mb-3 col-md-3">
+				<label for="genotype" class="form-label">Genotype</label>
+				<input type="text" disabled="disabled" class="form-control" id="genotype" required="required"
+					aria-describedby="genotypeHelp" name="genotype" z:value="${screen.genotype}" />
+				<div id="genotypeHelp" class="form-text text-muted">Second part of the screen name</div>
+			</div>
+	
+			<div class="mb-3 col-md-3">
+				<label for="treatment" class="form-label">Treatment</label>
+				<input type="text" disabled="disabled" class="form-control" id="treatment"
+					aria-describedby="treatmentHelp" name="treatment" z:value="${screen.treatment}" />
+				<div id="treatmentHelp" class="form-text text-muted">Optional</div>
+			</div>
+
+			<div class="mb-3 col-md-3">
+				<label for="cell-line-clone" class="form-label">Cell line clone</label>
+				<input type="text" class="form-control" id="cell-line-clone" pattern="TB[0-9]+" placeholder="TB...."
+					aria-describedby="cell-line-cloneHelp" name="cell-line-clone" required="required" z:value="${screen.cell_line}" />
+				<div id="cell-line-cloneHelp" class="form-text text-muted">Cryobase number</div>
+			</div>
+
+		</div>
+
+		<div class="mb-3">
+			<label for="screen-name" class="form-label">Screen name</label>
+			<input type="text" disabled="disabled" class="form-control" id="screen-name"
+				aria-describedby="screenName" name="screen-name" z:value="${screen.name}" />
+		</div>
+
+		<div class="mb-3" z:if="${screen.treatment}">
+			<label for="treatment-details" class="form-label">Treatment details</label>
+			<input type="text" class="form-control" id="treatment-details" z:value="${screen.treatment_details}"
+				aria-describedby="treatment-detailsHelp" name="treatment-details" />
+		</div>
+
+		<div class="mb-5">
+			<label for="description" class="form-label">Description</label>
+			<textarea class="form-control" id="description" name="description" rows="3" z:value="${screen.description}"></textarea>
+		</div>
+
+		<table class="table table-sm">
+			<caption>Processed FastQ files</caption>
+			<thead>
+				<tr><th>name</th><th>file</th></tr>
+			</thead>
+			<tbody>
+				<tr z:each="f: ${screen.files}">
+					<td z:text="${f.name}"></td>
+					<td z:text="${f.source}"></td>
+				</tr>
+			</tbody>
+		</table>
+
+
+		<hr/>
+
+		<div class="clearfix container-fluid">
+			<button id="submit-btn" type="submit" form="create-screen-form"
+				class="btn btn-primary float-right">Update</button>
+		</div>
+	</form>
+
+	<footer z:replace="~{footer :: content}"></footer>
+
+</body>
+
+</html>

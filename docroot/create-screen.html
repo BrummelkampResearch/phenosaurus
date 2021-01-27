@@ -1,4 +1,5 @@
-<!DOCTYPE html SYSTEM "about:legacy-compat" [ <!ENTITY nbsp "&#160;">
+<!DOCTYPE html SYSTEM "about:legacy-compat" [
+<!ENTITY nbsp "&#160;">
 ]>
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 
@@ -13,9 +14,7 @@
 
 	<nav z:replace="~{menu :: menu}"></nav>
 	
-	<form id="create-screen-form" z:action="@{/admin-ajax/create-screen?page=1}" method="post" enctype="multipart/form-data"
-		name="create-screen-form" class="container mt-5">
-		
+	<form id="create-screen-form" method="post" enctype="multipart/form-data" name="create-screen-form" class="container mt-5">
 		<div class="form-row">
 
 			<div z:switch="${#security.hasRole('ADMIN')}" class="col-md-6">

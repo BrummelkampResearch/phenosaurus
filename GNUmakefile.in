@@ -130,6 +130,8 @@ RSRC = docroot/ rsrc/ rsrc/version.txt
 SCRIPTS = \
 	webapp/index.js \
 	webapp/screen.js \
+	webapp/create-screen.js \
+	webapp/edit-screen.js \
 	webapp/sl-screen.js \
 	webapp/gene-selection.js \
 	webapp/gene-finder.js \

@@ -342,6 +342,7 @@ class screen_user_html_controller : public zeep::http::html_controller
 
 	void handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
 	void handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
+	void handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
 };
 
 // --------------------------------------------------------------------

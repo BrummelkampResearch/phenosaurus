@@ -64,9 +64,9 @@ class bowtie_parameters
 	}
 
 	static void init(std::filesystem::path bowtie, unsigned threads, unsigned trimLength,
-		const std::map<std::string,std::filesystem::path>& assemblyIndices)
+		const std::string& assembly, const std::map<std::string,std::filesystem::path>& assemblyIndices)
 	{
-		s_instance.reset(new bowtie_parameters(bowtie, threads, trimLength, assemblyIndices));
+		s_instance.reset(new bowtie_parameters(bowtie, threads, trimLength, assembly, assemblyIndices));
 	}
 
 	std::filesystem::path	bowtie() const				{ return m_bowtie; }
@@ -75,17 +75,22 @@ class bowtie_parameters
 	unsigned				threads() const				{ return m_threads; }
 	unsigned				trimLength() const			{ return m_trimLength; }
 
+	/// \brief The default assembly to use.
+	const std::string&		assembly() const			{ return m_assembly; }
+
   private:
 
 	bowtie_parameters(std::filesystem::path bowtie, unsigned threads, unsigned trimLength,
-		const std::map<std::string,std::filesystem::path>& assemblyIndices)
-		: m_bowtie(bowtie), m_threads(threads), m_trimLength(trimLength), m_assemblyIndices(assemblyIndices) {}
+		const std::string& assembly, const std::map<std::string,std::filesystem::path>& assemblyIndices)
+		: m_bowtie(bowtie), m_threads(threads), m_trimLength(trimLength)
+		, m_assembly(assembly), m_assemblyIndices(assemblyIndices) {}
 
 	static std::unique_ptr<bowtie_parameters> s_instance;
 
 	std::filesystem::path m_bowtie;
 	unsigned m_threads;
 	unsigned m_trimLength;
+	std::string m_assembly;
 	std::map<std::string,std::filesystem::path> m_assemblyIndices;
 };
 

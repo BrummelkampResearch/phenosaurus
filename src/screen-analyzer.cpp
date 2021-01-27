@@ -267,6 +267,10 @@ Command should be either:
 		throw std::runtime_error("Bowtie executable not specified");
 	fs::path bowtie = vm["bowtie"].as<std::string>();
 
+	std::string assembly = "hg38";
+	if (vm.count("assembly"))
+		assembly = vm["assembly"].as<std::string>();
+
 	std::map<std::string,fs::path> assemblyIndices;
 	for (auto assembly: { "hg19", "hg38" })
 	{
@@ -283,7 +287,7 @@ Command should be either:
 	if (vm.count("threads"))
 		threads = vm["threads"].as<unsigned>();
 
-	bowtie_parameters::init(bowtie, threads, trimLength, assemblyIndices);
+	bowtie_parameters::init(bowtie, threads, trimLength, assembly, assemblyIndices);
 
 	// --------------------------------------------------------------------
 
