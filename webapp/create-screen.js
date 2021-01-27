@@ -1,8 +1,6 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
-// const FileLoader = require("file-loader");
-
 class ScreenCreator {
 
 	constructor() {
@@ -104,26 +102,21 @@ class ScreenCreator {
 	}
 
 	validateScreenName() {
-		return new Promise(async (resolve, reject) => {
-
-			try {
-				const screenName = this.form['screen-name'];
-				const fd = new FormData();
-				fd.append('name', screenName);
-				
-				let r = await fetch(`screen/validate/name?name=${screenName.value}`, {
-					credentials: "include", method: 'POST', body: fd
-				});
-
+		return new Promise((resolve, reject) => {
+			const screenName = this.form['screen-name'];
+			const fd = new FormData();
+			fd.append('name', screenName);
+			
+			fetch(`screen/validate/name?name=${screenName.value}`, {
+				credentials: "include", method: 'POST', body: fd
+			}).then(r => {
 				if (r.ok == false)
 					reject('Invalid response from server');
-				
-				r = await r.json();
+				else
+					return r.json();
+			}).then(r => {
 				r === true ? resolve() : reject(`unexpected result from server: ${r}`);
-			}
-			catch (err) {
-				reject(err);
-			}
+			});
 		});
 	}
 
@@ -143,7 +136,7 @@ class ScreenCreator {
 					treatment_details: this.form['treatment-details'].value,
 					cell_line: this.form['cell-line-clone'].value,
 					description: this.form['description'].value,
-					ignore: false,
+					ignore: this.form['ignore'].checked,
 					files: []
 				};
 

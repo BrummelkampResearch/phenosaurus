@@ -27,13 +27,11 @@ module.exports = {
 
 		'admin-user': SCRIPTS + "admin-user.js",
 		'admin-group': SCRIPTS + "admin-group.js",
-		'admin-screen': SCRIPTS + "admin-screen.js",
-		'user-screen': SCRIPTS + "user-screen.js",
-
 		'genome-browser': SCRIPTS + "genome-browser.js",
 
 		'create-screen': SCRIPTS + "create-screen.js",
 		'edit-screen': SCRIPTS + "edit-screen.js",
+		'list-screen': SCRIPTS + "list-screen.js",
 
 		'qc': SCRIPTS + "qc.js"
 	},

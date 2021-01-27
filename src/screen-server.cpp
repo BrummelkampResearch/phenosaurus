@@ -122,7 +122,7 @@ class IPScreenRestController : public zh::rest_controller
 std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
-	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
@@ -131,7 +131,7 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff)
 {
-	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
@@ -164,7 +164,7 @@ std::vector<cluster> IPScreenRestController::find_clusters(const std::string& as
 Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
-	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	const int kWindowSize = 4000;
@@ -418,7 +418,7 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
-	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	fs::path screenDir = mScreenDir / screen;
@@ -468,7 +468,7 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 Region SLScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
 {
-	if (not user_service::instance().allow_screen_for_user(screen, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	const int kWindowSize = 4000;
@@ -672,13 +672,12 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	server->add_controller(new screen_qc_html_controller());
 	server->add_controller(new screen_qc_rest_controller());
 
+	server->add_controller(new screen_rest_controller());
+	server->add_controller(new screen_html_controller());
+
 	// admin
 	server->add_controller(new user_admin_rest_controller());
 	server->add_controller(new user_admin_html_controller());
-	server->add_controller(new screen_admin_rest_controller());
-	server->add_controller(new screen_admin_html_controller());
-	server->add_controller(new screen_user_rest_controller());
-	server->add_controller(new screen_user_html_controller());
 
 	return server;
 }

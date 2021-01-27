@@ -132,6 +132,7 @@ SCRIPTS = \
 	webapp/screen.js \
 	webapp/create-screen.js \
 	webapp/edit-screen.js \
+	webapp/list-screen.js \
 	webapp/sl-screen.js \
 	webapp/gene-selection.js \
 	webapp/gene-finder.js \
@@ -140,8 +141,6 @@ SCRIPTS = \
 	webapp/compare-3.js \
 	webapp/admin-user.js \
 	webapp/admin-group.js \
-	webapp/admin-screen.js \
-	webapp/user-screen.js \
 	webapp/genome-browser.js \
 	webapp/qc.js
 

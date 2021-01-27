@@ -218,53 +218,6 @@ struct sl_data_point
 	}
 };
 
-class sl_screen_data_cache : public screen_data_cache
-{
-  public:
-	sl_screen_data_cache(const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
-
-	~sl_screen_data_cache();
-
-	virtual bool is_up_to_date() const override;
-
-	bool is_for(std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd) const
-	{
-		return screen_data_cache::is_for(ScreenType::SyntheticLethal, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd);
-	}
-
-	bool contains_data_for_screen(const std::string& screen) const
-	{
-		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
-		return si != m_screens.end() and not si->data.empty();
-	}
-
-	std::vector<sl_data_point> data_points(const std::string& screen, float binomFdrCutOff, float pvCutOff, float effectSize);
-
-  private:
-
-	struct data_point
-	{
-		float binom_fdr;
-		uint32_t sense;
-		uint32_t antisense;
-		uint32_t sense_normalized;
-		std::array<float,4> pv;
-		std::array<float,4> fcpv;
-	};
-
-	struct cached_screen
-	{
-		std::string name;
-		std::vector<data_point> data;
-		bool ignore = false;
-	};
-
-	size_t index(size_t screen_nr, size_t transcript) const;
-	std::vector<cached_screen> m_screens;
-};
-
 // --------------------------------------------------------------------
 
 class screen_service
@@ -284,8 +237,9 @@ class screen_service
 	bool exists(const std::string& name) const noexcept;
 	static bool is_valid_name(const std::string& name);
 
-	screen_info retrieve_screen(const std::string& name);
-	bool is_owner(const std::string& name, const std::string& username);
+	screen_info retrieve_screen(const std::string& name) const;
+	bool is_owner(const std::string& name, const std::string& username) const;
+	bool is_allowed(const std::string& screenname, const std::string& username) const;
 
 	std::unique_ptr<ScreenData> create_screen(const screen_info& screen);
 	void update_screen(const std::string& name, const screen_info& screen);
@@ -312,33 +266,10 @@ class screen_service
 
 // --------------------------------------------------------------------
 
-class screen_admin_html_controller : public zeep::http::html_controller
+class screen_html_controller : public zeep::http::html_controller
 {
   public:
-	screen_admin_html_controller();
-
-	void handle_screen_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
-};
-
-// --------------------------------------------------------------------
-
-class screen_admin_rest_controller : public zeep::http::rest_controller
-{
-  public:
-	screen_admin_rest_controller();
-
-	// uint32_t create_screen(const screen& screen);
-	screen_info retrieve_screen(const std::string& name);
-	void update_screen(const std::string& name, const screen_info& screen);
-	void delete_screen(const std::string& name);
-};
-
-// --------------------------------------------------------------------
-
-class screen_user_html_controller : public zeep::http::html_controller
-{
-  public:
-	screen_user_html_controller();
+	screen_html_controller();
 
 	void handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
 	void handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
@@ -347,10 +278,10 @@ class screen_user_html_controller : public zeep::http::html_controller
 
 // --------------------------------------------------------------------
 
-class screen_user_rest_controller : public zeep::http::rest_controller
+class screen_rest_controller : public zeep::http::rest_controller
 {
   public:
-	screen_user_rest_controller();
+	screen_rest_controller();
 
 	std::string create_screen(const screen_info& screen);
 	screen_info retrieve_screen(const std::string& name);

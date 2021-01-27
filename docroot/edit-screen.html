@@ -72,15 +72,23 @@
 				aria-describedby="screenName" name="screen-name" z:value="${screen.name}" />
 		</div>
 
-		<div class="mb-3" z:if="${screen.treatment}">
+		<div class="mb-3" z:classappend="${screen.treatment?:'d-none'}">
 			<label for="treatment-details" class="form-label">Treatment details</label>
 			<input type="text" class="form-control" id="treatment-details" z:value="${screen.treatment_details}"
 				aria-describedby="treatment-detailsHelp" name="treatment-details" />
 		</div>
 
-		<div class="mb-5">
+		<div class="mb-3">
 			<label for="description" class="form-label">Description</label>
 			<textarea class="form-control" id="description" name="description" rows="3" z:value="${screen.description}"></textarea>
+		</div>
+
+		<div class="form-row mb-5">
+			<div class="col-md-6 form-check form-check-inline">
+				<input type="checkbox" class="form-check-input" id="ignore"
+					aria-describedby="ignoreHelp" name="ignore" />
+				<label for="ignore" class="form-check-label">Ignore screen</label>
+			</div>
 		</div>
 
 		<table class="table table-sm">

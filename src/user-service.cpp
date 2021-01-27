@@ -162,6 +162,8 @@ void user_service::set_groups_for_screen(const std::string& screen_name, std::ve
 		}
 	}
 
+	groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
+
 	auto current = get_groups_for_screen(screen_name);
 
 	if (current != groups)

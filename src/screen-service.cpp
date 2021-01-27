@@ -765,7 +765,7 @@ std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const
 	return screens;
 }
 
-screen_info screen_service::retrieve_screen(const std::string& name)
+screen_info screen_service::retrieve_screen(const std::string& name) const
 {
 	std::ifstream manifest(m_screen_data_dir / name / "manifest.json");
 
@@ -796,7 +796,7 @@ bool screen_service::is_valid_name(const std::string& name)
 	return not std::regex_search(name.begin(), name.end(), rx);
 }
 
-bool screen_service::is_owner(const std::string& name, const std::string& username)
+bool screen_service::is_owner(const std::string& name, const std::string& username) const
 {
 	bool result = false;
 
@@ -821,6 +821,11 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 	}
 	
 	return result;
+}
+
+bool screen_service::is_allowed(const std::string& screenname, const std::string& username) const
+{
+	return is_owner(screenname, username) or user_service::instance().allow_screen_for_user(screenname, username);
 }
 
 std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& screen)
@@ -958,96 +963,15 @@ void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 
 // --------------------------------------------------------------------
 
-screen_admin_html_controller::screen_admin_html_controller()
-	: zeep::http::html_controller("/admin")
-{
-	mount("screens", &screen_admin_html_controller::handle_screen_admin);
-}
-
-void screen_admin_html_controller::handle_screen_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
-{
-	zeep::http::scope sub(scope);
-
-	zeep::json::element screens;
-	auto s = screen_service::instance().get_all_screens();
-
-	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
-	{
-		std::string& a = sa.name;
-		std::string& b = sb.name;
-
-		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
-		bool result;
-		if (r.first == a.end() and r.second == b.end())
-			result = false;
-		else if (r.first == a.end())
-			result = true;
-		else if (r.second == b.end())
-			result = false;
-		else
-			result = std::tolower(*r.first) < std::tolower(*r.second);
-		return result;
-	});
-
-	to_element(screens, s);
-	sub.put("screens", screens);
-
-	zeep::json::element users;
-	auto u = user_service::instance().get_all_users();
-	to_element(users, u);
-	sub.put("users", users);
-
-	zeep::json::element groups;
-	auto g = user_service::instance().get_all_groups();
-	to_element(groups, g);
-	sub.put("groups", groups);
-
-	get_template_processor().create_reply_from_template("admin-screens.html", sub, reply);
-}
-
-// --------------------------------------------------------------------
-
-screen_admin_rest_controller::screen_admin_rest_controller()
-	: zeep::http::rest_controller("/admin")
-{
-	// map_post_request("screen", &screen_admin_rest_controller::create_screen, "screen");
-	map_get_request("screen/{id}", &screen_admin_rest_controller::retrieve_screen, "id");
-	map_put_request("screen/{id}", &screen_admin_rest_controller::update_screen, "id", "screen");
-	map_delete_request("screen/{id}", &screen_admin_rest_controller::delete_screen, "id");
-}
-
-// uint32_t screen_admin_rest_controller::create_screen(const screen& screen)
-// {
-// 	return screen_service::instance().create_screen(screen);
-// }
-
-screen_info screen_admin_rest_controller::retrieve_screen(const std::string& name)
-{
-	return screen_service::instance().retrieve_screen(name);
-}
-
-void screen_admin_rest_controller::update_screen(const std::string& name, const screen_info& screen)
-{
-	screen_service::instance().update_screen(name, screen);
-}
-
-void screen_admin_rest_controller::delete_screen(const std::string& name)
-{
-	screen_service::instance().delete_screen(name);
-}
-
-
-// --------------------------------------------------------------------
-
-screen_user_html_controller::screen_user_html_controller()
+screen_html_controller::screen_html_controller()
 	: zeep::http::html_controller("/")
 {
-	mount("screens", &screen_user_html_controller::handle_screen_user);
-	mount("create-screen", &screen_user_html_controller::handle_create_screen_user);
-	mount("edit-screen", &screen_user_html_controller::handle_edit_screen_user);
+	mount("screens", &screen_html_controller::handle_screen_user);
+	mount("create-screen", &screen_html_controller::handle_create_screen_user);
+	mount("edit-screen", &screen_html_controller::handle_edit_screen_user);
 }
 
-void screen_user_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1068,7 +992,10 @@ void screen_user_html_controller::handle_screen_user(const zeep::http::request& 
 	json screens;
 
 	auto s = screen_service::instance().get_all_screens();
-	s.erase(std::remove_if(s.begin(), s.end(), [username](auto& si) { return si.scientist != username; }), s.end());
+	auto& ss = screen_service::instance();
+
+	s.erase(std::remove_if(s.begin(), s.end(), [username,&ss](auto& si)
+		{ return not ss.is_allowed(si.name, username); }), s.end());
 
 	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
 	{
@@ -1091,10 +1018,10 @@ void screen_user_html_controller::handle_screen_user(const zeep::http::request& 
 	to_element(screens, s);
 	sub.put("screens", screens);
 
-	get_template_processor().create_reply_from_template("user-screens.html", sub, reply);
+	get_template_processor().create_reply_from_template("list-screens.html", sub, reply);
 }
 
-void screen_user_html_controller::handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1111,7 +1038,7 @@ void screen_user_html_controller::handle_create_screen_user(const zeep::http::re
 	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
 
-void screen_user_html_controller::handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1127,19 +1054,19 @@ void screen_user_html_controller::handle_edit_screen_user(const zeep::http::requ
 
 // --------------------------------------------------------------------
 
-screen_user_rest_controller::screen_user_rest_controller()
+screen_rest_controller::screen_rest_controller()
 	: zeep::http::rest_controller("/")
 {
-	map_post_request("screen/validate/fastq", &screen_user_rest_controller::validateFastQFile, "file");
-	map_post_request("screen/validate/name", &screen_user_rest_controller::validateScreenName, "name");
+	map_post_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
+	map_post_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
 
-	map_post_request("screen", &screen_user_rest_controller::create_screen, "screen");
-	map_get_request("screen/{id}", &screen_user_rest_controller::retrieve_screen, "id");
-	map_put_request("screen/{id}", &screen_user_rest_controller::update_screen, "id", "screen");
-	map_delete_request("screen/{id}", &screen_user_rest_controller::delete_screen, "id");
+	map_post_request("screen", &screen_rest_controller::create_screen, "screen");
+	map_get_request("screen/{id}", &screen_rest_controller::retrieve_screen, "id");
+	map_put_request("screen/{id}", &screen_rest_controller::update_screen, "id", "screen");
+	map_delete_request("screen/{id}", &screen_rest_controller::delete_screen, "id");
 }
 
-std::string screen_user_rest_controller::create_screen(const screen_info& screen)
+std::string screen_rest_controller::create_screen(const screen_info& screen)
 {
 	const auto& params = bowtie_parameters::instance();
 
@@ -1148,37 +1075,45 @@ std::string screen_user_rest_controller::create_screen(const screen_info& screen
 	return screen.name;
 }
 
-screen_info screen_user_rest_controller::retrieve_screen(const std::string& name)
+screen_info screen_rest_controller::retrieve_screen(const std::string& name)
 {
-	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_user_rest_controller::update_screen(const std::string& name, const screen_info& screen)
+void screen_rest_controller::update_screen(const std::string& name, const screen_info& screen)
 {
-	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	screen_service::instance().update_screen(name, screen);
+	auto info = screen_service::instance().retrieve_screen(name);
+
+	// replace only the editable fields:
+	info.treatment_details = screen.treatment_details;
+	info.cell_line = screen.cell_line;
+	info.description = screen.description;
+	info.ignore = screen.ignore;
+
+	screen_service::instance().update_screen(name, info);
 }
 
-void screen_user_rest_controller::delete_screen(const std::string& name)
+void screen_rest_controller::delete_screen(const std::string& name)
 {
-	if (not user_service::instance().allow_screen_for_user(name, get_credentials()["username"].as<std::string>()))
+	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	screen_service::instance().delete_screen(name);
 }
 
-bool screen_user_rest_controller::validateFastQFile(const std::string& filename)
+bool screen_rest_controller::validateFastQFile(const std::string& filename)
 {
 	checkIsFastQ(filename);
 	return true;
 }
 
-bool screen_user_rest_controller::validateScreenName(const std::string& name)
+bool screen_rest_controller::validateScreenName(const std::string& name)
 {
 	return screen_service::is_valid_name(name) and not screen_service::instance().exists(name);
 }
