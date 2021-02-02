@@ -114,33 +114,31 @@
 			</div>
 		</div>
 
-		<div class="form-row">
-			<table class="table table-sm col-md-5 mr-3">
-				<caption>FastQ files</caption>
-				<thead>
-					<tr><th>name</th><th>file</th></tr>
-				</thead>
-				<tbody>
-					<tr z:each="f: ${screen.files}">
-						<td z:text="${f.name}"></td>
-						<td z:text="${f.source}"></td>
-					</tr>
-				</tbody>
-			</table>
+		<table class="table table-sm">
+			<caption>FastQ files</caption>
+			<thead>
+				<tr><th>name</th><th>file</th></tr>
+			</thead>
+			<tbody>
+				<tr z:each="f: ${screen.files}">
+					<td z:text="${f.name}"></td>
+					<td z:text="${f.source}"></td>
+				</tr>
+			</tbody>
+		</table>
 
-			<table class="table table-sm col-md-5 ml-3">
-				<caption>Mapped assemblies</caption>
-				<thead>
-					<tr><th>Assembly</th><th>Trimlength</th></tr>
-				</thead>
-				<tbody>
-					<tr z:each="m: ${screen.mapped}">
-						<td z:text="${m.assembly}"></td>
-						<td z:text="${m.trim-length}"></td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
+		<table class="table table-sm">
+			<caption>Mapped assemblies</caption>
+			<thead>
+				<tr><th>Assembly</th><th>Trimlength</th></tr>
+			</thead>
+			<tbody>
+				<tr z:each="m: ${screen.mapped}">
+					<td z:text="${m.assembly}"></td>
+					<td z:text="${m.trim-length}"></td>
+				</tr>
+			</tbody>
+		</table>
 
 		<hr/>
 

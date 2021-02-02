@@ -124,8 +124,8 @@ std::optional<job_status> job_scheduler::get_job_status_for_screen(const std::st
 
 progress::progress(int64_t max, const std::string& action)
 	: m_job(job_scheduler::instance().current_job()), m_max(max), m_action(action)
-	, m_last_update(std::chrono::system_clock::now())
 	, m_cur(0)
+	, m_last_update(std::chrono::system_clock::now())
 {
 
 }
