@@ -378,6 +378,59 @@ class SLScreenPlot extends ScreenPlot {
 			.filter(d => d.significantGene())
 			.raise();
 	}
+
+	exportCSV() {
+
+		const options = geneSelectionEditor.getOptions();
+
+		options.append("pvCutOff", pvCutOff);
+		options.append("binomCutOff", document.getElementById('binom_fdr').value);
+		options.append("effectSize", document.getElementById('effect-size').value);
+
+		if (this.control != null)
+			options.append("control", this.control.name);
+
+		fetch(`${context_name}sl/screen/${this.name}`,
+				{ credentials: "include", method: "post", body: options })
+			.then(value => {
+				if (value.ok)
+					return value.json();
+				if (value.status === 403)
+					throw "invalid-credentials";
+			})
+			.then(data => {
+
+				const byteArrays = [];
+
+				const header = "replicate,gene,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
+				const hbytes = new Array(header.length);
+				for (let i in header)
+					hbytes[i] = header.charCodeAt(i);
+				byteArrays.push(new Uint8Array(hbytes));
+	
+				data.replicate
+					.forEach(r => {
+						r.data.map(e => [ r.name, e.gene, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
+							.forEach(l => {
+								const bytes = new Array(l.length);
+								for (let i in l)
+									bytes[i] = l.charCodeAt(i);
+								byteArrays.push(new Uint8Array(bytes));
+							});
+					})
+
+	
+				const blob = new Blob(byteArrays, { type: 'text/plain' });
+				const url = window.URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = `Raw_data_for_${screen}.csv`;
+				document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
+				a.click();    
+				a.remove();  
+			});
+	}
+
 }
 
 class SLControlScreenPlot extends SLScreenPlot {

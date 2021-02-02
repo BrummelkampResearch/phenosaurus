@@ -31,6 +31,7 @@
 						<th>Description</th>
 						<th>Cell line</th>
 						<th style="width: 100px;">Status</th>
+						<th colspan="2">Mapped</th>
 						<th style="text-align: center">Ignored</th>
 						<th colspan="2">Action</th>
 					</tr>
@@ -55,6 +56,8 @@
 								<div z:case="*" z:text="${screen.status.status}"></div>
 							</div>
 						</td>
+						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg19'}" class="fa fa-check"></i></span></td>
+						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg38'}" class="fa fa-check"></i></span></td>
 						<td style="text-align: center"><i z:if="${screen.ignore}" class="fa fa-check"></i></td>
 						<td class="edit-screen-btn" z:attr="data-id=${screen.name}">
 							<i class="fa fa-edit"></i></td>

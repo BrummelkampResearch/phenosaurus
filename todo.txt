@@ -1,11 +1,10 @@
 - ignored screens -> aparte weergave
 
-
-
-- manifest -- expand with bowtie/map info
+- weergave mapping in lijst
+- opstarten mapping
+- 
 
 - user/group validation
-- create screen process, web interface? Screen name volgens methode Lisa
 - csv file downloaden
 - SL analyse replicatie van gegevens Vincent
 - PICH2 analyse met HG19?

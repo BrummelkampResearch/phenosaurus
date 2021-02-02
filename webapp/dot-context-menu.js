@@ -94,6 +94,10 @@ export default class DotContextMenu extends ContextMenu {
 				this.plot.exportSVG();
 				break;
 
+			case 'export-data':
+				this.plot.exportCSV();
+				break;
+
 			default:
 				super.handleSelect(target, action);
 		}

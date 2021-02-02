@@ -2,40 +2,25 @@
 
 #include "config.hpp"
 
-#include <termios.h>
-#include <sys/ioctl.h>
-
 #include <iostream>
-#include <iomanip>
 #include <fstream>
-#include <regex>
 #include <filesystem>
 
 #include <boost/program_options.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/bzip2.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include <zeep/http/daemon.hpp>
 #include <zeep/crypto.hpp>
-#include <zeep/streambuf.hpp>
 
-#include "refseq.hpp"
-#include "fisher.hpp"
 #include "bowtie.hpp"
 #include "utils.hpp"
-#include "screen-analyzer.hpp"
-#include "screen-creator.hpp"
 #include "screen-data.hpp"
 #include "screen-server.hpp"
-#include "screen-service.hpp"
 #include "db-connection.hpp"
 #include "user-service.hpp"
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
-namespace io = boost::iostreams;
 namespace zh = zeep::http;
 namespace ba = boost::algorithm;
 
@@ -98,23 +83,6 @@ po::options_description get_config_options()
 
 // --------------------------------------------------------------------
 
-int usage()
-{
-	std::cerr << "Usage: screen-analyzer command [options]" << std::endl
-			  << std::endl
-			  << "Where command is one of" << std::endl
-			  << std::endl
-			  << "  create  -- create new screen" << std::endl
-			  << "  map     -- map read in a screen to an assembly" << std::endl
-			  << "  analyze -- analyze mapped reads" << std::endl
-			  << "  refseq  -- create reference gene table" << std::endl
-			  << "  server  -- start/stop server process" << std::endl
-			  << std::endl;
-	return 1;
-}
-
-// --------------------------------------------------------------------
-
 po::variables_map load_options(int argc, char* const argv[], const char* description,
 	std::initializer_list<po::option_description> options,
 	std::initializer_list<std::string> required,
@@ -140,7 +108,6 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 
 	po::options_description hidden("hidden options");
 	hidden.add_options()
-		("screen-name", po::value<std::string>(),	"Screen name")
 		("debug,d", po::value<int>(),				"Debug level (for even more verbose output)");
 
 	po::options_description cmdline_options;
@@ -362,66 +329,6 @@ Command should be either:
 
 // --------------------------------------------------------------------
 
-int main_compress(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( dump screen-name assembly file [options])",
-		{
-			{ "file", po::value<std::string>(),	"The file to dump" }
-		},
-		{ "screen-name", "assembly", "file" });
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
-
-	auto data = ScreenData::load(screenDir);
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	unsigned trimLength = 50;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
-	auto file = vm["file"].as<std::string>();
-
-	data->compress_map(assembly, trimLength, file);
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
-int main_dump(int argc, char* const argv[])
-{
-	int result = 0;
-
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( dump screen-name assembly file [options])",
-		{
-			{ "file", po::value<std::string>(),	"The file to dump" }
-		},
-		{ "screen-name", "assembly", "file" });
-
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
-
-	auto data = ScreenData::load(screenDir);
-
-	std::string assembly = vm["assembly"].as<std::string>();
-
-	unsigned trimLength = 50;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
-	auto file = vm["file"].as<std::string>();
-
-	data->dump_map(assembly, trimLength, file);
-
-	return result;
-}
-
-// --------------------------------------------------------------------
-
 int main(int argc, char* const argv[])
 {
 	int result = 0;
@@ -483,34 +390,7 @@ int main(int argc, char* const argv[])
 
 	try
 	{
-		if (argc < 2)
-		{
-			usage();
-			exit(-1);
-		}
-
-		std::string command = argv[1];
-		// if (command == "create")
-		// 	result = main_create(argc - 1, argv + 1);
-		// else if (command == "map")
-		// 	result = main_map(argc - 1, argv + 1);
-		// else if (command == "analyze")
-		// 	result = main_analyze(argc - 1, argv + 1);
-		// else if (command == "refseq")
-		// 	result = main_refseq(argc - 1, argv + 1);
-		// else
-		 if (command == "server")
-			result = main_server(argc - 1, argv + 1);
-		else if (command == "compress")
-			result = main_compress(argc - 1, argv + 1);
-		else if (command == "dump")
-			result = main_dump(argc - 1, argv + 1);
-		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
-			usage();
-		else if (command == "version" or command == "-v" or command == "--version")
-			showVersionInfo();
-		else
-			result = usage();
+		result = main_server(argc, argv);
 	}
 	catch (const std::exception& ex)
 	{

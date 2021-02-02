@@ -174,8 +174,49 @@ class ScreenPlotRegular extends ScreenPlot {
 						reject(err);
 				});
 		});
-
 	}
+
+	exportCSV() {
+		const screenList = document.getElementById("screenList");
+		const selected = screenList.selectedOptions;
+		if (selected.length === 1) {
+			const screen = selected.item(0).dataset.screen;
+			
+			const screenData = new ScreenData(screen);
+
+			screenData.load(this.getOptions())
+				.then(() => {
+					return screenData.data;
+				})
+				.then(data => {
+					const byteArrays = [];
+
+					const header = "gene,pv,fcpv,mi,low,high,rank\n";
+					const hbytes = new Array(header.length);
+					for (let i in header)
+						hbytes[i] = header.charCodeAt(i);
+					byteArrays.push(new Uint8Array(hbytes));
+
+					data.map(e => [e.gene, e.pv, e.fcpv, e.mi, e.low, e.high, e.rank].join(",") + "\n")
+						.forEach(l => {
+							const bytes = new Array(l.length);
+							for (let i in l)
+								bytes[i] = l.charCodeAt(i);
+							byteArrays.push(new Uint8Array(bytes));
+						});
+
+					const blob = new Blob(byteArrays, { type: 'text/plain' });
+					const url = window.URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.href = url;
+					a.download = `Raw_data_for_${screen}.csv`;
+					document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
+					a.click();    
+					a.remove();  
+				});
+		}
+	}
+
 }
 
 window.addEventListener('load', () => {
@@ -206,7 +247,7 @@ window.addEventListener('load', () => {
 
 	const screenList = document.getElementById("screenList");
 
-	$(screenList).chosen().change(() => {
+	$(screenList).chosen().on('change', () => {
 		const selected = screenList.selectedOptions;
 		if (selected.length === 1) {
 			const screen = selected.item(0).dataset.screen;
@@ -230,9 +271,5 @@ window.addEventListener('load', () => {
 	if (selectedScreen)
 		plot.loadScreen(selectedScreen)
 			.then(() => plot.highlightGene(params['gene']));
-
-	const svgExportBtn = document.getElementById('btn-export-svg');
-	if (svgExportBtn != null)
-		svgExportBtn.addEventListener('click', () => plot.exportSVG());
 });
 

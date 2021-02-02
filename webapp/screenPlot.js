@@ -582,6 +582,10 @@ export default class ScreenPlot {
 		document.body.removeChild(link);
 	}
 
+	exportCSV() {
+
+	}
+
 	createContextMenu() {
 		const contextMenuDiv = document.getElementById("plot-context-menu");
 		if (contextMenuDiv)
