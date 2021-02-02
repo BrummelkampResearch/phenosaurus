@@ -21,33 +21,49 @@
 				<button id="add-screen-btn" class="btn btn-primary">Add&nbsp;Screen</button>
 			</div>
 		</div>
-		<table class="table table-sm table-striped">
-			<thead>
-				<tr>
-					<th>Name</th>
-					<th>Type</th>
-					<th z:if="${#security.hasRole('ADMIN')}">Owner</th>
-					<th>Description</th>
-					<th>Cell line</th>
-					<th style="text-align: center">Ignored</th>
-					<th colspan="2">Action</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr z:each="screen: ${screens}">
-					<td z:text="${screen.name}"></td>
-					<td z:text="${screen.type}"></td>
-					<td z:if="${#security.hasRole('ADMIN')}" z:text="${screen.scientist}"></td>
-					<td z:text="${screen.description}"></td>
-					<td z:text="${screen.cell_line}"></td>
-					<td style="text-align: center"><i z:if="${screen.ignore}" class="fa fa-check"></i></td>
-					<td class="edit-screen-btn" z:attr="data-id=${screen.name}">
-						<i class="fa fa-edit"></i></td>
-					<td><span class="delete-screen-btn" z:attr="data-id=${screen.name}"
-							z:if="${#security.hasRole('ADMIN') or screen.scientist == #security.username()}"><i class="fa fa-trash"></i></span></td>
-				</tr>
-			</tbody>
-		</table>
+		<div z:fragment="screen-table">
+			<table class="table table-sm table-striped" id='screen-table'>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Type</th>
+						<th z:if="${#security.hasRole('ADMIN')}">Owner</th>
+						<th>Description</th>
+						<th>Cell line</th>
+						<th style="width: 100px;">Status</th>
+						<th style="text-align: center">Ignored</th>
+						<th colspan="2">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr z:each="screen: ${screens}">
+						<td z:text="${screen.name}"></td>
+						<td z:text="${screen.type}"></td>
+						<td z:if="${#security.hasRole('ADMIN')}" z:text="${screen.scientist}"></td>
+						<td z:text="${screen.description}"></td>
+						<td z:text="${screen.cell_line}"></td>
+						<td>
+							<div z:if="${screen.status}" z:switch="${screen.status.status}">
+								<div z:case="running">
+									<div z:text="${screen.status.action}"></div>
+									<div class="progress" z:id="|progress-${screen.name}|" style="height: 3px;">
+										<div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+											z:aria-valuenow="${screen.status.progress * 100}" z:style="|width: ${screen.status.progress * 100}%;|">
+										</div>
+									</div>
+								</div>
+								<div z:case="*" z:text="${screen.status.status}"></div>
+							</div>
+						</td>
+						<td style="text-align: center"><i z:if="${screen.ignore}" class="fa fa-check"></i></td>
+						<td class="edit-screen-btn" z:attr="data-id=${screen.name}">
+							<i class="fa fa-edit"></i></td>
+						<td><span class="delete-screen-btn" z:attr="data-id=${screen.name}"
+								z:if="${#security.hasRole('ADMIN') or screen.scientist == #security.username()}"><i class="fa fa-trash"></i></span></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
 	</div>
 
 	<footer z:replace="~{footer :: content}"></footer>

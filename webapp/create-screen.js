@@ -174,7 +174,8 @@ class ScreenCreator {
 					if (wasOK == false)
 						throw 'server returned an error';
 					
-					this.form.reset();
+					// this.form.reset();
+					window.location = 'screens';
 				}).catch(err => {
 					console.log(err);
 					alert(`Failed to submit form: ${err}`);

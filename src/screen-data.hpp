@@ -9,6 +9,7 @@
 #include <zeep/json/element.hpp> 
 
 #include "bowtie.hpp"
+#include "job-scheduler.hpp"
 
 // --------------------------------------------------------------------
 
@@ -80,6 +81,7 @@ struct screen_info
 	std::vector<std::string> groups;
 	std::vector<screen_file> files;
 	std::vector<mapped_info> mappedInfo;
+	std::optional<job_status> status;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -97,7 +99,8 @@ struct screen_info
 		   & zeep::name_value_pair("created", created)
 		   & zeep::name_value_pair("groups", groups)
 		   & zeep::name_value_pair("files", files)
-		   & zeep::name_value_pair("mapped", mappedInfo);
+		   & zeep::name_value_pair("mapped", mappedInfo)
+		   & zeep::name_value_pair("status", status);
 	}
 };
 

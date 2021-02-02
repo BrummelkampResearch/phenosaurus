@@ -1,13 +1,7 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
-window.addEventListener("load", () => {
-	const createBtn = document.getElementById('add-screen-btn');
-	if (createBtn)
-		createBtn.addEventListener('click', () => {
-			window.location = 'create-screen';
-		});
-	
+function attachEventListeners() {
 	[...document.getElementsByClassName('edit-screen-btn')]
 		.forEach(btn => {
 			btn.addEventListener('click', e => {
@@ -40,7 +34,45 @@ window.addEventListener("load", () => {
 					})
 				}
 			})
-		});	
+		});
+}
 
+window.addEventListener("load", () => {
+	const createBtn = document.getElementById('add-screen-btn');
+	if (createBtn)
+		createBtn.addEventListener('click', () => {
+			window.location = 'create-screen';
+		});
+	
+	attachEventListeners();
+
+	// refresh the list every 30 seconds
+	const table = document.getElementById('screen-table');
+	const iv = setInterval(() => {
+		fetch('screen-table', { credentials: 'include' })
+		.then(r => {
+			if (r.ok)
+				return r.text();
+			throw 'no data';
+		}).then(t => {
+			if (typeof t !== "string" || t.length == 0)
+				throw 'empty string?';
+
+			const container = document.createElement('div');
+			container.innerHTML = t;
+			
+			const tbody = table.tBodies[0];
+			[...tbody.querySelectorAll("tr")]
+				.forEach(tr => tbody.removeChild(tr));
+
+			[...container.querySelectorAll('tbody > tr')]
+				.forEach(tr => {
+					// tr.parentElement().removeChild(tr);
+					tbody.appendChild(tr);
+				});
+			
+			attachEventListeners();
+		}).catch(err => console.log(err));
+	}, 15000);
 
 });

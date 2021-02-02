@@ -25,6 +25,7 @@
 
 #include "bowtie.hpp"
 #include "utils.hpp"
+#include "job-scheduler.hpp"
 
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
@@ -114,33 +115,33 @@ Insertion parseLine(const char* line, unsigned readLength)
 	return result;
 }
 
-// // --------------------------------------------------------------------
+// --------------------------------------------------------------------
 
-// struct progress_filter
-// {
-// 	progress_filter() = delete;
-// 	progress_filter(progress& p) : m_progress(p) {}
+struct progress_filter
+{
+	progress_filter() = delete;
+	progress_filter(progress& p) : m_progress(p) {}
 	
-// 	progress_filter(const progress_filter& cf)
-// 		: m_progress(const_cast<progress&>(cf.m_progress)) {}
+	progress_filter(const progress_filter& cf)
+		: m_progress(const_cast<progress&>(cf.m_progress)) {}
 
-// 	progress_filter& operator=(const progress_filter& cf) = delete;
+	progress_filter& operator=(const progress_filter& cf) = delete;
 
-// 	typedef char char_type;
-// 	typedef io::multichar_input_filter_tag category;
+	typedef char char_type;
+	typedef io::multichar_input_filter_tag category;
 
-// 	template<typename Source>
-// 	std::streamsize read(Source& src, char* s, std::streamsize n)
-// 	{
-// 		auto r = boost::iostreams::read(src, s, n);
-// 		if (r > 0)
-// 			m_progress.consumed(r);
+	template<typename Source>
+	std::streamsize read(Source& src, char* s, std::streamsize n)
+	{
+		auto r = boost::iostreams::read(src, s, n);
+		if (r > 0)
+			m_progress.consumed(r);
 		
-// 		return r;
-// 	}
+		return r;
+	}
 
-// 	progress& m_progress;
-// };
+	progress& m_progress;
+};
 
 // -----------------------------------------------------------------------
 
@@ -226,8 +227,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	{
 		try
 		{
-			// progress p(fastq.string(), fs::file_size(fastq));
-			// p.message(fastq.filename().string());
+			progress p(fs::file_size(fastq), fastq.string());
+			p.set_action(fastq.filename().string());
 
 			std::ifstream file(fastq, std::ios::binary);
 
@@ -243,7 +244,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				ext = fastq.stem().extension().string();
 			}
 
-			// in.push(progress_filter(p));
+			in.push(progress_filter(p));
 			
 			in.push(file);
 

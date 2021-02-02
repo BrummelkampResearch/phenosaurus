@@ -732,6 +732,8 @@ std::vector<screen_info> screen_service::get_all_screens() const
 
 		screen_info screen;
 		zeep::json::from_element(info, screen);
+
+		screen.status = job_scheduler::instance().get_job_status_for_screen(screen.name);
 		
 		result.push_back(screen);
 	}
@@ -1002,6 +1004,8 @@ screen_html_controller::screen_html_controller()
 	mount("screens", &screen_html_controller::handle_screen_user);
 	mount("create-screen", &screen_html_controller::handle_create_screen_user);
 	mount("edit-screen", &screen_html_controller::handle_edit_screen_user);
+
+	mount("screen-table", &screen_html_controller::handle_screen_table);
 }
 
 void screen_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
@@ -1052,6 +1056,56 @@ void screen_html_controller::handle_screen_user(const zeep::http::request& reque
 	sub.put("screens", screens);
 
 	get_template_processor().create_reply_from_template("list-screens.html", sub, reply);
+}
+
+void screen_html_controller::handle_screen_table(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+{
+	zeep::http::scope sub(scope);
+
+	// zeep::json::element users;
+	// auto u = user_service::instance().get_all_users();
+	// to_element(users, u);
+	// sub.put("users", users);
+
+	// zeep::json::element groups;
+	// auto g = user_service::instance().get_all_groups();
+	// to_element(groups, g);
+	// sub.put("groups", groups);
+
+	auto credentials = get_credentials();
+	auto username = credentials["username"].as<std::string>();
+
+	using json = zeep::json::element;
+	json screens;
+
+	auto s = screen_service::instance().get_all_screens();
+	auto& ss = screen_service::instance();
+
+	s.erase(std::remove_if(s.begin(), s.end(), [username,&ss](auto& si)
+		{ return not ss.is_allowed(si.name, username); }), s.end());
+
+	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+	{
+		std::string& a = sa.name;
+		std::string& b = sb.name;
+
+		auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+		bool result;
+		if (r.first == a.end() and r.second == b.end())
+			result = false;
+		else if (r.first == a.end())
+			result = true;
+		else if (r.second == b.end())
+			result = false;
+		else
+			result = std::tolower(*r.first) < std::tolower(*r.second);
+		return result;
+	});
+
+	to_element(screens, s);
+	sub.put("screens", screens);
+
+	get_template_processor().create_reply_from_template("list-screens::screen-table", sub, reply);
 }
 
 void screen_html_controller::handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
@@ -1108,7 +1162,7 @@ std::string screen_rest_controller::create_screen(const screen_info& screen)
 {
 	const auto& params = bowtie_parameters::instance();
 
-	job_scheduler::instance().push(new map_job(screen_service::instance().create_screen(screen), params.assembly()));
+	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().create_screen(screen), params.assembly()));
 
 	return screen.name;
 }
