@@ -54,7 +54,7 @@ CXXFLAGS            += -g -O0
 LDFLAGS				+= -g
 else
 CXXFLAGS			+= -O3
-DEFINES				+= NDEBUG
+DEFINES				+= NDEBUG WEBAPP_USES_RESOURCES
 endif
 
 # targets

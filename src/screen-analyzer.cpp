@@ -260,6 +260,7 @@ Command should be either:
 
 	fs::path docroot;
 
+#if DEBUG
 	char exePath[PATH_MAX + 1];
 	int r = readlink("/proc/self/exe", exePath, PATH_MAX);
 	if (r > 0)
@@ -270,6 +271,7 @@ Command should be either:
 	
 	if (not fs::exists(docroot))
 		throw std::runtime_error("Could not locate docroot directory");
+#endif
 
 	std::string secret;
 	if (vm.count("secret"))
