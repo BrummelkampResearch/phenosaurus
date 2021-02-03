@@ -25,7 +25,8 @@ LIBS				= @LIBS@ \
 					  @BOOST_PROGRAM_OPTIONS_LIB@ \
 					  @BOOST_DATE_TIME_LIB@ \
 					  @MAILIO_LIBS@ \
-					  @SSL_LIBS@
+					  @SSL_LIBS@ \
+					  @ZLIB_LIBS@ -lbz2
 
 prefix				= @prefix@
 exec_prefix			= @exec_prefix@

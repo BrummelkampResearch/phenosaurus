@@ -2,8 +2,10 @@
 
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <vector>
 #include <queue>
+#include <atomic>
 
 #include <zeep/nvp.hpp>
 
