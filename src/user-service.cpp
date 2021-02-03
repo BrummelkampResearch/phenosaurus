@@ -48,7 +48,7 @@ zeep::http::user_details user_service::load_user(const std::string& username) co
 
 		auto r = tx.exec1(
 			"SELECT password, admin "
-			"FROM auth.users "
+			"FROM public.users "
 			"WHERE username = " + tx.quote(username) + " AND active = true");
 		tx.commit();
 
@@ -81,7 +81,7 @@ std::vector<user> user_service::get_all_users()
 	std::vector<user> users;
 	for (auto const& [id, username, firstname, lastname, email, active, admin]:
 		tx.stream<uint32_t, std::string,std::optional<std::string>,std::optional<std::string>,std::string,bool,bool>(
-		"SELECT id, username, first_name, last_name, email, active, admin FROM auth.users"))
+		"SELECT id, username, first_name, last_name, email, active, admin FROM public.users"))
 	{
 		users.emplace_back(user{ id, username, firstname.value_or(""), lastname.value_or(""), email, {}, active, admin });
 	}
@@ -99,7 +99,7 @@ std::vector<group> user_service::get_all_groups()
 
 	for (auto const& [id, name, member]:
 		tx.stream<uint32_t, std::string, std::optional<std::string>>(
-			"SELECT g.id, g.name, u.username FROM auth.groups g LEFT JOIN auth.members m ON g.id = m.group_id LEFT JOIN auth.users u ON m.user_id = u.id ORDER BY g.name"))
+			"SELECT g.id, g.name, u.username FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id LEFT JOIN public.users u ON m.user_id = u.id ORDER BY g.name"))
 	{
 		if (groups.empty() or groups.back().id != id)
 			groups.emplace_back(group{id, name});
@@ -116,161 +116,10 @@ std::vector<group> user_service::get_all_groups()
 bool user_service::user_exists(const std::string& username)
 {
 	pqxx::transaction tx(db_connection::instance());
-	auto row = tx.exec1("SELECT COUNT(*) FROM auth.users WHERE username = " + tx.quote(username));
+	auto row = tx.exec1("SELECT COUNT(*) FROM public.users WHERE username = " + tx.quote(username));
 	tx.commit();
 
 	return row[0].as<int>() == 1;
-}
-
-// --------------------------------------------------------------------
-
-std::vector<std::string> user_service::get_groups_for_screen(const std::string& screen_name)
-{
-	pqxx::transaction tx(db_connection::instance());
-
-	std::vector<std::string> groups;
-
-	for (auto const& [name]: tx.stream<std::string>(
-		"SELECT g.name as name FROM auth.groups g LEFT JOIN auth.screen_permissions p ON g.id = p.group_id WHERE p.screen_id = (SELECT id FROM screens WHERE name = " + tx.quote(screen_name) + ")"))
-	{
-		groups.emplace_back(name);
-	}
-
-	tx.commit();
-
-	return groups;
-}
-
-void user_service::set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups)
-{
-	std::unique_lock lock(m_mutex);
-
-	m_allowed_screens_per_user_cache.clear();
-
-	uint32_t screenID;
-	{
-		try
-		{
-			pqxx::transaction tx(db_connection::instance());
-			screenID = tx.query_value<uint32_t>("SELECT id FROM screens WHERE name = " + tx.quote(screen_name));
-			tx.commit();
-		}
-		catch (const std::exception& ex)
-		{
-			std::cerr << ex.what() << std::endl;
-			return;
-		}
-	}
-
-	groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
-
-	auto current = get_groups_for_screen(screen_name);
-
-	if (current != groups)
-	{
-		std::sort(groups.begin(), groups.end());
-		std::sort(current.begin(), current.end());
-
-		std::vector<std::string> diff;
-		std::set_difference(
-			groups.begin(), groups.end(),
-			current.begin(), current.end(),
-			std::back_inserter(diff));
-		
-		for (auto& group: diff)
-		{
-			pqxx::transaction tx(db_connection::instance());
-			tx.exec0(
-				"INSERT INTO auth.screen_permissions (screen_id, group_id) "
-				"VALUES(" + std::to_string(screenID) + ", " +
-							"(SELECT id FROM auth.groups WHERE name = " + tx.quote(group) + "))");
-			tx.commit();
-		}
-
-		diff.clear();
-
-		std::set_difference(
-			current.begin(), current.end(),
-			groups.begin(), groups.end(),
-			std::back_inserter(diff));
-
-		for (auto& group: diff)
-		{
-			pqxx::transaction tx(db_connection::instance());
-			tx.exec0(
-				"DELETE FROM auth.screen_permissions WHERE screen_id = " + tx.quote(screenID) +
-					" AND group_id = (SELECT id FROM auth.groups WHERE name = " + tx.quote(group) + ")");
-			tx.commit();
-		}
-	}
-}
-
-bool user_service::allow_screen_for_user(const std::string& screen, const std::string& user)
-{
-	std::unique_lock lock(m_mutex);
-
-	if (m_allowed_screens_per_user_cache.empty())
-		fill_allowed_screens_cache();
-
-	auto i = m_allowed_screens_per_user_cache.find(user);
-	return i != m_allowed_screens_per_user_cache.end() and
-		std::find(i->second.begin(), i->second.end(), screen) != i->second.end();
-}
-
-std::set<std::string> user_service::allowed_screens_for_user(const std::string& user)
-{
-	std::unique_lock lock(m_mutex);
-
-	if (m_allowed_screens_per_user_cache.empty())
-		fill_allowed_screens_cache();
-	
-	std::set<std::string> result;
-
-	auto i = m_allowed_screens_per_user_cache.find(user);
-	if (i != m_allowed_screens_per_user_cache.end())
-		result = i->second;
-	return result;
-}
-
-void user_service::fill_allowed_screens_cache()
-{
-	auto tx = db_connection::start_transaction();
-
-	m_allowed_screens_per_user_cache.clear();
-
-	for (const auto& [ user, screen ]: tx.stream<std::string,std::string>(
-		R"(
-			SELECT u.username, s.name
-			  FROM auth.users u
-			  JOIN auth.members m ON u.id = m.user_id
-			  JOIN auth.groups g ON g.id = m.group_id
-			  JOIN auth.screen_permissions p ON m.group_id = p.group_id
-			  JOIN screens s ON p.screen_id = s.id
-			UNION
-			SELECT u1.username, s1.name
-			  FROM auth.users u1, screens s1
-			 WHERE u1.id = s1.scientist_id
-		)"))
-	{
-		m_allowed_screens_per_user_cache[user].insert(screen);
-	}
-
-	std::vector<std::string> screens;
-	for (auto& s: screen_service::instance().get_all_screens())
-		screens.push_back(s.name);
-
-	// special case, for the Brummelkampers
-	for (const auto& [ user ]: tx.stream<std::string>(
-		R"(
-			SELECT u.username
-			  FROM auth.users u
-			  JOIN auth.members m ON u.id = m.user_id
-			  JOIN auth.groups g ON m.group_id = g.id
-			 WHERE g.id = 1
-		)"))
-	{
-		m_allowed_screens_per_user_cache[user].insert(screens.begin(), screens.end());
-	}
 }
 
 // --------------------------------------------------------------------
@@ -279,7 +128,7 @@ user user_service::retrieve_user(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
 
-	auto row = tx.exec1("SELECT * FROM auth.users WHERE id = " + std::to_string(id));
+	auto row = tx.exec1("SELECT * FROM public.users WHERE id = " + std::to_string(id));
 	tx.commit();
 
 	user user;
@@ -291,6 +140,42 @@ user user_service::retrieve_user(uint32_t id)
 	user.lastname = row.at("last_name").as<std::string>("");
 	user.admin = row.at("admin").as<bool>();
 	user.active = row.at("active").as<bool>();
+
+	pqxx::transaction tx2(db_connection::instance());
+	for (auto const& [name]: tx2.stream<std::string>(
+			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	{
+		user.groups.push_back(name);
+	}
+	tx2.commit();
+
+	return user;
+}
+
+user user_service::retrieve_user(const std::string& name)
+{
+	pqxx::transaction tx(db_connection::instance());
+
+	auto row = tx.exec1("SELECT * FROM public.users WHERE username = " + tx.quote(name));
+	tx.commit();
+
+	user user;
+
+	user.username = name;
+	user.id = row.at("id").as<uint32_t>();
+	user.email = row.at("email").as<std::string>();
+	user.firstname = row.at("first_name").as<std::string>("");
+	user.lastname = row.at("last_name").as<std::string>("");
+	user.admin = row.at("admin").as<bool>();
+	user.active = row.at("active").as<bool>();
+
+	pqxx::transaction tx2(db_connection::instance());
+	for (auto const& [name]: tx2.stream<std::string>(
+			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	{
+		user.groups.push_back(name);
+	}
+	tx2.commit();
 
 	return user;
 }
@@ -313,7 +198,7 @@ uint32_t user_service::create_user(const user& user)
 
 	pqxx::transaction tx(db_connection::instance());
 	auto r = tx.exec1(
-		"INSERT INTO auth.users (username, password, email, first_name, last_name, active, admin) "
+		"INSERT INTO public.users (username, password, email, first_name, last_name, active, admin) "
 	 	"VALUES(" + tx.quote(user.username) + ", " +
 					tx.quote(pw) + ", " +
 					tx.quote(user.email) + ", " +
@@ -335,7 +220,7 @@ void user_service::update_user(uint32_t id, const user& user)
 
 	if (not user.password)
 		tx.exec0(
-			"UPDATE auth.users SET email = " + tx.quote(user.email) + ", "
+			"UPDATE public.users SET email = " + tx.quote(user.email) + ", "
 							 " first_name = " + tx.quote(user.firstname) + ", " 
 							  " last_name = " + tx.quote(user.lastname) + ", "
 							  " active = " + tx.quote(user.active) + ", " 
@@ -346,7 +231,7 @@ void user_service::update_user(uint32_t id, const user& user)
 	else
 	{
 		tx.exec0(
-			"UPDATE auth.users SET email = " + tx.quote(user.email) + ", " 
+			"UPDATE public.users SET email = " + tx.quote(user.email) + ", " 
 							   " password = " + tx.quote(user_service::create_password_hash(*user.password)) + ", "
 							 " first_name = " + tx.quote(user.firstname) + ", " 
 							  " last_name = " + tx.quote(user.lastname) + ", " 
@@ -361,7 +246,7 @@ void user_service::update_user(uint32_t id, const user& user)
 void user_service::delete_user(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("DELETE FROM auth.users WHERE id = " + std::to_string(id));
+	tx.exec0("DELETE FROM public.users WHERE id = " + std::to_string(id));
 	tx.commit();
 }
 
@@ -372,7 +257,7 @@ uint32_t user_service::create_group(const group& group)
 	pqxx::transaction tx1(db_connection::instance());
 
 	auto r = tx1.exec1(
-		"INSERT INTO auth.groups (name) "
+		"INSERT INTO public.groups (name) "
 	 	"VALUES(" + tx1.quote(group.name) + ") "
 		"RETURNING id");
 
@@ -383,9 +268,9 @@ uint32_t user_service::create_group(const group& group)
 	{
 		pqxx::transaction tx(db_connection::instance());
 		tx.exec0(
-			"INSERT INTO auth.members (group_id, user_id) "
+			"INSERT INTO public.members (group_id, user_id) "
 			"VALUES(" + std::to_string(group_id) + ", " +
-						"(SELECT id FROM auth.users WHERE username = " + tx.quote(m) + "))");
+						"(SELECT id FROM public.users WHERE username = " + tx.quote(m) + "))");
 		tx.commit();
 	}
 
@@ -396,7 +281,7 @@ group user_service::retrieve_group(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
 
-	auto row = tx.exec1("SELECT * FROM auth.groups WHERE id = " + std::to_string(id));
+	auto row = tx.exec1("SELECT * FROM public.groups WHERE id = " + std::to_string(id));
 	tx.commit();
 
 	group group;
@@ -406,7 +291,7 @@ group user_service::retrieve_group(uint32_t id)
 
 	pqxx::transaction tx2(db_connection::instance());
 	for (const auto& [member]: tx2.stream<std::string>(
-		"SELECT u.username FROM auth.members m JOIN auth.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+		"SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
 	{
 		group.members.push_back(member);
 	}
@@ -421,7 +306,7 @@ void user_service::update_group(uint32_t id, group group)
 	if (current.name != group.name)
 	{
 		pqxx::transaction tx(db_connection::instance());
-		tx.exec0("UPDATE auth.groups SET name = " + tx.quote(group.name) + " WHERE id = " + std::to_string(id));
+		tx.exec0("UPDATE public.groups SET name = " + tx.quote(group.name) + " WHERE id = " + std::to_string(id));
 		tx.commit();
 	}
 
@@ -440,9 +325,9 @@ void user_service::update_group(uint32_t id, group group)
 		{
 			pqxx::transaction tx(db_connection::instance());
 			tx.exec0(
-				"INSERT INTO auth.members (group_id, user_id) "
+				"INSERT INTO public.members (group_id, user_id) "
 				"VALUES(" + std::to_string(id) + ", " +
-							"(SELECT id FROM auth.users WHERE username = " + tx.quote(member) + "))");
+							"(SELECT id FROM public.users WHERE username = " + tx.quote(member) + "))");
 			tx.commit();
 		}
 
@@ -457,8 +342,8 @@ void user_service::update_group(uint32_t id, group group)
 		{
 			pqxx::transaction tx(db_connection::instance());
 			tx.exec0(
-				"DELETE FROM auth.members WHERE group_id = " + tx.quote(id) +
-					" AND user_id = (SELECT id FROM auth.users WHERE username = " + tx.quote(member) + ")");
+				"DELETE FROM public.members WHERE group_id = " + tx.quote(id) +
+					" AND user_id = (SELECT id FROM public.users WHERE username = " + tx.quote(member) + ")");
 			tx.commit();
 		}
 	}
@@ -467,7 +352,7 @@ void user_service::update_group(uint32_t id, group group)
 void user_service::delete_group(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("DELETE FROM auth.groups WHERE id = " + std::to_string(id));
+	tx.exec0("DELETE FROM public.groups WHERE id = " + std::to_string(id));
 	tx.commit();
 }
 
@@ -612,7 +497,7 @@ void user_service::send_new_password_for(const std::string& email)
 	// --------------------------------------------------------------------
 	
 	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("UPDATE auth.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
+	tx.exec0("UPDATE public.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
 
 	// --------------------------------------------------------------------
 

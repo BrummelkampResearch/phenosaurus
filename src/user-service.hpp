@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <pqxx/pqxx>
-
 #include <zeep/http/security.hpp>
 #include <zeep/nvp.hpp>
 #include <zeep/http/html-controller.hpp>
@@ -41,7 +39,7 @@ struct user
 	std::optional<std::string> password;
 	bool active;
 	bool admin;
-	std::vector<group> groups;
+	std::vector<std::string> groups;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -82,16 +80,9 @@ class user_service : public zeep::http::user_service
 
 	// --------------------------------------------------------------------
 	
-	std::vector<std::string> get_groups_for_screen(const std::string& screen_name);
-	void set_groups_for_screen(const std::string& screen_name, std::vector<std::string> groups);
-	// std::vector<std::string> screens_for_user(const )
-	bool allow_screen_for_user(const std::string& screen, const std::string& user);
-	std::set<std::string> allowed_screens_for_user(const std::string& user);
-
-	// --------------------------------------------------------------------
-	
 	uint32_t create_user(const user& user);
 	user retrieve_user(uint32_t id);
+	user retrieve_user(const std::string& name);
 	void update_user(uint32_t id, const user& user);
 	void delete_user(uint32_t id);
 

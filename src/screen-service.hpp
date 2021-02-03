@@ -5,8 +5,6 @@
 
 #pragma once
 
-#include <pqxx/pqxx>
-
 #include <zeep/http/security.hpp>
 #include <zeep/nvp.hpp>
 #include <zeep/http/html-controller.hpp>
@@ -193,6 +191,8 @@ class ip_screen_data_cache : public screen_data_cache
 
 // --------------------------------------------------------------------
 
+struct user;
+
 class screen_service
 {
   public:
@@ -206,6 +206,9 @@ class screen_service
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
 	std::vector<screen_info> get_all_screens_for_user(const std::string& user) const;
 	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const;
+
+	// return list of allowed screens based on user info (name, groups)
+	std::set<std::string> get_allowed_screens_for_user(const user& user) const;
 
 	bool exists(const std::string& name) const noexcept;
 	static bool is_valid_name(const std::string& name);

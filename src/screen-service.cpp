@@ -7,6 +7,8 @@
 
 #include <filesystem>
 
+#include <pqxx/pqxx>
+
 #include <zeep/crypto.hpp>
 
 #include "mrsrc.h"
@@ -748,15 +750,27 @@ std::vector<screen_info> screen_service::get_all_screens_for_type(ScreenType typ
 	return screens;
 }
 
-std::vector<screen_info> screen_service::get_all_screens_for_user(const std::string& user) const
+std::vector<screen_info> screen_service::get_all_screens_for_user(const std::string& username) const
 {
 	auto screens = get_all_screens();
 
 	auto& user_service = user_service::instance();
+	auto user = user_service.retrieve_user(username);
 
-	screens.erase(std::remove_if(screens.begin(), screens.end(), [user,&user_service](auto& s) {
-		return not user_service.allow_screen_for_user(s.name, user);
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [user](auto& screen) {
+
+		if (screen.scientist == user.username)
+			return false;
+
+		for (auto& g: screen.groups)
+		{
+			if (std::find(user.groups.begin(), user.groups.end(), g) != user.groups.end())
+				return false;
+		}
+
+		return true;
 	}), screens.end());
+
 	return screens;
 }
 
@@ -765,6 +779,44 @@ std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const
 	auto screens = get_all_screens_for_user(user);
 	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& s) { return s.type != type; }), screens.end());
 	return screens;
+}
+
+std::set<std::string> screen_service::get_allowed_screens_for_user(const user& user) const
+{
+	std::set<std::string> result;
+
+	for (auto i = fs::directory_iterator(m_screen_data_dir); i != fs::directory_iterator(); ++i)
+	{
+		if (not i->is_directory())
+			continue;
+
+		std::ifstream manifest(i->path() / "manifest.json");
+		if (not manifest.is_open())
+			continue;
+
+		zeep::json::element info;
+		zeep::json::parse_json(manifest, info);
+
+		screen_info screen;
+		zeep::json::from_element(info, screen);
+
+		if (screen.scientist == user.username)
+		{
+			result.insert(screen.name);
+			continue;
+		}
+
+		for (auto& g: screen.groups)
+		{
+			if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
+				continue;
+
+			result.insert(screen.name);
+			break;
+		}
+	}
+
+	return result;	
 }
 
 screen_info screen_service::retrieve_screen(const std::string& name) const
@@ -779,9 +831,6 @@ screen_info screen_service::retrieve_screen(const std::string& name) const
 
 	screen_info screen;
 	zeep::json::from_element(info, screen);
-
-	for (auto& group: user_service::instance().get_groups_for_screen(screen.name))
-		screen.groups.push_back(group);
 
 	return screen;
 }
@@ -827,7 +876,47 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 
 bool screen_service::is_allowed(const std::string& screenname, const std::string& username) const
 {
-	return is_owner(screenname, username) or user_service::instance().allow_screen_for_user(screenname, username);
+	bool result = false;
+
+	auto user = user_service::instance().retrieve_user(username);
+	if (user.admin)
+		result = true;
+	else
+	{
+		std::ifstream manifest(m_screen_data_dir / screenname / "manifest.json");
+
+		if (manifest.is_open())
+		{
+			try
+			{
+				zeep::json::element info;
+				zeep::json::parse_json(manifest, info);
+
+				screen_info screen;
+				zeep::json::from_element(info, screen);
+
+				if (screen.scientist == username)
+					result = true;
+				else
+				{
+					for (auto& g: screen.groups)
+					{
+						if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
+							continue;
+
+						result = true;
+						break;
+					}
+				}
+			}
+			catch (const std::exception& ex)
+			{
+				std::cerr << ex.what() << std::endl;
+			}
+		}
+	}
+	
+	return result;
 }
 
 std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& screen)
@@ -874,8 +963,6 @@ void screen_service::update_screen(const std::string& name, const screen_info& s
 	zeep::json::to_element(jInfo, screen);
 	manifest << jInfo;
 	manifest.close();
-
-	user_service::instance().set_groups_for_screen(name, screen.groups);
 }
 
 void screen_service::delete_screen(const std::string& name)

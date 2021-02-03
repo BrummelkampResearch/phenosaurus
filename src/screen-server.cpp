@@ -142,7 +142,8 @@ std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std:
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
-	return dp->find_gene(gene, user_service::instance().allowed_screens_for_user(get_credentials()["username"].as<std::string>()));
+	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
+	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }
 
 std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string& gene, const std::string& assembly,
