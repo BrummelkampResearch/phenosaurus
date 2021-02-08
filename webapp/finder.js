@@ -9,7 +9,7 @@ let svgWidth = 1600;
 const radius = 3;
 const neutral = "#ccc", positive = "#fb8", negative = "#38c";
 
-/* global screenType, screenNames */
+/* global screenType, screenInfo */
 
 let s_screens = null;
 
@@ -22,29 +22,29 @@ export class Screens {
 	}
 
 	constructor() {
-		this.known = new Map(screenNames.map(v => [v, v]));
-		// this.screenIDs = Array.from(this.known.keys()).map(k => +k);
-		this.screenIDs = [...this.known.keys()];
+		this.known = new Map(screenInfo.map(v => [v.name, v.ignore]));
+
+		this.screenIDs =
+			[...this.known.keys()]
+			.sort((a, b) => {
+				let d = 0;
+				if (this.known.get(a) != this.known.get(b))
+					d = this.known.get(a) ? 1 : -1;
+				if (d == 0)
+					d = a.localeCompare(b);
+				return d;
+			});
 	}
 
 	* [Symbol.iterator]() {
 		yield* this.screenIDs;
 	}
 
-	name(screenID) {
-		return this.known.get(screenID);
-	}
-
-	*names() {
-		for (let i of this.screenIDs)
-			yield this.known.get(""+i);
-	}
-
 	scale() {
 		return (screenID) => {
 			const ix = this.screenIDs.indexOf(screenID);
 			if (ix < 0) {
-				alert("Screen '" + screenID + "' not found in index")
+				console.log("Screen '" + screenID + "' not found in index")
 			}
 			return ix;
 		}
@@ -56,6 +56,9 @@ export class Screens {
 
 	reorder(newOrder) {
 		this.screenIDs = this.screenIDs.sort((a, b) => {
+			if (this.known.get(a) != this.known.get(b))
+				return this.known.get(a) ? 1 : -1;
+
 			const ai = newOrder.indexOf(a);
 			const bi = newOrder.indexOf(b);
 
@@ -334,7 +337,7 @@ export class LabelPlot extends Plot {
 
 	rearrange_() {
 		this.x = d3.scaleBand()
-			.domain([...Screens.instance().names()])
+			.domain([...Screens.instance()])
 			.range([0, this.width]);
 
 		const xAxis = d3.axisBottom(this.x);

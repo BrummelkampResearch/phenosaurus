@@ -256,13 +256,12 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 		{
 			size_t ix = si * N + ti;
 
-			gene_finder_data_point p;
+			gene_finder_data_point p{};
 
 			p.screen = name;
 			p.fcpv = m_data[ix].fcpv;
 			p.mi = m_data[ix].mi;
 			p.insertions = m_data[ix].high + m_data[ix].low;
-			p.replicate = 0;
 
 			result.push_back(std::move(p));
 		}
@@ -788,6 +787,10 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 	for (auto& si: fs::directory_iterator(m_screen_data_dir))
 	{
 		if (not si.is_directory())
+			continue;
+		
+		std::error_code ec;
+		if (not fs::exists(si.path() / "manifest.json", ec))
 			continue;
 		
 		try

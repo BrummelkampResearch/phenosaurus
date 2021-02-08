@@ -291,7 +291,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 			screen_service::instance().get_all_screens_for_type(mType) :
 			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
 
-		s.erase(std::remove_if(s.begin(), s.end(), [](screen_info& si) { return si.ignore; }), s.end());
+		// s.erase(std::remove_if(s.begin(), s.end(), [](screen_info& si) { return si.ignore; }), s.end());
 
 		std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
 		{
@@ -314,10 +314,10 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		to_element(screens, s);
 		scope.put("screens", screens);
 
-		json screenNames;
+		json screenInfo;
 		for (auto& si: s)
-			screenNames.push_back(si.name);
-		scope.put("screenNames", screenNames);
+			screenInfo.push_back({ { "name", si.name }, { "ignore", si.ignore }});
+		scope.put("screenInfo", screenInfo);
 
 		scope.put("screenType", mType);
 	}
