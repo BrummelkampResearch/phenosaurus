@@ -291,6 +291,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 			screen_service::instance().get_all_screens_for_type(mType) :
 			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
 
+		s.erase(std::remove_if(s.begin(), s.end(), [](screen_info& si) { return si.ignore; }), s.end());
+
 		std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
 		{
 			std::string& a = sa.name;
