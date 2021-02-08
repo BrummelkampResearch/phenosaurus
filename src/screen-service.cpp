@@ -720,24 +720,24 @@ std::vector<screen_info> screen_service::get_all_screens() const
 {
 	std::vector<screen_info> result;
 
-	for (auto i = fs::directory_iterator(m_screen_data_dir); i != fs::directory_iterator(); ++i)
+	for (auto si: fs::directory_iterator(m_screen_data_dir))
 	{
-		if (not i->is_directory())
+		if (not si.is_directory())
 			continue;
 
-		std::ifstream manifest(i->path() / "manifest.json");
-		if (not manifest.is_open())
+		std::error_code ec;
+		if (not fs::exists(si.path() / "manifest.json", ec))
 			continue;
 
-		zeep::json::element info;
-		zeep::json::parse_json(manifest, info);
-
-		screen_info screen;
-		zeep::json::from_element(info, screen);
-
-		screen.status = job_scheduler::instance().get_job_status_for_screen(screen.name);
-		
-		result.push_back(screen);
+		try
+		{
+			auto screen = ScreenData::loadManifest(si.path());
+			screen.status = job_scheduler::instance().get_job_status_for_screen(screen.name);
+			result.push_back(screen);
+		}
+		catch (const std::exception& e)
+		{
+		}
 	}
 
 	return result;
@@ -785,34 +785,32 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 {
 	std::set<std::string> result;
 
-	for (auto i = fs::directory_iterator(m_screen_data_dir); i != fs::directory_iterator(); ++i)
+	for (auto& si: fs::directory_iterator(m_screen_data_dir))
 	{
-		if (not i->is_directory())
+		if (not si.is_directory())
 			continue;
-
-		std::ifstream manifest(i->path() / "manifest.json");
-		if (not manifest.is_open())
-			continue;
-
-		zeep::json::element info;
-		zeep::json::parse_json(manifest, info);
-
-		screen_info screen;
-		zeep::json::from_element(info, screen);
-
-		if (screen.scientist == user.username)
+		
+		try
 		{
-			result.insert(screen.name);
-			continue;
-		}
+			auto screen = ScreenData::loadManifest(si.path());
 
-		for (auto& g: screen.groups)
-		{
-			if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
+			if (screen.scientist == user.username)
+			{
+				result.insert(screen.name);
 				continue;
+			}
 
-			result.insert(screen.name);
-			break;
+			for (auto& g: screen.groups)
+			{
+				if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
+					continue;
+
+				result.insert(screen.name);
+				break;
+			}
+		}
+		catch (const std::exception& e)
+		{
 		}
 	}
 
@@ -821,18 +819,7 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 
 screen_info screen_service::retrieve_screen(const std::string& name) const
 {
-	std::ifstream manifest(m_screen_data_dir / name / "manifest.json");
-
-	if (not manifest.is_open())
-		throw std::runtime_error("No such screen?: " + name);
-	
-	zeep::json::element info;
-	zeep::json::parse_json(manifest, info);
-
-	screen_info screen;
-	zeep::json::from_element(info, screen);
-
-	return screen;
+	return ScreenData::loadManifest(m_screen_data_dir / name);
 }
 
 bool screen_service::exists(const std::string& name) const noexcept
@@ -851,24 +838,14 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 {
 	bool result = false;
 
-	std::ifstream manifest(m_screen_data_dir / name / "manifest.json");
-
-	if (manifest.is_open())
+	try
 	{
-		try
-		{
-			zeep::json::element info;
-			zeep::json::parse_json(manifest, info);
-
-			screen_info screen;
-			zeep::json::from_element(info, screen);
-
-			result = screen.scientist == username;
-		}
-		catch (const std::exception& ex)
-		{
-			std::cerr << ex.what() << std::endl;
-		}
+		auto manifest = ScreenData::loadManifest(m_screen_data_dir / name);
+		result = manifest.scientist == username;
+	}
+	catch (const std::exception& ex)
+	{
+		std::cerr << ex.what() << std::endl;
 	}
 	
 	return result;
@@ -883,36 +860,27 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 		result = true;
 	else
 	{
-		std::ifstream manifest(m_screen_data_dir / screenname / "manifest.json");
-
-		if (manifest.is_open())
+		try
 		{
-			try
+			auto manifest = ScreenData::loadManifest(m_screen_data_dir / screenname);
+
+			if (manifest.scientist == username)
+				result = true;
+			else
 			{
-				zeep::json::element info;
-				zeep::json::parse_json(manifest, info);
-
-				screen_info screen;
-				zeep::json::from_element(info, screen);
-
-				if (screen.scientist == username)
-					result = true;
-				else
+				for (auto& g: manifest.groups)
 				{
-					for (auto& g: screen.groups)
-					{
-						if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
-							continue;
+					if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
+						continue;
 
-						result = true;
-						break;
-					}
+					result = true;
+					break;
 				}
 			}
-			catch (const std::exception& ex)
-			{
-				std::cerr << ex.what() << std::endl;
-			}
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
 		}
 	}
 	
@@ -955,14 +923,7 @@ std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& scr
 
 void screen_service::update_screen(const std::string& name, const screen_info& screen)
 {
-	std::ofstream manifest(m_screen_data_dir / name / "manifest.json");
-	if (not manifest.is_open())
-		throw std::runtime_error("Could not create manifest file in " + m_screen_data_dir.string());
-
-	zeep::json::element jInfo;
-	zeep::json::to_element(jInfo, screen);
-	manifest << jInfo;
-	manifest.close();
+	ScreenData::saveManifest(screen, m_screen_data_dir / name);
 }
 
 void screen_service::delete_screen(const std::string& name)

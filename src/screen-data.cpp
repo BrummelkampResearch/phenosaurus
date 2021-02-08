@@ -83,23 +83,8 @@ void checkIsFastQ(fs::path infile)
 // --------------------------------------------------------------------
 
 ScreenData::ScreenData(const fs::path& dir)
-	: mDataDir(dir)
+	: mDataDir(dir), mInfo(loadManifest(dir))
 {
-	if (not fs::exists(dir))
-		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
-	
-	fs::path manifest = dir / "manifest.json";
-	if (not fs::exists(manifest))
-		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
-
-	std::ifstream manifestFile(manifest);
-	if (not manifestFile.is_open())
-		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
-
-	zeep::json::element jInfo;
-	zeep::json::parse_json(manifestFile, jInfo);
-
-	zeep::json::from_element(jInfo, mInfo);
 }
 
 ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
@@ -136,19 +121,7 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 		fs::create_symlink(file, to);
 	}
 
-	write_manifest();
-}
-
-void ScreenData::write_manifest()
-{
-	std::ofstream manifest(mDataDir / "manifest.json");
-	if (not manifest.is_open())
-		throw std::runtime_error("Could not create manifest file in " + mDataDir.string());
-
-	zeep::json::element jInfo;
-	zeep::json::to_element(jInfo, mInfo);
-	manifest << jInfo;
-	manifest.close();
+	saveManifest(mInfo, mDataDir);
 }
 
 void ScreenData::addFile(const std::string& name, fs::path file)
@@ -174,7 +147,7 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 
 	mInfo.files.push_back({ name, file });
 
-	write_manifest();
+	saveManifest(mInfo, mDataDir);
 }
 
 void ScreenData::map(const std::string& assembly)
@@ -238,7 +211,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	if (not isSet)
 		mInfo.mappedInfo.push_back({ assembly, trimLength, version, kBowtieParams, bowtieIndex });
 
-	write_manifest();
+	saveManifest(mInfo, mDataDir);
 }
 
 // --------------------------------------------------------------------
@@ -388,6 +361,93 @@ void ScreenData::write_insertions(const std::string& assembly, unsigned readLeng
 	
 	outfile.write(reinterpret_cast<char*>(bits.data()), bits.size());
 	outfile.close();
+}
+
+// --------------------------------------------------------------------
+
+screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
+{
+	if (not fs::exists(dir))
+		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
+	
+	fs::path manifest = dir / "manifest.json";
+	if (not fs::exists(manifest))
+		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
+
+	std::ifstream manifestFile(manifest);
+	if (not manifestFile.is_open())
+		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
+
+	zeep::json::element jInfo;
+	zeep::json::parse_json(manifestFile, jInfo);
+
+	screen_info result;
+	zeep::json::from_element(jInfo, result);
+
+	// Some info may be missing (old screens?)
+	if (result.mappedInfo.empty())
+	{
+		// iterate assembly directories
+		for (auto& dia: fs::directory_iterator(dir))
+		{
+			if (not dia.is_directory())
+				continue;
+			
+			// iterate trim length directories
+			for (auto& ditl: fs::directory_iterator(dia.path()))
+			{
+				if (not ditl.is_directory())
+					continue;
+				
+				// should check for a string that is a number here...
+
+				// iterate files
+				for (auto mfi: fs::directory_iterator(ditl.path()))
+				{
+					if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
+						(result.type != ScreenType::SyntheticLethal and (
+							mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
+							mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
+					{
+						mapped_info mi{};
+						mi.assembly = dia.path().filename().string();
+						mi.trimlength = std::stoul(ditl.path().filename());
+						result.mappedInfo.push_back(mi);
+						break;
+					}
+				}
+			}
+		}
+	}
+	
+	if (result.mappedInfo.size() > 1)
+	{
+		auto& mi = result.mappedInfo;
+		auto cmp = [](const mapped_info& a, const mapped_info& b)
+		{
+			int d = a.assembly.compare(b.assembly);
+			if (d != 0)
+				d = a.trimlength - b.trimlength;
+			return d == 0;
+		};
+		mi.erase(std::unique(mi.begin(), mi.end(), cmp), mi.end());
+	}
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
+void ScreenData::saveManifest(const screen_info& info, const std::filesystem::path& dir)
+{
+	std::ofstream manifest(dir / "manifest.json");
+	if (not manifest.is_open())
+		throw std::runtime_error("Could not create manifest file in " + dir.string());
+
+	zeep::json::element jInfo;
+	zeep::json::to_element(jInfo, info);
+	manifest << jInfo;
+	manifest.close();
 }
 
 // --------------------------------------------------------------------
@@ -1195,22 +1255,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 {
-	if (not fs::exists(dir))
-		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
-	
-	fs::path manifest = dir / "manifest.json";
-	if (not fs::exists(manifest))
-		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
-
-	std::ifstream manifestFile(manifest);
-	if (not manifestFile.is_open())
-		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
-
-	zeep::json::element jInfo;
-	zeep::json::parse_json(manifestFile, jInfo);
-
-	screen_info info;
-	zeep::json::from_element(jInfo, info);
+	screen_info info = loadManifest(dir);
 
 	switch (info.type)
 	{

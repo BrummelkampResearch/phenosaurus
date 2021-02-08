@@ -301,6 +301,10 @@ class ScreenData
 	// convenience, should probably moved elsewhere
 	static std::vector<Insertion> read_insertions(std::filesystem::path file);
 
+	// load and save screen_info from the manifest file
+	static screen_info loadManifest(const std::filesystem::path& dir);
+	static void saveManifest(const screen_info& info, const std::filesystem::path& dir);
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
@@ -310,9 +314,7 @@ class ScreenData
 	ScreenData(const std::filesystem::path& dir);
 	ScreenData(const std::filesystem::path& dir, const screen_info& info);
 
-	void write_manifest();
-
-	std::filesystem::path	mDataDir;
+	std::filesystem::path mDataDir;
 	screen_info mInfo;
 };
 
