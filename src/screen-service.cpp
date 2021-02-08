@@ -797,7 +797,7 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 		{
 			auto screen = ScreenData::loadManifest(si.path());
 
-			if (screen.scientist == user.username)
+			if (screen.scientist == user.username or user.admin)
 			{
 				result.insert(screen.name);
 				continue;
