@@ -359,7 +359,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 		catch (const std::exception& e)
 		{
 			std::cerr << e.what() << std::endl
-						<< line << std::endl;
+					  << line << std::endl;
 		}
 	}
 

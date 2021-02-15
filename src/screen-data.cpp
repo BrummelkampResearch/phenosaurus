@@ -387,36 +387,43 @@ screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
 	// Some info may be missing (old screens?)
 	if (result.mappedInfo.empty())
 	{
-		// iterate assembly directories
-		for (auto& dia: fs::directory_iterator(dir))
+		try
 		{
-			if (not dia.is_directory())
-				continue;
-			
-			// iterate trim length directories
-			for (auto& ditl: fs::directory_iterator(dia.path()))
+			// iterate assembly directories
+			for (auto& dia: fs::directory_iterator(dir))
 			{
-				if (not ditl.is_directory())
+				if (not dia.is_directory())
 					continue;
 				
-				// should check for a string that is a number here...
-
-				// iterate files
-				for (auto mfi: fs::directory_iterator(ditl.path()))
+				// iterate trim length directories
+				for (auto& ditl: fs::directory_iterator(dia.path()))
 				{
-					if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
-						(result.type != ScreenType::SyntheticLethal and (
-							mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
-							mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
+					if (not ditl.is_directory())
+						continue;
+					
+					// should check for a string that is a number here...
+
+					// iterate files
+					for (auto mfi: fs::directory_iterator(ditl.path()))
 					{
-						mapped_info mi{};
-						mi.assembly = dia.path().filename().string();
-						mi.trimlength = std::stoul(ditl.path().filename());
-						result.mappedInfo.push_back(mi);
-						break;
+						if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
+							(result.type != ScreenType::SyntheticLethal and (
+								mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
+								mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
+						{
+							mapped_info mi{};
+							mi.assembly = dia.path().filename().string();
+							mi.trimlength = std::stoul(ditl.path().filename());
+							result.mappedInfo.push_back(mi);
+							break;
+						}
 					}
 				}
 			}
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << "Error retrieving mapped info for screen " << result.name << ": " << ex.what() << std::endl;
 		}
 	}
 	
