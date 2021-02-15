@@ -736,6 +736,7 @@ std::vector<screen_info> screen_service::get_all_screens() const
 		}
 		catch (const std::exception& e)
 		{
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
 		}
 	}
 
@@ -814,6 +815,7 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 		}
 		catch (const std::exception& e)
 		{
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
 		}
 	}
 
