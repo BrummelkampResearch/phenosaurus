@@ -148,12 +148,12 @@ SCRIPTS = \
 WEBAPP_FILES = $(SCRIPTS)
 SCRIPT_FILES = $(SCRIPTS:webapp/%.js=docroot/scripts/%.js)
 
-ifneq ($(DEBUG),1)
-WEBPACK_OPTIONS = --env.PRODUCTIE
-endif
+#ifneq ($(DEBUG),1)
+#WEBPACK_OPTIONS = --env.PRODUCTIE
+#endif
 
 $(subst .js,%js,$(SCRIPT_FILES)): $(subst .js,%js,$(WEBAPP_FILES))
-	yarn webpack $(WEBPACK_OPTIONS)
+	yarn run build $(WEBPACK_OPTIONS)
 
 $(SCRIPT_FILES): \
 	webapp/genome-viewer.js
@@ -164,6 +164,10 @@ $(OBJDIR)/$(APPLICATION)_rsrc.o: $(RSRC) $(SCRIPT_FILES) src/mrsrc.h
 $(APPLICATION): %: $(OBJECTS)
 	@ echo '->' $@
 	@ $(CXX) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+.PHONY: install
+install: $(APPLICATION)
+	sudo install $(APPLICATION) /usr/local/sbin/$(APPLICATION)
 
 .PHONY: clean
 clean:
