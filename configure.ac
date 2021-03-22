@@ -1,4 +1,12 @@
-AC_INIT([screen-analyzer], 2.0, [m.hekkelman@nki.nl])
+AC_PREREQ([2.69])
+
+m4_define([screen_analyzer_version_major],[4])
+m4_define([screen_analyzer_version_minor],[0])
+m4_define([screen_analyzer_version_micro],[0])
+m4_define([screen_analyzer_version_extra],[])
+m4_define([screen_analyzer_version],[screen_analyzer_version_major().screen_analyzer_version_minor().screen_analyzer_version_micro()screen_analyzer_version_extra])
+
+AC_INIT([screen-analyzer], [screen_analyzer_version], [m.hekkelman@nki.nl])
 
 dnl Switch to a C++ compiler, and check if it works.
 AC_LANG(C++)
@@ -7,6 +15,7 @@ AX_CXX_COMPILE_STDCXX_17([noext])
 AC_CONFIG_SRCDIR([src/screen-analyzer.cpp])
 AC_CONFIG_HEADERS([src/config.hpp])
 AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_MACRO_DIR([config/m4])
 
 AC_PREFIX_DEFAULT(/usr/local)
 
@@ -39,48 +48,18 @@ AX_PKG_CHECK_MODULES([PQXX], [libpqxx >= 7.1], [], [], [AC_MSG_ERROR([the requir
 AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package libpq-dev is not installed])])
 AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
 AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
-AX_PKG_CHECK_MODULES([ZEEP], [libzeep], [], [], [AC_MSG_ERROR([the required package libzeep-dev is not installed])])
 AX_PKG_CHECK_MODULES([ZLIB], [zlib], [], [], [AC_MSG_ERROR([the required package zlib-dev is not installed])])
 
 AX_PTHREAD
-
-AC_CHECK_HEADER([filesystem], [], [AC_MSG_ERROR([The file <filesystem> is missing, perhaps you should install a more recent libstdc++ implementation.])])
-
-dnl check if we need stdc++fs as library
-AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++fs], ax_cv_need_stdcppfs,
-	[
-		AC_TRY_LINK(
-			[#include <filesystem>],
-			[(void)std::filesystem::current_path();],
-			[
-				ax_cv_need_stdcppfs="no";
-			],
-			[
-				SAVE_LIBS="$LIBS"
-				LIBS="$LIBS -lstdc++fs"
-				AC_TRY_LINK(
-					[#include <filesystem>],
-					[(void)std::filesystem::current_path();],
-					[
-						ax_cv_need_stdcppfs="yes";
-					],
-					[
-						AC_MSG_ERROR([Could not link filesystem])
-					]
-				)
-				LIBS=$SAVE_LIBS
-			]
-		)
-	])
-if test "x$ax_cv_need_stdcppfs" = "xyes"; then
-	LIBS="$LIBS -lstdc++fs"
-fi
 
 AX_BOOST_BASE([1.65.1], [], [AC_MSG_ERROR([Could not find a recent version of boost])])
 AX_BOOST_ASIO
 AX_BOOST_IOSTREAMS
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_DATE_TIME
+
+AX_LIBZEEP
+AX_FILESYSTEM
 
 dnl check whether to build xattr support
 

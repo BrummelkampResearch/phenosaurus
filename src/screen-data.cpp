@@ -95,6 +95,10 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 
 	mInfo.created = boost::posix_time::second_clock().local_time();
 
+	// always add the Brummelkamp group as allowed group
+	if (std::find(mInfo.groups.begin(), mInfo.groups.end(), "Brummelkamp-group") == mInfo.groups.end())
+		mInfo.groups.push_back("Brummelkamp-group");
+
 	fs::create_directories(dir);
 
 	for (auto& fi: mInfo.files)
