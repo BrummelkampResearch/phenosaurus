@@ -1,8 +1,8 @@
 AC_PREREQ([2.69])
 
-m4_define([screen_analyzer_version_major],[4])
+m4_define([screen_analyzer_version_major],[2])
 m4_define([screen_analyzer_version_minor],[0])
-m4_define([screen_analyzer_version_micro],[0])
+m4_define([screen_analyzer_version_micro],[1])
 m4_define([screen_analyzer_version_extra],[])
 m4_define([screen_analyzer_version],[screen_analyzer_version_major().screen_analyzer_version_minor().screen_analyzer_version_micro()screen_analyzer_version_extra])
 

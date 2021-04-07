@@ -360,7 +360,7 @@ void user_service::delete_group(uint32_t id)
 
 bool user_service::isValidUsername(const std::string& name)
 {
-	std::regex rx("^[a-z0-9_]{4,30}$", std::regex::icase);
+	std::regex rx("^[-a-z0-9_.]{4,30}$", std::regex::icase);
 	return std::regex_match(name, rx);
 }
 
