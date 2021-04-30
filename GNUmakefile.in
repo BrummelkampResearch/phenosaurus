@@ -14,12 +14,29 @@ SHELL := /bin/bash
 firstTarget: all
 
 CXX					= @CXX@
-CXXFLAGS			= @CXXFLAGS@ @CPPFLAGS@ @LIBZEEP_CPPFLAGS@ @PTHREAD_CFLAGS@ @PQXX_CFLAGS@ @PQ_CFLAGS@ @BOOST_CPPFLAGS@ @Z_CFLAGS@ @MAILIO_CFLAGS@ @SSL_CFLAGS@
-LDFLAGS				= @LDFLAGS@ @BOOST_LDFLAGS@ @LIBZEEP_LDFLAGS@ @PTHREAD_CFLAGS@
-LIBS				= @LIBS@ @PQXX_LIBS@ @PQ_LIBS@ @BOOST_LDFLAGS@ @BOOST_IOSTREAMS_LIB@ \
-					  @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_DATE_TIME_LIB@ @MAILIO_LIBS@ @SSL_LIBS@ @Z_LIBS@
-
-LIBS				+= -lzeep
+CXXFLAGS			= @BOOST_CPPFLAGS@ \
+					  @CXXFLAGS@ \
+					  @CPPFLAGS@ \
+					  @ZEEP_CFLAGS@ \
+					  @PTHREAD_CFLAGS@ \
+					  @PQXX_CFLAGS@ \
+					  @PQ_CFLAGS@ \
+					  @MAILIO_CFLAGS@ \
+					  @SSL_CFLAGS@
+LDFLAGS				= @LDFLAGS@ \
+					  @BOOST_LDFLAGS@ \
+					  @ZEEP_LDFLAGS@ \
+					  @PTHREAD_CFLAGS@
+LIBS				= @BOOST_LDFLAGS@ \
+					  @BOOST_IOSTREAMS_LIB@ \
+					  @BOOST_PROGRAM_OPTIONS_LIB@ \
+					  @BOOST_DATE_TIME_LIB@ \
+					  @ZEEP_LIBS@ \
+					  @MAILIO_LIBS@ \
+					  @SSL_LIBS@ \
+					  @PQXX_LIBS@ \
+					  @PQ_LIBS@ \
+					  @LIBS@ 
 
 prefix				= @prefix@
 exec_prefix			= @exec_prefix@

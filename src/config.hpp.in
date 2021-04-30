@@ -21,12 +21,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `bz2' library (-lbz2). */
-#undef HAVE_LIBBZ2
-
-/* Define to 1 if LIBZEEP is found */
-#undef HAVE_LIBZEEP
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -59,6 +53,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* Define to 1 if ZEEP is found */
+#undef HAVE_ZEEP
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT

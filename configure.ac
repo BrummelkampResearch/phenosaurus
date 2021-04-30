@@ -38,46 +38,12 @@ AC_PATH_PROG([PKG_CONFIG], [pkg-config])
 
 AX_PKG_CHECK_MODULES([PQXX], [libpqxx >= 7.1], [], [], [AC_MSG_ERROR([the required package libpqxx-dev is not installed])])
 AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package libpq-dev is not installed])])
-# AX_PKG_CHECK_MODULES([BZ2], [libbz2], [], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AC_CHECK_HEADER([bzlib.h], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AC_CHECK_LIB([bz2], [BZ2_bzCompressInit], [], [AC_MSG_ERROR([the required package libbz2-dev is not installed])])
-AX_PKG_CHECK_MODULES([Z], [zlib], [], [], [AC_MSG_ERROR([the required package libz-dev is not installed])])
 AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
 AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
 
 AX_PTHREAD
 
-AC_CHECK_HEADER([filesystem], [], [AC_MSG_ERROR([The file <filesystem> is missing, perhaps you should install a more recent libstdc++ implementation.])])
-
-dnl check if we need stdc++fs as library
-AC_CACHE_CHECK([Whether linking to the c++ filesystem library requires -lstdc++fs], ax_cv_need_stdcppfs,
-	[
-		AC_TRY_LINK(
-			[#include <filesystem>],
-			[(void)std::filesystem::current_path();],
-			[
-				ax_cv_need_stdcppfs="no";
-			],
-			[
-				SAVE_LIBS="$LIBS"
-				LIBS="$LIBS -lstdc++fs"
-				AC_TRY_LINK(
-					[#include <filesystem>],
-					[(void)std::filesystem::current_path();],
-					[
-						ax_cv_need_stdcppfs="yes";
-					],
-					[
-						AC_MSG_ERROR([Could not link filesystem])
-					]
-				)
-				LIBS=$SAVE_LIBS
-			]
-		)
-	])
-if test "x$ax_cv_need_stdcppfs" = "xyes"; then
-	LIBS="$LIBS -lstdc++fs"
-fi
+AX_FILESYSTEM
 
 AX_BOOST_BASE([1.65.1], [], [AC_MSG_ERROR([Could not find a recent version of boost])])
 AX_BOOST_ASIO
@@ -85,20 +51,10 @@ AX_BOOST_IOSTREAMS
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_DATE_TIME
 
-AC_ARG_WITH([zeep],
-	AS_HELP_STRING([--with-zeep=@<:@location@:>@],
-		[Use the zeep library as specified.]),
-		[
-			CPPFLAGS="$CPPFLAGS -I ${withval}/include"
-			CXXFLAGS="$CXXFLAGS -I ${withval}/include"
-			LDFLAGS="$LDFLAGS -L${withval}/lib"
-		])
+AX_IOSTREAMS_Z
+AX_IOSTREAMS_BZ2
 
-AX_CHECK_LIBRARY([LIBZEEP], [zeep/config.hpp], [zeep],
-	[],
-	[AC_MSG_ERROR([libzeep not found - cannot continue])])
-
-dnl check whether to build xattr support
+AX_LIBZEEP
 
 dnl Verify if configure has been invoked with option --enable-xattr or
 dnl --disable-xattr, and set shell variable want_xattr as appropriate.

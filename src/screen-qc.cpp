@@ -733,7 +733,7 @@ std::vector<std::string> screen_qc_data::cluster(const std::map<std::string,std:
 				double sum = 0;
 				for (size_t i = 0; i < vx.size(); ++i)
 				{
-					if (not (isnan(vx[i]) or isnan(vy[i])))
+					if (not (std::isnan(vx[i]) or std::isnan(vy[i])))
 						sum += (vx[i] - vy[i]) * (vx[i] - vy[i]);
 				}
 

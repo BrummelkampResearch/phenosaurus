@@ -2678,3 +2678,6 @@ AS_VAR_COPY([$1], [pkg_cv_][$1])
 AS_VAR_IF([$1], [""], [$5], [$4])dnl
 ])dnl PKG_CHECK_VAR
 
+m4_include([config/m4/ax_filesystem.m4])
+m4_include([config/m4/ax_libzeep.m4])
+m4_include([config/m4/ax_z_bz2.m4])
