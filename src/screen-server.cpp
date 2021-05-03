@@ -422,6 +422,9 @@ class SLScreenRestController : public zh::rest_controller
 			"id", "assembly", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "effectSize");
 
 		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
+
+		// download data
+		map_get_request("screen/{id}/bed/{replicate}", &SLScreenRestController::getBED, "id", "replicate", "assembly");
 	}
 
 	SLDataResult screenData(const std::string& screen, const std::string& assembly, std::string control,
@@ -430,6 +433,8 @@ class SLScreenRestController : public zh::rest_controller
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
+	zeep::http::reply getBED(const std::string& screen, const std::string& replicate, const std::string &assembly);
 
 	fs::path mScreenDir;
 };
@@ -603,6 +608,20 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 
 	return result;
 }
+
+zeep::http::reply SLScreenRestController::getBED(const std::string& screen, const std::string& replicate, const std::string &assembly)
+{
+	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
+
+	auto data = SLScreenData::load(mScreenDir / screen);
+
+	rep.set_content(data->get_bed_file_for_insertions(assembly.empty() ? "hg38" : assembly, 50, replicate), "text/plain");
+	rep.set_header("content-disposition", "attachement; filename = \"" + screen + '-' + replicate + ".bed\"");
+
+	return rep;
+}
+
+// --------------------------------------------------------------------
 
 class SLScreenHtmlController : public ScreenHtmlControllerBase
 {
