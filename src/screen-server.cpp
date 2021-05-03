@@ -278,7 +278,7 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 
 zeep::http::reply IPScreenRestController::getBED(const std::string& screen, const std::string& channel, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok);
+	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
 
 	auto data = IPPAScreenData::load(mScreenDir / screen);
 
