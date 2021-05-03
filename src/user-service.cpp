@@ -180,6 +180,34 @@ user user_service::retrieve_user(const std::string& name)
 	return user;
 }
 
+user user_service::retrieve_user_by_email(const std::string &email)
+{
+	pqxx::transaction tx(db_connection::instance());
+
+	auto row = tx.exec1("SELECT * FROM public.users WHERE email = " + tx.quote(email));
+	tx.commit();
+
+	user user;
+
+	user.username = row.at("name").as<std::string>();
+	user.id = row.at("id").as<uint32_t>();
+	user.email = row.at("email").as<std::string>();
+	user.firstname = row.at("first_name").as<std::string>("");
+	user.lastname = row.at("last_name").as<std::string>("");
+	user.admin = row.at("admin").as<bool>();
+	user.active = row.at("active").as<bool>();
+
+	pqxx::transaction tx2(db_connection::instance());
+	for (auto const& [name]: tx2.stream<std::string>(
+			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	{
+		user.groups.push_back(name);
+	}
+	tx2.commit();
+
+	return user;
+}
+
 uint32_t user_service::create_user(const user& user)
 {
 	if (not user.password or user.password->empty() or not isValidPassword(*user.password))
@@ -388,6 +416,16 @@ bool user_service::isValidEmail(const std::string& email)
 	return std::regex_match(email, rx);
 }
 
+bool user_service::isExistingEmail(const std::string &email)
+{
+	pqxx::transaction tx0(db_connection::instance());
+
+	auto v = tx0.query_value<int>("SELECT COUNT(*) FROM public.users WHERE email = " + tx0.quote(email));
+	tx0.commit();
+
+	return v == 1;
+}
+
 std::string user_service::generate_password()
 {
 	const bool
@@ -489,66 +527,74 @@ std::string user_service::generate_password()
 void user_service::send_new_password_for(const std::string& email)
 {
 	std::cerr << "Request reset password for " << email << std::endl;
-	std::string newPassword = generate_password();
-	std::string newPasswordHash = create_password_hash(newPassword);
 
-	std::cerr << "Reset password for " << email << " to " << newPasswordHash << std::endl;
-
-	// --------------------------------------------------------------------
-	
-	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("UPDATE public.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
-
-	// --------------------------------------------------------------------
-
-	mailio::message msg;
-	// msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "phenosaurus@nki.nl"));
-	msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "maarten@hekkelman.com"));
-	msg.add_recipient(mailio::mail_address("Phenosaurus user", email));
-	msg.subject("New password for Phenosaurus");
-
-	std::ostringstream content;
-
-	mrsrc::istream is("reset-password-mail.txt");
-
-	std::string line;
-	while (std::getline(is, line))
-	{
-		auto i = line.find("^1");
-		if (i != std::string::npos)
-			line.replace(i, 2, newPassword);
-		content << line << std::endl;
-	}
-
-	msg.content(content.str());
-	msg.content_type(mailio::mime::media_type_t::TEXT, "plain", "utf-8");
-	msg.content_transfer_encoding(mailio::mime::content_transfer_encoding_t::BINARY);
-
-	if (m_smtp_port == 25)
-	{
-		mailio::smtp conn(m_smtp_server, m_smtp_port);
-		conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtp::auth_method_t::NONE : mailio::smtp::auth_method_t::LOGIN);
-		conn.submit(msg);	
-	}
-	else if (m_smtp_port == 465)
-	{
-		mailio::smtps conn(m_smtp_server, m_smtp_port);
-		conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtps::auth_method_t::NONE : mailio::smtps::auth_method_t::LOGIN);
-		conn.submit(msg);	
-	}
-	else if (m_smtp_port == 587 and not m_smtp_user.empty())
-	{
-		mailio::smtps conn(m_smtp_server, m_smtp_port);
-		conn.authenticate(m_smtp_user, m_smtp_password, mailio::smtps::auth_method_t::START_TLS);
-		conn.submit(msg);	
-	}
+	if (not isValidEmail(email))
+		std::cerr << "Not a valid e-mail address" << std::endl;
+	else if (not isExistingEmail(email))
+		std::cerr << "Not a known e-mail adress" << std::endl;
 	else
-		throw std::runtime_error("Unable to send message, smtp configuration error");
+	{
+		std::string newPassword = generate_password();
+		std::string newPasswordHash = create_password_hash(newPassword);
 
-	// --------------------------------------------------------------------
-	// Sending the new password succeeded
+		std::cerr << "Reset password for " << email << " to " << newPasswordHash << std::endl;
 
-	tx.commit();
+		// --------------------------------------------------------------------
+		
+		pqxx::transaction tx(db_connection::instance());
+		tx.exec0("UPDATE public.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
+
+		// --------------------------------------------------------------------
+
+		mailio::message msg;
+		// msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "phenosaurus@nki.nl"));
+		msg.add_from(mailio::mail_address("Phenosaurus User Management Service", "maarten@hekkelman.com"));
+		msg.add_recipient(mailio::mail_address("Phenosaurus user", email));
+		msg.subject("New password for Phenosaurus");
+
+		std::ostringstream content;
+
+		mrsrc::istream is("reset-password-mail.txt");
+
+		std::string line;
+		while (std::getline(is, line))
+		{
+			auto i = line.find("^1");
+			if (i != std::string::npos)
+				line.replace(i, 2, newPassword);
+			content << line << std::endl;
+		}
+
+		msg.content(content.str());
+		msg.content_type(mailio::mime::media_type_t::TEXT, "plain", "utf-8");
+		msg.content_transfer_encoding(mailio::mime::content_transfer_encoding_t::BINARY);
+
+		if (m_smtp_port == 25)
+		{
+			mailio::smtp conn(m_smtp_server, m_smtp_port);
+			conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtp::auth_method_t::NONE : mailio::smtp::auth_method_t::LOGIN);
+			conn.submit(msg);	
+		}
+		else if (m_smtp_port == 465)
+		{
+			mailio::smtps conn(m_smtp_server, m_smtp_port);
+			conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtps::auth_method_t::NONE : mailio::smtps::auth_method_t::LOGIN);
+			conn.submit(msg);	
+		}
+		else if (m_smtp_port == 587 and not m_smtp_user.empty())
+		{
+			mailio::smtps conn(m_smtp_server, m_smtp_port);
+			conn.authenticate(m_smtp_user, m_smtp_password, mailio::smtps::auth_method_t::START_TLS);
+			conn.submit(msg);	
+		}
+		else
+			throw std::runtime_error("Unable to send message, smtp configuration error");
+
+		// --------------------------------------------------------------------
+		// Sending the new password succeeded
+
+		tx.commit();
+	}
 }
 
 // --------------------------------------------------------------------

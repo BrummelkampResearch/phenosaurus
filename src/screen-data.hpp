@@ -305,6 +305,8 @@ class ScreenData
 	static screen_info loadManifest(const std::filesystem::path& dir);
 	static void saveManifest(const screen_info& info, const std::filesystem::path& dir);
 
+	std::istream *get_bed_file_for_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
+
   protected:
 
 	std::vector<Insertion> read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;

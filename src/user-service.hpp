@@ -83,6 +83,7 @@ class user_service : public zeep::http::user_service
 	uint32_t create_user(const user& user);
 	user retrieve_user(uint32_t id);
 	user retrieve_user(const std::string& name);
+	user retrieve_user_by_email(const std::string &email);
 	void update_user(uint32_t id, const user& user);
 	void delete_user(uint32_t id);
 
@@ -94,6 +95,8 @@ class user_service : public zeep::http::user_service
 	static bool isValidUsername(const std::string& name);
 	static bool isValidPassword(const std::string& password);
 	static bool isValidEmail(const std::string& email);
+
+	bool isExistingEmail(const std::string &email);
 
 	/// Update the password to \a password for the user with e-mail address in \a email
 	void send_new_password_for(const std::string& email);

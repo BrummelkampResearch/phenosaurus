@@ -90,6 +90,9 @@ class IPScreenRestController : public zh::rest_controller
 			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
 
 		map_post_request("gene-info/{id}", &IPScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
+
+		// download data
+		map_get_request("screen/{id}/bed/{channel}", &IPScreenRestController::getBED, "id", "channel", "assembly");
 	}
 
 	std::vector<ip_data_point> screenData(const std::string& screen, const std::string& assembly,
@@ -114,6 +117,8 @@ class IPScreenRestController : public zh::rest_controller
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+
+	zeep::http::reply getBED(const std::string& screen, const std::string& channel, const std::string &assembly);
 
 	fs::path mScreenDir;
 	ScreenType mType;
@@ -269,6 +274,18 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	}
 
 	return result;
+}
+
+zeep::http::reply IPScreenRestController::getBED(const std::string& screen, const std::string& channel, const std::string &assembly)
+{
+	zeep::http::reply rep(zeep::http::ok);
+
+	auto data = IPPAScreenData::load(mScreenDir / screen);
+
+	rep.set_content(data->get_bed_file_for_insertions(assembly.empty() ? "hg38" : assembly, 50, channel), "text/plain");
+	rep.set_header("content-disposition", "attachement; filename = \"" + screen + '-' + channel + ".bed\"");
+
+	return rep;
 }
 
 // --------------------------------------------------------------------

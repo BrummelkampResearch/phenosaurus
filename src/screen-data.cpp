@@ -2,26 +2,26 @@
 
 #include "config.hpp"
 
-#include <fstream>
-#include <regex>
-#include <iostream>
-#include <future>
 #include <exception>
+#include <fstream>
+#include <future>
+#include <iostream>
+#include <regex>
 #include <stdexcept>
 
-#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 
-#include <zeep/value-serializer.hpp>
 #include <zeep/json/parser.hpp>
+#include <zeep/value-serializer.hpp>
 
 #include "sq/squeeze.hpp"
 
-#include "screen-data.hpp"
+#include "binom.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
-#include "binom.hpp"
+#include "screen-data.hpp"
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
@@ -45,7 +45,7 @@ void checkIsFastQ(fs::path infile)
 
 	io::filtering_stream<io::input> in;
 	std::string ext = p.extension().string();
-	
+
 	if (p.extension() == ".bz2")
 	{
 		in.push(io::bzip2_decompressor());
@@ -56,15 +56,15 @@ void checkIsFastQ(fs::path infile)
 		in.push(io::gzip_decompressor());
 		ext = p.stem().extension().string();
 	}
-	
+
 	in.push(file);
 
 	// just check the first four lines
 
 	std::string line[4];
-	if (not std::getline(in, line[0]) or 
-		not std::getline(in, line[1]) or 
-		not std::getline(in, line[2]) or 
+	if (not std::getline(in, line[0]) or
+		not std::getline(in, line[1]) or
+		not std::getline(in, line[2]) or
 		not std::getline(in, line[3]))
 	{
 		throw std::runtime_error("Could not read from " + infile.string() + ", invalid file?");
@@ -82,13 +82,15 @@ void checkIsFastQ(fs::path infile)
 
 // --------------------------------------------------------------------
 
-ScreenData::ScreenData(const fs::path& dir)
-	: mDataDir(dir), mInfo(loadManifest(dir))
+ScreenData::ScreenData(const fs::path &dir)
+	: mDataDir(dir)
+	, mInfo(loadManifest(dir))
 {
 }
 
-ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
-	: mDataDir(dir), mInfo(info)
+ScreenData::ScreenData(const fs::path &dir, const screen_info &info)
+	: mDataDir(dir)
+	, mInfo(info)
 {
 	if (fs::exists(dir))
 		throw std::runtime_error("Screen already exists");
@@ -101,14 +103,14 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 
 	fs::create_directories(dir);
 
-	for (auto& fi: mInfo.files)
+	for (auto &fi : mInfo.files)
 	{
 		fs::path file = fi.source;
 
 		// follow links until we end up at the final destination
 		while (fs::is_symlink(file))
 			file = fs::read_symlink(file);
-		
+
 		// And then make these canonical/system_complete
 		file = fs::weakly_canonical(file);
 
@@ -121,19 +123,19 @@ ScreenData::ScreenData(const fs::path& dir, const screen_info& info)
 			to = mDataDir / (fi.name + ".fastq" + ext.string());
 		else
 			to = mDataDir / (fi.name + ".fastq");
-			
+
 		fs::create_symlink(file, to);
 	}
 
 	saveManifest(mInfo, mDataDir);
 }
 
-void ScreenData::addFile(const std::string& name, fs::path file)
+void ScreenData::addFile(const std::string &name, fs::path file)
 {
 	// follow links until we end up at the final destination
 	while (fs::is_symlink(file))
 		file = fs::read_symlink(file);
-	
+
 	// And then make these canonical/system_complete
 	file = fs::weakly_canonical(file);
 
@@ -146,21 +148,21 @@ void ScreenData::addFile(const std::string& name, fs::path file)
 		to = mDataDir / (name + ".fastq" + ext.string());
 	else
 		to = mDataDir / (name + ".fastq");
-		
+
 	fs::create_symlink(file, to);
 
-	mInfo.files.push_back({ name, file });
+	mInfo.files.push_back({name, file});
 
 	saveManifest(mInfo, mDataDir);
 }
 
-void ScreenData::map(const std::string& assembly)
+void ScreenData::map(const std::string &assembly)
 {
-	auto& params = bowtie_parameters::instance();
+	auto &params = bowtie_parameters::instance();
 	map(assembly, params.trimLength(), params.bowtie(), params.bowtieIndex(assembly), params.threads());
 }
 
-void ScreenData::map(const std::string& assembly, unsigned trimLength,
+void ScreenData::map(const std::string &assembly, unsigned trimLength,
 	fs::path bowtie, fs::path bowtieIndex, unsigned threads)
 {
 	const std::string kBowtieParams = "-m 1 --best";
@@ -175,7 +177,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	{
 		if (fi->is_directory())
 			continue;
-		
+
 		fs::path p = *fi;
 
 		auto name = p.filename();
@@ -189,7 +191,8 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 
 		std::ofstream logFile(bowtieLogFile, std::ios::app);
 		if (logFile.is_open())
-			logFile << std::endl << "Unique hits in " << name << " channel: " << hits.size() << std::endl;
+			logFile << std::endl
+					<< "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
 		write_insertions(assembly, trimLength, name, hits);
 	}
@@ -200,7 +203,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 
 	bool isSet = false;
 
-	for (auto& mi: mInfo.mappedInfo)
+	for (auto &mi : mInfo.mappedInfo)
 	{
 		if (mi.assembly == assembly and mi.trimlength == trimLength)
 		{
@@ -213,7 +216,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 	}
 
 	if (not isSet)
-		mInfo.mappedInfo.push_back({ assembly, trimLength, version, kBowtieParams, bowtieIndex });
+		mInfo.mappedInfo.push_back({assembly, trimLength, version, kBowtieParams, bowtieIndex});
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -223,7 +226,7 @@ void ScreenData::map(const std::string& assembly, unsigned trimLength,
 std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 {
 	bool compressed = file.extension() == ".sq";
-	if (not compressed)	// see if a compressed version exists
+	if (not compressed) // see if a compressed version exists
 	{
 		auto psq = file.parent_path() / (file.filename().string() + ".sq");
 		if (fs::exists(psq))
@@ -248,7 +251,7 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 	{
 		std::vector<uint8_t> bits(size);
 
-		infile.read(reinterpret_cast<char*>(bits.data()), size);
+		infile.read(reinterpret_cast<char *>(bits.data()), size);
 
 		sq::ibitstream ibs(bits);
 		size_t N = read_gamma(ibs);
@@ -263,31 +266,31 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 
 			if (ibs())
 				pos_plus = sq::read_array(ibs);
-			
+
 			if (ibs())
 				pos_negative = sq::read_array(ibs);
-			
-			auto pi = pos_plus.begin(),		epi = pos_plus.end();
-			auto ni = pos_negative.begin(),	eni = pos_negative.end();
+
+			auto pi = pos_plus.begin(), epi = pos_plus.end();
+			auto ni = pos_negative.begin(), eni = pos_negative.end();
 
 			while (pi != epi or ni != eni)
 			{
 				if (ni == eni)
 				{
-					result.push_back(Insertion{ chr, '+', *pi++ });
+					result.push_back(Insertion{chr, '+', *pi++});
 					continue;
 				}
 
 				if (pi == epi)
 				{
-					result.push_back(Insertion{ chr, '-', *ni++ });
+					result.push_back(Insertion{chr, '-', *ni++});
 					continue;
 				}
 
 				if (*pi <= *ni)
-					result.push_back(Insertion{ chr, '+', *pi++ });
+					result.push_back(Insertion{chr, '+', *pi++});
 				else
-					result.push_back(Insertion{ chr, '-', *ni++ });
+					result.push_back(Insertion{chr, '-', *ni++});
 			}
 		}
 	}
@@ -296,7 +299,7 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 		auto N = size / sizeof(Insertion);
 
 		result.resize(N);
-		infile.read(reinterpret_cast<char*>(result.data()), size);
+		infile.read(reinterpret_cast<char *>(result.data()), size);
 	}
 
 	infile.close();
@@ -306,16 +309,35 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 
 // --------------------------------------------------------------------
 
-std::vector<Insertion> ScreenData::read_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const
+std::vector<Insertion> ScreenData::read_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const
 {
 	return read_insertions(mDataDir / assembly / std::to_string(readLength) / file);
 }
 
-void ScreenData::write_insertions(const std::string& assembly, unsigned readLength, const std::string& file,
-	std::vector<Insertion>& insertions)
+std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const
 {
-	std::sort(insertions.begin(), insertions.end(), [](const Insertion& a, const Insertion& b)
+	std::unique_ptr<std::stringstream> result(new std::stringstream());
+
+	auto insertions = read_insertions(assembly, readLength, file);
+	for (const auto &[ chr, strand, pos ] : insertions)
 	{
+		*result << to_string(chr) << '\t'
+				<< pos << '\t'
+				<< pos + 1 << '\t'
+				<< file << '\t'
+				<< 0 << '\t'
+				<< strand << std::endl;
+	}
+
+	return result.release();
+}
+
+// --------------------------------------------------------------------
+
+void ScreenData::write_insertions(const std::string &assembly, unsigned readLength, const std::string &file,
+	std::vector<Insertion> &insertions)
+{
+	std::sort(insertions.begin(), insertions.end(), [](const Insertion &a, const Insertion &b) {
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
@@ -333,13 +355,13 @@ void ScreenData::write_insertions(const std::string& assembly, unsigned readLeng
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str: { '+', '-' })
+		for (char str : {'+', '-'})
 		{
 			std::vector<uint32_t> pos;
-			
+
 			while (i < insertions.size())
 			{
-				auto& ins = insertions[i];
+				auto &ins = insertions[i];
 				if (ins.chr != chr or ins.strand != str)
 					break;
 
@@ -362,18 +384,18 @@ void ScreenData::write_insertions(const std::string& assembly, unsigned readLeng
 	std::ofstream outfile(p, std::ios::binary | std::ios::trunc);
 	if (not outfile.is_open())
 		throw std::runtime_error("Could not open " + p.string() + " file");
-	
-	outfile.write(reinterpret_cast<char*>(bits.data()), bits.size());
+
+	outfile.write(reinterpret_cast<char *>(bits.data()), bits.size());
 	outfile.close();
 }
 
 // --------------------------------------------------------------------
 
-screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
+screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 {
 	if (not fs::exists(dir))
 		throw std::runtime_error("Screen does not exist, directory not found: " + dir.string());
-	
+
 	fs::path manifest = dir / "manifest.json";
 	if (not fs::exists(manifest))
 		throw std::runtime_error("No manifest file, this is not a valid screen (" + dir.string() + ')');
@@ -394,26 +416,25 @@ screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
 		try
 		{
 			// iterate assembly directories
-			for (auto& dia: fs::directory_iterator(dir))
+			for (auto &dia : fs::directory_iterator(dir))
 			{
 				if (not dia.is_directory())
 					continue;
-				
+
 				// iterate trim length directories
-				for (auto& ditl: fs::directory_iterator(dia.path()))
+				for (auto &ditl : fs::directory_iterator(dia.path()))
 				{
 					if (not ditl.is_directory())
 						continue;
-					
+
 					// should check for a string that is a number here...
 
 					// iterate files
-					for (auto mfi: fs::directory_iterator(ditl.path()))
+					for (auto mfi : fs::directory_iterator(ditl.path()))
 					{
 						if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
-							(result.type != ScreenType::SyntheticLethal and (
-								mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
-								mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
+							(result.type != ScreenType::SyntheticLethal and (mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
+																				mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
 						{
 							mapped_info mi{};
 							mi.assembly = dia.path().filename().string();
@@ -425,17 +446,16 @@ screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
 				}
 			}
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception &ex)
 		{
 			std::cerr << "Error retrieving mapped info for screen " << result.name << ": " << ex.what() << std::endl;
 		}
 	}
-	
+
 	if (result.mappedInfo.size() > 1)
 	{
-		auto& mi = result.mappedInfo;
-		auto cmp = [](const mapped_info& a, const mapped_info& b)
-		{
+		auto &mi = result.mappedInfo;
+		auto cmp = [](const mapped_info &a, const mapped_info &b) {
 			int d = a.assembly.compare(b.assembly);
 			if (d != 0)
 				d = a.trimlength - b.trimlength;
@@ -449,7 +469,7 @@ screen_info ScreenData::loadManifest(const std::filesystem::path& dir)
 
 // --------------------------------------------------------------------
 
-void ScreenData::saveManifest(const screen_info& info, const std::filesystem::path& dir)
+void ScreenData::saveManifest(const screen_info &info, const std::filesystem::path &dir)
 {
 	std::ofstream manifest(dir / "manifest.json");
 	if (not manifest.is_open())
@@ -463,11 +483,11 @@ void ScreenData::saveManifest(const screen_info& info, const std::filesystem::pa
 
 // --------------------------------------------------------------------
 
-void ScreenData::dump_map(const std::string& assembly, unsigned readLength, const std::string& file)
+void ScreenData::dump_map(const std::string &assembly, unsigned readLength, const std::string &file)
 {
 	auto bwt = read_insertions(assembly, readLength, file);
 
-	for (auto&& [chr, strand, pos]: bwt)
+	for (auto &&[chr, strand, pos] : bwt)
 	{
 		assert(chr != CHROM::INVALID);
 		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << std::endl;
@@ -476,7 +496,7 @@ void ScreenData::dump_map(const std::string& assembly, unsigned readLength, cons
 
 // --------------------------------------------------------------------
 
-void ScreenData::compress_map(const std::string& assembly, unsigned readLength, const std::string& file)
+void ScreenData::compress_map(const std::string &assembly, unsigned readLength, const std::string &file)
 {
 	fs::path p = mDataDir / assembly / std::to_string(readLength) / file;
 
@@ -491,12 +511,11 @@ void ScreenData::compress_map(const std::string& assembly, unsigned readLength, 
 	std::ifstream infile(p, std::ios::binary);
 	if (not infile.is_open())
 		throw std::runtime_error("Could not open " + p.string() + " file");
-	
-	infile.read(reinterpret_cast<char*>(bwt.data()), size);
+
+	infile.read(reinterpret_cast<char *>(bwt.data()), size);
 	infile.close();
 
-	std::sort(bwt.begin(), bwt.end(), [](const Insertion& a, const Insertion& b)
-	{
+	std::sort(bwt.begin(), bwt.end(), [](const Insertion &a, const Insertion &b) {
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
@@ -514,13 +533,13 @@ void ScreenData::compress_map(const std::string& assembly, unsigned readLength, 
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str: { '+', '-' })
+		for (char str : {'+', '-'})
 		{
 			std::vector<uint32_t> pos;
-			
+
 			while (i < bwt.size())
 			{
-				auto& ins = bwt[i];
+				auto &ins = bwt[i];
 				if (ins.chr != chr or ins.strand != str)
 					break;
 
@@ -543,27 +562,29 @@ void ScreenData::compress_map(const std::string& assembly, unsigned readLength, 
 	std::ofstream outfile(p, std::ios::binary | std::ios::trunc);
 	if (not outfile.is_open())
 		throw std::runtime_error("Could not open " + p.string() + " file");
-	
-	outfile.write(reinterpret_cast<char*>(bits.data()), bits.size());
+
+	outfile.write(reinterpret_cast<char *>(bits.data()), bits.size());
 	outfile.close();
 }
 
 // --------------------------------------------------------------------
 
-IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir)
-	: ScreenData(dir), mType(type)
+IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path &dir)
+	: ScreenData(dir)
+	, mType(type)
 {
 	if (mInfo.type != mType)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path& dir, const screen_info& info)
-	: ScreenData(dir, info), mType(type)
+IPPAScreenData::IPPAScreenData(ScreenType type, const fs::path &dir, const screen_info &info)
+	: ScreenData(dir, info)
+	, mType(type)
 {
 }
 
-void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, const std::vector<Transcript>& transcripts,
-	std::vector<Insertions>& lowInsertions, std::vector<Insertions>& highInsertions)
+void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, const std::vector<Transcript> &transcripts,
+	std::vector<Insertions> &lowInsertions, std::vector<Insertions> &highInsertions)
 {
 	// reorder transcripts based on chr > end-position, makes code easier and faster
 #if DEBUG
@@ -575,11 +596,10 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s: { "low", "high" })
+	for (std::string s : {"low", "high"})
 	{
 #ifndef DEBUG
-		t.emplace_back([&, lh = s]()
-		{
+		t.emplace_back([&, lh = s]() {
 #else
 		auto lh = s;
 #endif
@@ -591,7 +611,7 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 
 				auto ts = transcripts.begin();
 
-				for (const auto& [chr, strand, pos]: bwt)
+				for (const auto &[chr, strand, pos] : bwt)
 				{
 					assert(chr != CHROM::INVALID);
 
@@ -607,7 +627,7 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 						if (VERBOSE >= 3)
 							std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
 
-						for (auto& r: t->ranges)
+						for (auto &r : t->ranges)
 						{
 							if (pos >= r.start and pos < r.end)
 							{
@@ -621,7 +641,7 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 						++t;
 					}
 				}
-			
+
 				if (lh == "low")
 					std::swap(insertions, lowInsertions);
 				else
@@ -636,7 +656,7 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 #endif
 	}
 
-	for (auto& ti: t)
+	for (auto &ti : t)
 		ti.join();
 
 	if (eptr)
@@ -649,7 +669,7 @@ void IPPAScreenData::analyze(const std::string& assembly, unsigned readLength, c
 // --------------------------------------------------------------------
 
 std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
-IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end)
+IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t start, uint32_t end)
 {
 	const unsigned readLength = 50;
 
@@ -658,18 +678,17 @@ IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t st
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s: { "low", "high" })
+	for (std::string s : {"low", "high"})
 	{
-		t.emplace_back([&, lh = s]()
-		{
+		t.emplace_back([&, lh = s]() {
 			try
 			{
-				std::vector<uint32_t>& insP = lh == "low" ? lowP : highP;
-				std::vector<uint32_t>& insM = lh == "low" ? lowM : highM;
+				std::vector<uint32_t> &insP = lh == "low" ? lowP : highP;
+				std::vector<uint32_t> &insM = lh == "low" ? lowM : highM;
 
 				auto bwt = read_insertions(assembly, readLength, lh);
-			
-				for (auto&& [chr, strand, pos]: bwt)
+
+				for (auto &&[chr, strand, pos] : bwt)
 				{
 					assert(chr != CHROM::INVALID);
 
@@ -689,7 +708,7 @@ IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t st
 		});
 	}
 
-	for (auto& ti: t)
+	for (auto &ti : t)
 		ti.join();
 
 	if (eptr)
@@ -700,16 +719,16 @@ IPPAScreenData::insertions(const std::string& assembly, CHROM chrom, uint32_t st
 
 // --------------------------------------------------------------------
 
-std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string& assembly,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		Direction direction)
+std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string &assembly,
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+	Direction direction)
 {
 	const unsigned readLength = 50;
 
 	auto transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
 
 	// -----------------------------------------------------------------------
-	
+
 	std::vector<Insertions> lowInsertions, highInsertions;
 
 	analyze(assembly, readLength, transcripts, lowInsertions, highInsertions);
@@ -717,12 +736,11 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string& assembly,
 	return dataPoints(transcripts, lowInsertions, highInsertions, direction);
 }
 
-std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript>& transcripts,
-	const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
-		Direction direction)
+std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript> &transcripts,
+	const std::vector<Insertions> &lowInsertions, const std::vector<Insertions> &highInsertions,
+	Direction direction)
 {
-	auto countLowHigh = [direction,&lowInsertions,&highInsertions](size_t i) -> std::tuple<long,long>
-	{
+	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long> {
 		long low, high;
 		switch (direction)
 		{
@@ -741,13 +759,14 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
 				break;
 		}
-		return { low, high };
+		return {low, high};
 	};
 
 	long lowCount = 0, highCount = 0;
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
-		auto&& [low, high] = countLowHigh(i);;
+		auto &&[low, high] = countLowHigh(i);
+		;
 		lowCount += low;
 		highCount += high;
 	}
@@ -755,10 +774,9 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	std::vector<double> pvalues(transcripts.size(), 0);
 	std::vector<IPDataPoint> result(transcripts.size());
 
-	parallel_for(transcripts.size(), [&](size_t i)
-	{
-		auto& t = transcripts[i];
-		auto& p = result[i];
+	parallel_for(transcripts.size(), [&](size_t i) {
+		auto &t = transcripts[i];
+		auto &p = result[i];
 
 		std::tie(p.low, p.high) = countLowHigh(i);
 
@@ -776,9 +794,8 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 		}
 
 		long v[2][2] = {
-			{ p.low, p.high },
-			{ lowCount - p.low, highCount - p.high }
-		};
+			{p.low, p.high},
+			{lowCount - p.low, highCount - p.high}};
 
 		pvalues[i] = fisherTest2x2(v);
 
@@ -791,20 +808,20 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 
 	for (size_t i = 0; i < transcripts.size(); ++i)
 		result[i].fcpv = fcpv[i];
-	
+
 	return result;
 }
 
 // --------------------------------------------------------------------
 
-SLScreenData::SLScreenData(const fs::path& dir)
+SLScreenData::SLScreenData(const fs::path &dir)
 	: ScreenData(dir)
 {
 	if (mInfo.type != screen_type)
 		throw std::runtime_error("This screen is not of the specified type");
 }
 
-SLScreenData::SLScreenData(const fs::path& dir, const screen_info& info)
+SLScreenData::SLScreenData(const fs::path &dir, const screen_info &info)
 	: ScreenData(dir, info)
 {
 }
@@ -813,18 +830,18 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 {
 	std::vector<std::string> result;
 
-	for (auto& f: mInfo.files)
+	for (auto &f : mInfo.files)
 		result.push_back(f.name);
 
 	return result;
 }
 
-SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trimLength,
-	const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
+SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
 	// First load the control data
-	std::array<std::vector<InsertionCount>,4> controlInsertions;
+	std::array<std::vector<InsertionCount>, 4> controlInsertions;
 
 	std::exception_ptr eptr;
 
@@ -833,7 +850,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		{
 			controlData.count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
 		}
-		catch(const std::exception& e)
+		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
 		}
@@ -842,13 +859,13 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 	if (eptr)
 		std::rethrow_exception(eptr);
 
-	std::array<std::vector<InsertionCount>,4> normalizedControlInsertions;
+	std::array<std::vector<InsertionCount>, 4> normalizedControlInsertions;
 	parallel_for(4, [&](size_t i) {
 		try
 		{
 			normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
 		}
@@ -859,13 +876,13 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 
 	SLDataResult result;
 
-	for (auto& f: mInfo.files)
-		result.replicate.push_back({ f.name });
-	
+	for (auto &f : mInfo.files)
+		result.replicate.push_back({f.name});
+
 	parallel_for(result.replicate.size(), [&](size_t i) {
 		try
 		{
-			auto& replicate = result.replicate[i];
+			auto &replicate = result.replicate[i];
 
 			// Then load the screen data
 			std::vector<InsertionCount> insertions;
@@ -879,7 +896,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 			// 	std::remove_if(replicate.data.begin(), replicate.data.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
 			// 	replicate.data.end());
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
 		}
@@ -887,17 +904,17 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 
 	if (eptr)
 		std::rethrow_exception(eptr);
-	
+
 	// find out which genes are significant
 
 	std::mutex m;
 	parallel_for(transcripts.size(), [&](size_t i) {
-	// for (size_t i = 0; i < transcripts.size(); ++ i) {
+		// for (size_t i = 0; i < transcripts.size(); ++ i) {
 
 		double minSenseRatio = std::numeric_limits<double>::max();
 		for (size_t j = 0; j < 4; ++j)
 		{
-			auto& nc = normalizedControlInsertions[j][i];
+			auto &nc = normalizedControlInsertions[j][i];
 			if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
 				minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
 		}
@@ -906,19 +923,19 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		size_t n = 0;
 		size_t s_g = 0, a_g = 0;
 
-		for (auto& r: result.replicate)
+		for (auto &r : result.replicate)
 		{
-			auto& nc = r.data[i];
+			auto &nc = r.data[i];
 
 			if (nc.binom_fdr > binomCutOff)
 				continue;
-			
+
 			// if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
 			// 	continue;
 
 			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
 				continue;
-			
+
 			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
 			if (senseRatio >= 0.5)
 				continue;
@@ -936,7 +953,7 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		{
 			size_t s_wt = 0, a_wt = 0;
 
-			for (auto& nc: normalizedControlInsertions)
+			for (auto &nc : normalizedControlInsertions)
 			{
 				s_wt += nc[i].sense;
 				a_wt += nc[i].antiSense;
@@ -954,28 +971,28 @@ SLDataResult SLScreenData::dataPoints(const std::string& assembly, unsigned trim
 		// 	std::unique_lock lock(m);
 		// 	result.significant.insert(transcripts[i].geneName);
 		// }
-	// }
+		// }
 	});
 
-	for (auto& r: result.replicate)
+	for (auto &r : result.replicate)
 	{
 		// remove redundant datapoints
 		r.data.erase(
-			std::remove_if(r.data.begin(), r.data.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
+			std::remove_if(r.data.begin(), r.data.end(), [](auto &dp) { return dp.sense == 0 or dp.antisense == 0; }),
 			r.data.end());
 	}
-	
+
 	return result;
 }
 
 // --------------------------------------------------------------------
 
-std::vector<std::tuple<size_t,size_t>> divide(size_t listsize, size_t suggested_groupsize)
+std::vector<std::tuple<size_t, size_t>> divide(size_t listsize, size_t suggested_groupsize)
 {
 	size_t nrOfGroups = std::round(static_cast<float>(listsize) / suggested_groupsize);
 	float groupsize = static_cast<float>(listsize) / nrOfGroups;
 
-	std::vector<std::tuple<size_t,size_t>> result;
+	std::vector<std::tuple<size_t, size_t>> result;
 
 	size_t b = 0;
 	for (float i = groupsize; i < listsize; i += groupsize)
@@ -994,14 +1011,13 @@ std::vector<std::tuple<size_t,size_t>> divide(size_t listsize, size_t suggested_
 
 // --------------------------------------------------------------------
 
-std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionCount>& insertions,
-	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
+std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionCount> &insertions,
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
 {
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions);
 
-	parallel_for(insertions.size(), [&](size_t i)
-	{
+	parallel_for(insertions.size(), [&](size_t i) {
 		int sense = insertions[i].sense;
 		int antisense = insertions[i].antiSense;
 
@@ -1011,13 +1027,13 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			((controlInsertions[2][i].sense + controlInsertions[2][i].antiSense) >= 20) and
 			((controlInsertions[3][i].sense + controlInsertions[3][i].antiSense) >= 20))
 		{
-			int ref_sense = 
+			int ref_sense =
 				controlInsertions[0][i].sense +
 				controlInsertions[1][i].sense +
 				controlInsertions[2][i].sense +
 				controlInsertions[3][i].sense;
 
-			int ref_antisense = 
+			int ref_antisense =
 				controlInsertions[0][i].antiSense +
 				controlInsertions[1][i].antiSense +
 				controlInsertions[2][i].antiSense +
@@ -1036,19 +1052,18 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	{
 		if (senseRatio[i] <= 0 or refSenseRatio[i] <= 0)
 			continue;
-		
+
 		index.push_back(i);
 	}
 
-	// sort datapoints based on ref_ratio	
+	// sort datapoints based on ref_ratio
 	std::sort(index.begin(), index.end(),
 		[&refSenseRatio](size_t a, size_t b) { return refSenseRatio[a] < refSenseRatio[b]; });
 
 	auto groups = divide(index.size(), groupSize);
 
-	parallel_for(groups.size(), [&](size_t i)
-	{
-		const auto& [b, e] = groups[i];
+	parallel_for(groups.size(), [&](size_t i) {
+		const auto &[b, e] = groups[i];
 		auto l = e - b;
 
 		// calculate median ratio for sample and reference in this group
@@ -1073,9 +1088,9 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			srs.push_back(senseRatio[index[ix]]);
 		std::sort(srs.begin(), srs.end());
 		double sample_median = l & 1
-			? srs[l / 2 + 1]
-			: (srs[l / 2] + srs[l / 2 + 1]) / 2.0;
-		
+								   ? srs[l / 2 + 1]
+								   : (srs[l / 2] + srs[l / 2 + 1]) / 2.0;
+
 		// adjust counts
 		for (size_t ix = b; ix < e; ++ix)
 		{
@@ -1085,8 +1100,8 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			auto iSenseRatio = senseRatio[iix];
 
 			double f = iSenseRatio < sample_median
-				? (ref_median * iSenseRatio) / sample_median
-				: 1 - ((1 - ref_median) * (1 - iSenseRatio)) / (1 - sample_median);
+						   ? (ref_median * iSenseRatio) / sample_median
+						   : 1 - ((1 - ref_median) * (1 - iSenseRatio)) / (1 - sample_median);
 
 			if (f > 1)
 				f = 1;
@@ -1100,15 +1115,15 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	return result;
 }
 
-void SLScreenData::count_insertions(const std::string& replicate, const std::string& assembly, unsigned trimLength,
-	const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const
+void SLScreenData::count_insertions(const std::string &replicate, const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, std::vector<InsertionCount> &insertions) const
 {
 	insertions.resize(transcripts.size());
 
 	auto bwt = read_insertions(assembly, trimLength, replicate);
 	auto ts = transcripts.begin();
 
-	for (const auto& [chr, strand, pos]: bwt)
+	for (const auto &[chr, strand, pos] : bwt)
 	{
 		assert(chr != CHROM::INVALID);
 
@@ -1121,7 +1136,7 @@ void SLScreenData::count_insertions(const std::string& replicate, const std::str
 		auto t = ts;
 		while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 		{
-			for (auto& r: t->ranges)
+			for (auto &r : t->ranges)
 			{
 				if (pos >= r.start and pos < r.end)
 				{
@@ -1140,8 +1155,8 @@ void SLScreenData::count_insertions(const std::string& replicate, const std::str
 	}
 }
 
-std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> SLScreenData::getInsertionsForReplicate(const std::string& replicate,
-	const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end) const
+std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> SLScreenData::getInsertionsForReplicate(const std::string &replicate,
+	const std::string &assembly, CHROM chrom, uint32_t start, uint32_t end) const
 {
 	const unsigned readLength = 50;
 
@@ -1150,7 +1165,7 @@ std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> SLScreenData::getInserti
 
 	auto bwt = read_insertions(assembly, readLength, replicate);
 
-	for (auto&& [chr, strand, pos]: bwt)
+	for (auto &&[chr, strand, pos] : bwt)
 	{
 		assert(chr != CHROM::INVALID);
 
@@ -1168,8 +1183,8 @@ std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> SLScreenData::getInserti
 
 // --------------------------------------------------------------------
 
-std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
-	const std::vector<InsertionCount>& insertions, const std::array<std::vector<InsertionCount>,4>& controlInsertions,
+std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
+	const std::vector<InsertionCount> &insertions, const std::array<std::vector<InsertionCount>, 4> &controlInsertions,
 	unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
@@ -1190,27 +1205,26 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 	std::vector<double> pvalues[5];
 
-	for (auto& pv: pvalues)
+	for (auto &pv : pvalues)
 		pv.resize(M);
 
 	// Calculate the minimal sense ratio per gene in the controls
 	std::vector<double> minSenseRatio(N);
-	for (auto& cdi: controlInsertions)
+	for (auto &cdi : controlInsertions)
 	{
-		for (auto i: index)
+		for (auto i : index)
 		{
-			auto& cd = cdi[i];
+			auto &cd = cdi[i];
 			double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
 			if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
 				minSenseRatio[i] = r;
 		}
 	}
 
-	parallel_for(M, [&](size_t ix)
-	{
+	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
 
-		SLDataPoint& dp = datapoints[i];
+		SLDataPoint &dp = datapoints[i];
 
 		dp.gene = transcripts[i].geneName;
 		dp.sense = insertions[i].sense;
@@ -1225,38 +1239,35 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 		for (int j = 0; j < 4; ++j)
 		{
 			long v[2][2] = {
-				{ dp.sense_normalized, dp.antisense_normalized },
-				{ static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense) }
-			};
+				{dp.sense_normalized, dp.antisense_normalized},
+				{static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense)}};
 
 			if (v[0][0] + v[0][1] == 0 or v[1][0] + v[1][1] == 0)
 				dp.ref_pv[j] = -1;
 			else
 				dp.ref_pv[j] = fisherTest2x2(v);
-			
+
 			pvalues[j + 1][ix] = dp.ref_pv[j];
 		}
 	});
 
 	std::vector<double> fcpv[5];
-	parallel_for(5, [&](size_t i)
-	{
+	parallel_for(5, [&](size_t i) {
 		fcpv[i] = adjustFDR_BH(pvalues[i]);
 	});
 
-	parallel_for(M, [&](size_t ix)
-	{
+	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
 
-		auto& dp = datapoints[i];
+		auto &dp = datapoints[i];
 
 		// dp.pv = pvalues[0][ix];
 		dp.binom_fdr = fcpv[0][ix];
 
-		dp.ref_fcpv[0]	= fcpv[1][ix];
-		dp.ref_fcpv[1]	= fcpv[2][ix];
-		dp.ref_fcpv[2]	= fcpv[3][ix];
-		dp.ref_fcpv[3]	= fcpv[4][ix];
+		dp.ref_fcpv[0] = fcpv[1][ix];
+		dp.ref_fcpv[1] = fcpv[2][ix];
+		dp.ref_fcpv[2] = fcpv[3][ix];
+		dp.ref_fcpv[3] = fcpv[4][ix];
 	});
 
 	return datapoints;
@@ -1264,7 +1275,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript>&
 
 // --------------------------------------------------------------------
 
-std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
+std::unique_ptr<ScreenData> ScreenData::load(const fs::path &dir)
 {
 	screen_info info = loadManifest(dir);
 
@@ -1275,10 +1286,10 @@ std::unique_ptr<ScreenData> ScreenData::load(const fs::path& dir)
 
 		case ScreenType::IntracellularPhenotypeActivation:
 			return std::make_unique<PAScreenData>(dir);
-				
+
 		case ScreenType::SyntheticLethal:
 			return std::make_unique<SLScreenData>(dir);
-		
+
 		default:
 			throw std::logic_error("should not be called with unspecified");
 	}
