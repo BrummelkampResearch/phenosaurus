@@ -221,6 +221,11 @@ class screen_service
 	void update_screen(const std::string& name, const screen_info& screen);
 	void delete_screen(const std::string& name);
 
+	std::unique_ptr<ScreenData> load_screen(const std::string &screen)
+	{
+		return ScreenData::load(m_screen_data_dir / screen);
+	}
+
 	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type, const std::string& assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
@@ -267,4 +272,6 @@ class screen_rest_controller : public zeep::http::rest_controller
 
 	bool validateFastQFile(const std::string& filename);
 	bool validateScreenName(const std::string& name);
+
+	void map_screen(const std::string& screen, const std::string& assembly);
 };

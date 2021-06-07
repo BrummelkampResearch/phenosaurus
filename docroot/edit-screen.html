@@ -128,15 +128,23 @@
 			</tbody>
 		</table>
 
-		<table class="table table-sm">
+		<table class="table table-sm" id="assembly-table">
 			<caption>Mapped assemblies</caption>
 			<thead>
-				<tr><th>Assembly</th><th>Trimlength</th></tr>
+				<tr>
+					<th>Assembly</th>
+					<th>Trimlength</th>
+					<th>Mapped</th>
+				</tr>
 			</thead>
 			<tbody>
 				<tr z:each="m: ${screen.mapped}">
 					<td z:text="${m.assembly}"></td>
 					<td z:text="${m.trim-length}"></td>
+					<td z:switch="${m.bowtie-version}">
+						<i z:case="*" class="fa fa-check"></i>
+						<button z:case="null" class="btn btn-sm btn-secondary" z:data-assembly="${m.assembly}">map</button>
+					</td>
 				</tr>
 			</tbody>
 		</table>

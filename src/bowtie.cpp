@@ -26,6 +26,7 @@
 #include "bowtie.hpp"
 #include "utils.hpp"
 #include "job-scheduler.hpp"
+#include "bsd-closefrom.h"
 
 namespace fs = std::filesystem;
 namespace io = boost::iostreams;
@@ -174,6 +175,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	if (not fs::exists(args.front()))
 		throw std::runtime_error("The executable '"s + args.front() + "' does not seem to exist");
 
+	if (not fs::exists(fastq))
+		throw std::runtime_error("The FastQ file '" + fastq.string() + "' does not seem to exist");
+
 	// ready to roll
 	int ifd[2], ofd[2], err;
 
@@ -201,6 +205,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 
 		dup2(efd, STDERR_FILENO);
 		close(efd);
+
+		closefrom(STDERR_FILENO + 1);
 
 		const char* env[] = { nullptr };
 		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
@@ -470,6 +476,8 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 		dup2(efd[1], STDERR_FILENO);
 		close(efd[0]);
 		close(efd[1]);
+
+		closefrom(STDERR_FILENO + 1);
 
 		const char* env[] = { nullptr };
 		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));

@@ -81,6 +81,7 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(APPLICATION:%=$(OBJDIR)/%_rsrc.o) \
 	$(OBJDIR)/binom.o \
 	$(OBJDIR)/bowtie.o \
+	$(OBJDIR)/bsd-closefrom.o \
 	$(OBJDIR)/db-connection.o \
 	$(OBJDIR)/fisher.o \
 	$(OBJDIR)/genome-browser.o \
@@ -100,6 +101,10 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 $(OBJECTS:.o=.d):
 
 $(OBJDIR)/%.o: %.cpp | src/mrsrc.h $(OBJDIR)
+	@ echo ">>" $<
+	@ $(CXX) -MD -c -o $@ $< $(CFLAGS) $(CXXFLAGS)
+
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
 	@ echo ">>" $<
 	@ $(CXX) -MD -c -o $@ $< $(CFLAGS) $(CXXFLAGS)
 
