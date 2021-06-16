@@ -328,7 +328,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				line += ch;
 				continue;
 			}
-			
+
 			try
 			{
 				auto ins = parseLine(line.c_str(), trimLength);

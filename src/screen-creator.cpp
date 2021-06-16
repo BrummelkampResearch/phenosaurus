@@ -455,7 +455,7 @@ std::string askPasswordSimple()
 // 		groupSize = vm["group-size"].as<unsigned short>();
 
 // 	float pvCutOff = vm["pv-cut-off"].as<float>();
-// 	float binom_fdrCutOff = vm["binom-fd-cut-off"].as<float>();
+// 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
 // 	float effectSize = vm["effect-size"].as<float>();
 
 // 	// -----------------------------------------------------------------------
