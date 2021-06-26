@@ -682,7 +682,8 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });
-	sc->add_rule("/{ip,pa,sl,screen,qc,screens}/", { "USER" });
+	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
+	sc->add_rule("/{qc,screens}", { "USER" });
 	sc->add_rule("/", {});
 
 	sc->set_validate_csrf(true);
