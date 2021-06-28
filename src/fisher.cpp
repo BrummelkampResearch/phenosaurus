@@ -177,7 +177,11 @@ double hypergeometric_probability(long x, long r, long b, long n)
 	return result;
 }
 
-double fisherTest2x2(long v[2][2])
+enum class FisherMethod {
+	Less, TwoSided, Greater
+};
+
+double fisherTest2x2(long v[2][2], FisherAlternative alternative)
 {
 	auto m = v[0][0] + v[0][1];
 	auto n = v[1][0] + v[1][1];
@@ -206,8 +210,25 @@ double fisherTest2x2(long v[2][2])
 
 	const double kRelErr = 1 + 1e-7;
 
-	return std::accumulate(d.begin(), d.end(), 0.0,
-		[max=d[x - lo] * kRelErr](double s, double d) { return d <= max ? s + d : s; });
+	double result;
+
+	switch (alternative)
+	{
+		case FisherAlternative::Left:
+			result = std::accumulate(d.begin(), d.begin() + x - lo + 1, 0.0);
+			break;
+		
+		case FisherAlternative::Right:
+			result = std::accumulate(d.begin() + x - lo, d.end(), 0.0);
+			break;
+		
+		default:
+			result = std::accumulate(d.begin(), d.end(), 0.0,
+				[max=d[x - lo] * kRelErr](double s, double d) { return d <= max ? s + d : s; });
+			break;
+	}
+
+	return result;
 }
 
 std::vector<double> adjustFDR_BH(const std::vector<double>& p)
@@ -248,7 +269,10 @@ int main(int argc, char* const argv[])
 		p[1][0] = std::stol(argv[3]);
 		p[1][1] = std::stol(argv[4]);
 
-		std::cout << std::fixed << fisherTest2x2(p) << std::endl;
+		std::cout << "greater   " << std::fixed << fisherTest2x2(p, FisherAlternative::Left) << std::endl
+				  << "two.sided " << std::fixed << fisherTest2x2(p, FisherAlternative::TwoSided) << std::endl
+				  << "less      " << std::fixed << fisherTest2x2(p, FisherAlternative::Right) << std::endl
+				  ;
 	}
 
 	// std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });

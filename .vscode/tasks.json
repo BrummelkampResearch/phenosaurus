@@ -47,23 +47,23 @@
                 "isDefault": true
             }
         },
-        {
-            "type": "shell",
-            "label": "clang++ build active file",
-            "command": "/usr/bin/clang++",
+		{
+            "type": "process",
+            "label": "make fisher",
+            "command": "g++",
             "args": [
-                "-std=c++17",
-                "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "-DFISHER_MAIN", "fisher.cpp", "-o", "fisher", "-g"
             ],
             "options": {
-                "cwd": "/usr/bin"
+                "cwd": "${workspaceFolder}/src"
             },
-            "problemMatcher": [
-                "$gcc"
-            ],
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ]
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true

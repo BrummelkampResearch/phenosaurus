@@ -823,7 +823,7 @@ std::vector<std::string> screen_qc_data::cluster(const std::map<std::string,std:
 
 
 screen_qc_rest_controller::screen_qc_rest_controller()
-	: zeep::http::rest_controller("/qc/")
+	: zeep::http::rest_controller("/qc")
 {
 	map_post_request("heatmap", &screen_qc_rest_controller::get_heatmap, "requestedBinCount", "chr", "skip");
 	map_post_request("emptybins", &screen_qc_rest_controller::get_emptybins, "requestedBinCount", "chr", "skip");

@@ -616,7 +616,7 @@ int analyze_vb(int argc, char* const argv[])
 	}
 	file.close();
 
-	auto r = dataPoints(transcripts, insertions, controlInsertions, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
+	auto r = SLdataPoints(transcripts, insertions, controlInsertions, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
 	bool significantOnly = vm.count("significant");
 
 	if (vm.count("no-header") == 0)
