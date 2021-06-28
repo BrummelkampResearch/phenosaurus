@@ -14,7 +14,7 @@ SHELL := /bin/bash
 firstTarget: all
 
 CXX					= @CXX@
-CXXFLAGS			= @CXXFLAGS@ @CPPFLAGS@ @ZEEP_CFLAGS@ @PTHREAD_CFLAGS@ @PQXX_CFLAGS@ @PQ_CFLAGS@ @BOOST_CPPFLAGS@ @MAILIO_CFLAGS@ @SSL_CFLAGS@
+CXXFLAGS			= @CXXFLAGS@ @CPPFLAGS@ @ZEEP_CFLAGS@ @PTHREAD_CFLAGS@ @PQXX_CFLAGS@ @PQ_CFLAGS@ @BOOST_CPPFLAGS@ @MAILIO_CFLAGS@ @SSL_CFLAGS@ @URIPARSER_CFLAGS@
 LDFLAGS				= @LDFLAGS@ @BOOST_LDFLAGS@ @PTHREAD_CFLAGS@
 LIBS				= @LIBS@ \
 					  @PQXX_LIBS@ \
@@ -26,7 +26,8 @@ LIBS				= @LIBS@ \
 					  @BOOST_DATE_TIME_LIB@ \
 					  @MAILIO_LIBS@ \
 					  @SSL_LIBS@ \
-					  @ZLIB_LIBS@ -lbz2
+					  @ZLIB_LIBS@ -lbz2 \
+					  @URIPARSER_LIBS@
 
 prefix				= @prefix@
 exec_prefix			= @exec_prefix@
@@ -81,6 +82,7 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 	$(APPLICATION:%=$(OBJDIR)/%_rsrc.o) \
 	$(OBJDIR)/binom.o \
 	$(OBJDIR)/bowtie.o \
+	$(OBJDIR)/bsd-closefrom.o \
 	$(OBJDIR)/db-connection.o \
 	$(OBJDIR)/fisher.o \
 	$(OBJDIR)/genome-browser.o \
@@ -100,6 +102,10 @@ OBJECTS = $(APPLICATION:%=$(OBJDIR)/%.o) \
 $(OBJECTS:.o=.d):
 
 $(OBJDIR)/%.o: %.cpp | src/mrsrc.h $(OBJDIR)
+	@ echo ">>" $<
+	@ $(CXX) -MD -c -o $@ $< $(CFLAGS) $(CXXFLAGS)
+
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
 	@ echo ">>" $<
 	@ $(CXX) -MD -c -o $@ $< $(CFLAGS) $(CXXFLAGS)
 

@@ -457,7 +457,7 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 		auto &mi = result.mappedInfo;
 		auto cmp = [](const mapped_info &a, const mapped_info &b) {
 			int d = a.assembly.compare(b.assembly);
-			if (d != 0)
+			if (d == 0)
 				d = a.trimlength - b.trimlength;
 			return d == 0;
 		};

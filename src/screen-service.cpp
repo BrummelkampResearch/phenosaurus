@@ -1185,6 +1185,18 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request& 
 	const std::string screenID = request.get_parameter("screen-id");
 
 	auto info = screen_service::instance().retrieve_screen(screenID);
+
+	// make the mapped section complete
+	auto& mapped = info.mappedInfo;
+
+	for (auto a: { "hg19", "hg38" })
+	{
+		if (std::find_if(mapped.begin(), mapped.end(), [a](mapped_info& mi) { return mi.assembly == a; }) != mapped.end())
+			continue;
+		
+		mapped.push_back({ a, 50 });
+	}
+
 	zeep::json::element screen;
 	to_element(screen, info);
 	sub.put("screen", screen);
@@ -1209,6 +1221,8 @@ screen_rest_controller::screen_rest_controller()
 	map_get_request("screen/{id}", &screen_rest_controller::retrieve_screen, "id");
 	map_put_request("screen/{id}", &screen_rest_controller::update_screen, "id", "screen");
 	map_delete_request("screen/{id}", &screen_rest_controller::delete_screen, "id");
+
+	map_get_request("screen/{id}/map/{assembly}", &screen_rest_controller::map_screen, "id", "assembly");
 }
 
 std::string screen_rest_controller::create_screen(const screen_info& screen)
@@ -1263,3 +1277,9 @@ bool screen_rest_controller::validateScreenName(const std::string& name)
 {
 	return screen_service::is_valid_name(name) and not screen_service::instance().exists(name);
 }
+
+void screen_rest_controller::map_screen(const std::string& screen, const std::string& assembly)
+{
+	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().load_screen(screen), assembly));
+}
+

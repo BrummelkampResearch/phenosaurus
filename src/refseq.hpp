@@ -124,6 +124,8 @@ void cutOverlap(Transcript& a, Transcript& b);
 
 // --------------------------------------------------------------------
 
+void init_refseq(const std::string& file);
+
 std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly);
 
 void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode);

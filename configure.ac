@@ -24,6 +24,35 @@ dnl	esyscmd(tools/m4esc.sh config-tests/$1))])
 
 AC_PROG_INSTALL
 
+AC_CHECK_HEADERS([dlfcn.h dirent.h fcntl.h malloc.h stdlib.h string.h syslog.h unistd.h utime.h values.h])
+
+# Test for F_CLOSEM
+AC_CHECK_DECL(F_CLOSEM,
+          AC_DEFINE(HAVE_FCNTL_CLOSEM,1,[Use F_CLOSEM fcntl for closefrom]),
+          [],
+          [ #include <limits.h>
+            #include <fcntl.h> ]
+         )
+# Test for existence /proc/$$/fd
+AC_MSG_CHECKING([for /proc/pid/fd directory])
+if test -d "/proc/$$/fd" ; then
+        AC_DEFINE(HAVE_PROC_PID, 1, [Define if you have /proc/$pid/fd])
+        AC_MSG_RESULT(yes)
+else
+        AC_MSG_RESULT(no)
+    # Test for existence /dev/fd, e.g. on MacOS
+    AC_MSG_CHECKING([for /dev/fd directory])
+    if test -d "/dev/fd" ; then
+        AC_DEFINE(HAVE_DEV_FD, 1, [Define if you have /dev/fd])
+        AC_MSG_RESULT(yes)
+    else
+        AC_MSG_RESULT(no)
+    fi
+fi
+
+# Checks for library functions.
+AC_CHECK_FUNCS([closefrom closedir dirfd getsid setenv stat strchr strdup strerror strncasecmp strtol sysconf])
+
 AC_ARG_VAR([DEBUG], [Build a debug version of the application])
 AC_ARG_VAR([MRC], [Specify a location for the mrc executable])
 
@@ -49,6 +78,7 @@ AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package 
 AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
 AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
 AX_PKG_CHECK_MODULES([ZLIB], [zlib], [], [], [AC_MSG_ERROR([the required package zlib-dev is not installed])])
+AX_PKG_CHECK_MODULES([URIPARSER], [liburiparser >= 0.9.0], [], [], [AC_MSG_ERROR([the required package uriparser is not installed])])
 
 AX_PTHREAD
 

@@ -1,12 +1,17 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
-class ScreenEditor {
+export class ScreenEditor {
 
 	constructor() {
 		this.form = document.forms['edit-screen-form'];
 		this.csrf = this.form.elements['_csrf'].value;
 		this.form.addEventListener('submit', (e) => this.submitForm(e));
+		
+		const btns = document.querySelectorAll("#assembly-table button");
+		btns.forEach(btn => {
+			btn.addEventListener("click", () => this.mapScreen(btn.dataset.assembly, btn));
+		});
 	}
 
 	submitForm(e) {
@@ -55,6 +60,27 @@ class ScreenEditor {
 			console.log(err);
 			alert(`Failed to submit form: ${err}`);
 		});
+	}
+
+	mapScreen(assembly, btn) {
+		let wasOK;
+		fetch(`screen/${this.form['screen-name'].value}/map/${assembly}`, {
+			credentials: "include",
+			method: 'GET',
+			headers: {
+				'X-CSRF-Token': this.csrf
+			}
+		}).then(r => {
+			if (r.ok) {
+				btn.style.display = 'none';
+				btn.parentNode.textContent = 'mapping started';
+			}
+			else alert("Failed to start mapping");
+		}).catch(err => {
+			console.log(err);
+			alert(`Failed to map: ${err}`);
+		});
+
 	}
 }
 
