@@ -173,18 +173,21 @@ struct splitted_range
 	char m_d;
 };
 
-std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
+// ugly code
+namespace
 {
-	if (VERBOSE > 1)
-		std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
+std::filesystem::path gRefSeqFile;
+}
 
-	mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
+void init_refseq(const std::string& file)
+{
+	gRefSeqFile = std::filesystem::canonical(file);
+	if (not std::filesystem::exists(gRefSeqFile))
+		throw std::runtime_error("Refseq file does not exist");
+}
 
-	if (not refseq)
-		throw std::runtime_error("Invalid assembly specified, could not find genes");
-
-	mrsrc::istream in(refseq);
-	
+std::vector<Transcript> loadGenes(std::istream& in, bool completeOnly, bool knownOnly)
+{
 	std::string line;
 	if (not std::getline(in, line) or line.empty())
 		throw std::runtime_error("Invalid gene file");
@@ -192,10 +195,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 	std::vector<int> index;
 
 	std::vector<Transcript> transcripts;
-	if (assembly == "hg19")
-		transcripts.reserve(70000);
-	else if (assembly == "hg38")
-		transcripts.reserve(170000);
+	transcripts.reserve(200000);
 
 	for (auto f: splitted_range(line, '\t'))
 	{
@@ -363,6 +363,32 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 	std::sort(transcripts.begin(), transcripts.end());
 
 	return transcripts;
+}
+
+std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
+{
+	if (not gRefSeqFile.empty())
+	{
+		if (VERBOSE > 1)
+			std::cerr << "Loading genes from " << gRefSeqFile.string() << std::endl;
+
+		std::ifstream in(gRefSeqFile);
+		return loadGenes(in, completeOnly, knownOnly);
+	}
+	else
+	{
+		if (VERBOSE > 1)
+			std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
+
+		mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
+
+		if (not refseq)
+			throw std::runtime_error("Invalid assembly specified, could not find genes");
+
+		mrsrc::istream in(refseq);
+		
+		return loadGenes(in, completeOnly, knownOnly);
+	}
 }
 
 // --------------------------------------------------------------------

@@ -26,10 +26,15 @@ const auto kProcessorCount = std::thread::hardware_concurrency();
 void parallel_for(size_t N, std::function<void(size_t)>&& f)
 {
 
-// #if DEBUG
-//     for (size_t i = 0; i < N; ++i)
-//         f(i);
-// #else
+#if DEBUG
+	if (getenv("NO_PARALLEL"))
+	{
+		for (size_t i = 0; i < N; ++i)
+			f(i);
+		return;
+	}
+#endif
+
 	std::atomic<size_t> i = 0;
 
 	std::exception_ptr eptr;
@@ -63,8 +68,6 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 
 	if (eptr)
 		std::rethrow_exception(eptr);
-
-// #endif
 }
 
 // -----------------------------------------------------------------------
