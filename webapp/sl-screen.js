@@ -32,10 +32,10 @@ class ColorMap {
 
 		switch (this.type) {
 			case 'raw':
-				return this.scale(mapped.diff);
+				return this.scale(mapped.effectSize);
 			case 'significant':
 				if (significantGenes.has(d.gene))
-					return this.scale(mapped.diff);
+					return this.scale(mapped.effectSize);
 				else if (highlightedGenes.has(d.gene))
 					return highlight;
 				else
@@ -48,29 +48,27 @@ class ColorMap {
 
 		data.forEach(d => {
 			const prev = this.geneColorMap.get(d.gene);
-			if (prev != null) {
-				prev.diff += d.senseratio - prev.control;
-				prev.control = d.senseratio;
-			}
+			if (prev != null)
+				prev.effectSize = d.effectSize;
 			else
-				this.geneColorMap.set(d.gene, {control: d.senseratio});
+				this.geneColorMap.set(d.gene, {effectSize: d.effectSize});
 		});
 	}
 
 	setData(data) {
-		let maxDiff = 0;
+		let maxEffectSize = 0;
 		data.forEach(d => {
+			if (maxEffectSize < d.effectSize)
+				maxEffectSize = d.effectSize;
+
 			const e = this.geneColorMap.get(d.gene);
 			if (e != null) {
 				e.binom_fdr = d.binom_fdr;
-				e.diff = e.control - d.senseratio;
-
-				if (maxDiff < e.diff)
-					maxDiff = e.diff;
+				e.effectSize = d.effectSize;
 			}
 		});
 
-		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, maxDiff]);
+		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, maxEffectSize]);
 
 		this.control.updateColors();
 	}
@@ -169,6 +167,8 @@ class SLScreenPlot extends ScreenPlot {
 
 					this.data.replicate.forEach(r => {
 						r.data.forEach(d => {
+							d.effectSize = d.effect_size;
+
 							d.sense_raw = d.sense;
 							d.antisense_raw = d.antisense;
 	
@@ -353,6 +353,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
+				col(d.effectSize.toFixed(2));
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
