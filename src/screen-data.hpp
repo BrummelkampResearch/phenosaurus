@@ -136,6 +136,7 @@ struct SLDataPoint
 	float ref_pv[4];
 	float ref_fcpv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
+	float effectSize;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -147,7 +148,8 @@ struct SLDataPoint
 		   & zeep::make_nvp("sense", sense)
 		   & zeep::make_nvp("antisense", antisense)
 		   & zeep::make_nvp("sense_normalized", sense_normalized)
-		   & zeep::make_nvp("antisense_normalized", antisense_normalized);
+		   & zeep::make_nvp("antisense_normalized", antisense_normalized)
+		   & zeep::make_nvp("effect_size", effectSize);
 	}
 };
 

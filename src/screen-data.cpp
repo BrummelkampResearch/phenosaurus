@@ -937,8 +937,8 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 				continue;
 
 			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
-			if (senseRatio >= 0.5)
-				continue;
+			// if (senseRatio >= 0.5)
+			// 	continue;
 
 			++n;
 
@@ -959,9 +959,24 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 				a_wt += nc[i].antiSense;
 			}
 
-			if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
+			// if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
+			// {
+			// 	std::unique_lock lock(m);
+			// 	result.significant.insert(transcripts[i].geneName);
+			// }
+
+			long v[2][2] = {
+					{ s_g, a_g },
+					{ s_wt, a_wt },
+			};
+
+			FishersExactTest f(v, FisherAlternative::TwoSided);
+
+			if (f.oddsRatio() >= effectSize)
 			{
 				std::unique_lock lock(m);
+				for (auto &r : result.replicate)
+						r.data[i].effectSize = f.oddsRatio();
 				result.significant.insert(transcripts[i].geneName);
 			}
 		}

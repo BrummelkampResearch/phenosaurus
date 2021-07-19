@@ -1,11 +1,13 @@
 #include "config.hpp"
 
-#include <cmath>
-#include <vector>
 #include <algorithm>
-#include <numeric>
-#include <iostream>
 #include <cassert>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#include <numeric>
+#include <vector>
+#include <tuple>
 
 #include "fisher.hpp"
 
@@ -75,7 +77,7 @@ double bd0(double x, double np)
 	return x * s + np - x;
 }
 
-double calculate_sterling_error(long n)
+constexpr double calculate_sterling_error(long n)
 {
 	return lgamma(n + 1.) - (n + 0.5) * log(n) + n - log(sqrt(2 * M_PI));
 }
@@ -96,8 +98,7 @@ const double kStirlingErrors[16] = {
 	calculate_sterling_error(12),
 	calculate_sterling_error(13),
 	calculate_sterling_error(14),
-	calculate_sterling_error(15)
-};
+	calculate_sterling_error(15)};
 
 double stirling_error(long n)
 {
@@ -110,11 +111,14 @@ double stirling_error(long n)
 		auto n2 = n * n;
 
 		result = 0;
-		if (n <= 35)	result = (1 / 1188.0         ) / n2;
-		if (n <= 80)	result = (1 / 1680.0 - result) / n2;
-		if (n <= 500)	result = (1 / 1260.0 - result) / n2;
-						result = (1 /  360.0 - result) / n2;
-						result = (1 /   12.0 - result) / n2;
+		if (n <= 35)
+			result = (1 / 1188.0) / n2;
+		if (n <= 80)
+			result = (1 / 1680.0 - result) / n2;
+		if (n <= 500)
+			result = (1 / 1260.0 - result) / n2;
+		result = (1 / 360.0 - result) / n2;
+		result = (1 / 12.0 - result) / n2;
 
 		result *= n;
 	}
@@ -126,7 +130,7 @@ double binomial_coefficient(long x, long n, double p)
 {
 	double result = 0;
 
-    if (x >= 0 and std::isfinite(x))
+	if (x >= 0 and std::isfinite(x))
 	{
 		auto q = 1 - p;
 
@@ -150,7 +154,7 @@ double binomial_coefficient(long x, long n, double p)
 			auto lf = kLn2PI + log(x) + log1p(-x / n);
 
 			result = lc - 0.5 * lf;
-		}	
+		}
 	}
 
 	return result;
@@ -177,7 +181,89 @@ double hypergeometric_probability(long x, long r, long b, long n)
 	return result;
 }
 
-double fisherTest2x2(long v[2][2])
+// --------------------------------------------------------------------
+// Code inspired by https://blogs.mathworks.com/cleve/2015/10/12/zeroin-part-1-dekkers-algorithm/
+
+template<typename F>
+constexpr F eps(F x)
+{
+	if (std::isinf(x))
+		return x;
+
+	return std::nextafter(x, std::numeric_limits<F>::max()) - x;
+}
+
+template<typename F>
+double zeroin(F &&f, double a, double b)
+{
+	auto fa = f(a);
+	auto fb = f(b);
+	if (std::signbit(fa) == std::signbit(fb))
+		throw std::runtime_error("Sign of f(a) should differ from sign of f(b)");
+	
+	int k = 2;
+
+	// a is the previous value of b and [b, c] always contains the zero.
+	auto c = a;
+	auto fc = fa;
+
+	// limit nr. of iterations...
+	for (int i = 0; i < 1000; ++i)
+	{
+		if (std::signbit(fb) == std::signbit(fc))
+		{
+			c = a;
+			fc = fa;
+		}
+
+		// Swap to insure f(b) is the smallest value so far.
+		if (std::abs(fc) < std::abs(fb))
+		{
+			a = b; b = c; c = a;
+			fa = fb; fb = fc; fc = fa;
+		}
+
+		// Midpoint
+		auto m = (b + c) / 2;
+		if (std::abs(m - b) <= eps(std::abs(b)))
+			return b;
+
+		// p/q is the the secant step.
+		auto p = (b - a) * fb;
+		auto q = fb - fa;
+		if (p >= 0)
+			q = -q;
+		else
+			p = -p;
+
+		// save this point
+		a = b; fa = fb;
+
+		// Choose next point.
+		if (p <= eps(q))
+		{
+			// Minimal step.
+			b = b + std::copysign(eps(b), c - b);
+			fb = f(b);
+		}
+		else if (p <= (m - b) * q)
+		{
+			// Secant.
+			b = b + p / q;
+			fb = f(b);
+		}
+		else
+		{
+			// Bisection.
+			b = m;
+			fb = f(b);
+		}
+	}
+}
+
+// --------------------------------------------------------------------
+
+double fisherTest2x2(long v[2][2], FisherAlternative alternative)
 {
 	auto m = v[0][0] + v[0][1];
 	auto n = v[1][0] + v[1][1];
@@ -190,38 +276,156 @@ double fisherTest2x2(long v[2][2])
 	if (hi > m)
 		hi = m;
 
-	std::vector<double> d(hi - lo + 1);
+	std::vector<double> logdc(hi - lo + 1);
 	for (auto i = lo; i <= hi; ++i)
-		d[i - lo] = hypergeometric_probability(i, m, n, k);
-	
-	auto dmax = *std::max_element(d.begin(), d.end());
+		logdc[i - lo] = hypergeometric_probability(i, m, n, k);
 
-	for (auto& di: d)
-		di = std::exp(di - dmax);
+	auto dnhyper = [lo, hi, logdc](double ncp)
+	{
+		std::vector<double> d(logdc);
 
-	auto dsum = std::accumulate(d.begin(), d.end(), 0.0);
+		for (long i = lo; i <= hi; ++i)
+			d[i - lo] += std::log(ncp) * i;
+		
+		auto dmax = *std::max_element(d.begin(), d.end());
 
-	for (auto& di: d)
-		di /= dsum;
+		for (auto &di : d)
+			di = std::exp(di - dmax);
+		
+		auto dsum = std::accumulate(d.begin(), d.end(), 0.0);
+
+		for (auto &di : d)
+			di /= dsum;
+
+		return d;
+	};
+
+	auto d = dnhyper(1);
 
 	const double kRelErr = 1 + 1e-7;
 
-	return std::accumulate(d.begin(), d.end(), 0.0,
-		[max=d[x - lo] * kRelErr](double s, double d) { return d <= max ? s + d : s; });
+	switch (alternative)
+	{
+		case FisherAlternative::Left:
+			return std::accumulate(d.begin(), d.begin() + x - lo + 1, 0.0);
+
+		case FisherAlternative::Right:
+			return std::accumulate(d.begin() + x - lo, d.end(), 0.0);
+
+		default:
+			return std::accumulate(d.begin(), d.end(), 0.0,
+				[max = d[x - lo] * kRelErr](double s, double d)
+				{ return d <= max ? s + d : s; });
+	}
 }
 
-std::vector<double> adjustFDR_BH(const std::vector<double>& p)
+// --------------------------------------------------------------------
+
+FishersExactTest::FishersExactTest(long v[2][2], FisherAlternative alternative)
+{
+	auto m = v[0][0] + v[0][1];
+	auto n = v[1][0] + v[1][1];
+	auto k = v[0][0] + v[1][0];
+	auto x = v[0][0];
+	auto lo = k - n;
+	if (lo < 0)
+		lo = 0;
+	auto hi = k;
+	if (hi > m)
+		hi = m;
+
+	std::vector<double> logdc(hi - lo + 1);
+	for (auto i = lo; i <= hi; ++i)
+		logdc[i - lo] = hypergeometric_probability(i, m, n, k);
+
+	auto dnhyper = [lo, hi, logdc](double ncp)
+	{
+		std::vector<double> d(logdc);
+
+		for (long i = lo; i <= hi; ++i)
+			d[i - lo] += std::log(ncp) * i;
+		
+		auto dmax = *std::max_element(d.begin(), d.end());
+
+		for (auto &di : d)
+			di = std::exp(di - dmax);
+		
+		auto dsum = std::accumulate(d.begin(), d.end(), 0.0);
+
+		for (auto &di : d)
+			di /= dsum;
+
+		return d;
+	};
+
+	auto d = dnhyper(1);
+
+	const double kRelErr = 1 + 1e-7;
+
+	switch (alternative)
+	{
+		case FisherAlternative::Left:
+			m_pvalue = std::accumulate(d.begin(), d.begin() + x - lo + 1, 0.0);
+			break;
+
+		case FisherAlternative::Right:
+			m_pvalue = std::accumulate(d.begin() + x - lo, d.end(), 0.0);
+			break;
+
+		default:
+			m_pvalue = std::accumulate(d.begin(), d.end(), 0.0,
+				[max = d[x - lo] * kRelErr](double s, double d)
+				{ return d <= max ? s + d : s; });
+			break;
+	}
+
+	// calculate odds ratio
+
+	auto mnhyper = [&dnhyper, lo, hi, logdc](double ncp)
+	{
+		if (ncp == 0)
+			return lo * 1.0;
+		else if (ncp == std::numeric_limits<double>::infinity())
+			return hi * 1.0;
+		else
+		{
+			auto d = dnhyper(ncp);
+
+			auto r = std::accumulate(d.begin(), d.end(), std::make_tuple(lo, 0.0), [](std::tuple<long,double> s, double di)
+				{
+					const auto &[i, ds] = s;
+					return std::make_tuple(i + 1, ds + di * i);
+				});
+			
+			return std::get<1>(r);
+		}
+	};
+
+	double mu = mnhyper(1);
+
+	if (mu > x)
+		m_oddsRatio = zeroin([x, &mnhyper](double t) { return mnhyper(t) - x; }, 0, 1);
+	else if (mu < x)
+		m_oddsRatio = 1 / zeroin([x, &mnhyper](double t) { return mnhyper(1 / t) - x; }, std::nextafter(0.0, 1.0), 1);
+	else
+		m_oddsRatio = 1;
+}
+
+std::vector<double> adjustFDR_BH(const std::vector<double> &p)
 {
 	const size_t N = p.size();
 
 	std::vector<size_t> ix(N);
 	std::iota(ix.begin(), ix.end(), 0);
 
-	ix.erase(std::remove_if(ix.begin(), ix.end(), [&p](size_t ix) { return p[ix] == -1; }), ix.end());
+	ix.erase(std::remove_if(ix.begin(), ix.end(), [&p](size_t ix)
+				 { return p[ix] == -1; }),
+		ix.end());
 
 	const size_t M = ix.size();
 
-	std::sort(ix.begin(), ix.end(), [&p](size_t i, size_t j) { return p[i] < p[j]; });
+	std::sort(ix.begin(), ix.end(), [&p](size_t i, size_t j)
+		{ return p[i] < p[j]; });
 
 	std::vector<double> result(N, 0);
 
@@ -232,12 +436,12 @@ std::vector<double> adjustFDR_BH(const std::vector<double>& p)
 			v = 1;
 		result[ix[i]] = v;
 	}
-	
+
 	return result;
 }
 
 #if defined(FISHER_MAIN)
-int main(int argc, char* const argv[])
+int main(int argc, char *const argv[])
 {
 	if (argc == 5)
 	{
@@ -248,7 +452,15 @@ int main(int argc, char* const argv[])
 		p[1][0] = std::stol(argv[3]);
 		p[1][1] = std::stol(argv[4]);
 
-		std::cout << std::fixed << fisherTest2x2(p) << std::endl;
+		std::cout << "less      " << fisherTest2x2(p, FisherAlternative::Left) << std::endl
+				  << "two.sided " << fisherTest2x2(p, FisherAlternative::TwoSided) << std::endl
+				  << "greater   " << fisherTest2x2(p, FisherAlternative::Right) << std::endl;
+
+		// odds
+		std::cout << "less      " << FishersExactTest(p, FisherAlternative::Left).oddsRatio() << std::endl
+				  << "two.sided " << FishersExactTest(p, FisherAlternative::TwoSided).oddsRatio() << std::endl
+				  << "greater   " << FishersExactTest(p, FisherAlternative::Right).oddsRatio() << std::endl;
+
 	}
 
 	// std::vector<double> pv({ 0.020908895501239, 0.474875175724479 , 0.626191716145329 , 0.9151072684633, 0.604567972506964 , 0.525678354264758 , 0.679038623768489 , 0.0646323092167551 });
@@ -256,6 +468,14 @@ int main(int argc, char* const argv[])
 
 	// for (size_t i = 0; i < pv.size(); ++i)
 	// 	std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
+
+	// auto f = [](double x)
+	// {
+	// 	return 1.0 / (x - 3.0) - 6.0;
+	// };
+
+	// std::cout << zeroin(f, 3, 4) << std::endl;
+
 
 	return 0;
 }
