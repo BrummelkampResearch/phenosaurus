@@ -21,9 +21,6 @@ class FishersExactTest
 	double m_oddsRatio;
 };
 
-double fisherTest2x2(long v[2][2], FisherAlternative alternative = FisherAlternative::TwoSided)
-{
-	return FishersExactTest(v, alternative).pvalue();
-}
+double fisherTest2x2(long v[2][2], FisherAlternative alternative = FisherAlternative::TwoSided);
 
 std::vector<double> adjustFDR_BH(const std::vector<double>& p);

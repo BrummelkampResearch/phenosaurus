@@ -1442,8 +1442,8 @@ std::vector<SLDataPoint> SLdataPoints(const std::vector<Transcript>& transcripts
 
 	std::vector<double> fcpv[NC + 1];
 	parallel_for(NC + 1, [&](size_t i) {
-		// fcpv[i] = adjustFDR_BH(pvalues[i]);
-		fcpv[i] = pvalues[i];
+		fcpv[i] = adjustFDR_BH(pvalues[i]);
+		// fcpv[i] = pvalues[i];
 	});
 
 	parallel_for(M, [&](size_t ix) {
@@ -1519,6 +1519,7 @@ std::vector<std::tuple<float,float>> SLAnalyzeConsistency(
 	// for (size_t i = 0; i < transcripts.size(); ++i)
 	{
 		float maxPValue = -1;
+		float minEstimate = std::numeric_limits<float>::max();
 
 		for (size_t j = 0; j < 3; ++j)
 		{
@@ -1529,19 +1530,23 @@ std::vector<std::tuple<float,float>> SLAnalyzeConsistency(
 					{ normalizedControlInsertions[k][i].sense, normalizedControlInsertions[k][i].antiSense },
 				};
 
-				auto pv = fisherTest2x2(v, FisherAlternative::Left);
+				// auto pv = fisherTest2x2(v, FisherAlternative::Left);
+				auto pv = fisherTest2x2(v, FisherAlternative::TwoSided);
 
 				if (maxPValue < pv)
 					maxPValue = pv;
+
+				// FishersExactTest f(v, FisherAlternative::TwoSided);
+
+				// if (maxPValue < f.pvalue())
+				// 	maxPValue = f.pvalue();
+				
+				// if (minEstimate > f.oddsRatio())
+				// 	minEstimate = f.oddsRatio();
 			}
 		}
 
-		auto e = std::accumulate(normalizedInsertions.begin(), normalizedInsertions.end(), std::make_tuple(0.f, 0.f), [i](std::tuple<float,float> s, auto &ins)
-			{ return std::make_tuple(std::get<0>(s) + ins[i].sense, std::get<1>(s) + ins[i].antiSense); });
-		auto c = std::accumulate(normalizedControlInsertions.begin(), normalizedControlInsertions.end(), std::make_tuple(0.f, 0.f), [i](std::tuple<float,float> s, auto &ins)
-			{ return std::make_tuple(std::get<0>(s) + ins[i].sense, std::get<1>(s) + ins[i].antiSense); });
-
-		result[i] = { maxPValue, (std::get<1>(e) * std::get<0>(c)) / (std::get<0>(e) * std::get<1>(c)) };
+		result[i] = { maxPValue, minEstimate };
 	});
 
 	return result;
@@ -1631,12 +1636,12 @@ SLDataResult SLdataPoints(const std::vector<Transcript>& transcripts,
 			// if (nc.ref_fcpv[0] > pvCutOff or nc.ref_fcpv[1] > pvCutOff or nc.ref_fcpv[2] > pvCutOff or nc.ref_fcpv[3] > pvCutOff)
 			// 	continue;
 
-			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
-				continue;
+			// if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
+			// 	continue;
 
 			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
-			if (senseRatio >= 0.5)
-				continue;
+			// if (senseRatio >= 0.5)
+			// 	continue;
 
 			++n;
 
@@ -1665,19 +1670,22 @@ SLDataResult SLdataPoints(const std::vector<Transcript>& transcripts,
 
 		// changed...
 		const auto &[ pv, oddsRatio ] = ac[i];
-
-// {
-// std::unique_lock lock(m);
-// std::cerr << transcripts[i].geneName << '\t'
-// 		  << odds << '\t'
-// 		  << strength << '\t'
-// 		  << pv << std::endl;
-// }
-
-		if (n == result.replicate.size() and oddsRatio >= effectSize and pv < pvCutOff)
+		if (n == result.replicate.size() and /*oddsRatio >= effectSize and*/ pv < pvCutOff)
 		{
-			std::unique_lock lock(m);
-			result.significant.insert(transcripts[i].geneName);
+			long v[2][2] = {
+				{ s_g, a_g },
+				{ s_wt, a_wt },
+			};
+
+			FishersExactTest f(v, FisherAlternative::TwoSided);
+			if (f.oddsRatio() >= effectSize)
+			{
+				std::unique_lock lock(m);
+				
+				for (auto &r : result.replicate)
+					r.data[i].strength = f.oddsRatio();
+				result.significant.insert(transcripts[i].geneName);
+			}
 		}
 
 		// if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)
