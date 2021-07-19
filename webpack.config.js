@@ -33,7 +33,9 @@ module.exports = {
 		'edit-screen': SCRIPTS + "edit-screen.js",
 		'list-screen': SCRIPTS + "list-screen.js",
 
-		'qc': SCRIPTS + "qc.js"
+		'qc': SCRIPTS + "qc.js",
+
+		'sortable': SCRIPTS + "sortable.js"
 	},
 
 	output: {
