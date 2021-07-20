@@ -838,7 +838,7 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 
 SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
 	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize,
-	float pvCutOff, float binomCutOff, float effectSize)
+	float pvCutOff, float binomCutOff, float oddsRatio)
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
@@ -925,6 +925,7 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 
 			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
 				continue;
+
 			++n;
 		}
 
@@ -937,16 +938,16 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 		}
 
 		long v[2][2] = {
-				{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
 				{ static_cast<long>(s_g), static_cast<long>(a_g) },
+				{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
 		};
 
 		FishersExactTest f(v, FisherAlternative::Right);
 
 		for (auto &r : result.replicate)
-				r.data[i].effectSize = f.oddsRatio();
+			r.data[i].oddsRatio = f.oddsRatio();
 
-		if (n == result.replicate.size() and f.oddsRatio() >= effectSize)
+		if (n == result.replicate.size() and (f.oddsRatio() <= oddsRatio or f.oddsRatio() >= (1/oddsRatio)))
 		{
 			std::unique_lock lock(m);
 			result.significant.insert(transcripts[i].geneName);

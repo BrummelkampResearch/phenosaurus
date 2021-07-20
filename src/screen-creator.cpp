@@ -456,7 +456,7 @@ std::string askPasswordSimple()
 
 // 	float pvCutOff = vm["pv-cut-off"].as<float>();
 // 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
-// 	float effectSize = vm["effect-size"].as<float>();
+// 	float oddsRatio = vm["odds-ratio"].as<float>();
 
 // 	// -----------------------------------------------------------------------
 
@@ -478,7 +478,7 @@ std::string askPasswordSimple()
 // 			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)"
 // 			  << std::endl;
 
-// 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
+// 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
 
 // 	if (replicate > r.replicate.size())
 // 		throw std::runtime_error("replicate number too high");
@@ -533,7 +533,7 @@ std::string askPasswordSimple()
 // 			{ "binom-fdr-cut-off",
 // 							po::value<float>()->default_value(0.05f),
 // 														"binom FDR cut off" },
-// 			{ "effect-size",
+// 			{ "odds-ratio",
 // 							po::value<float>()->default_value(0.2f),
 // 														"effect size" },
 

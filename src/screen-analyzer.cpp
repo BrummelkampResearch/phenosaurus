@@ -425,11 +425,11 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	float pvCutOff = vm["pv-cut-off"].as<float>();
 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
-	float effectSize = vm["effect-size"].as<float>();
+	float oddsRatio = vm["odds-ratio"].as<float>();
 
 	// -----------------------------------------------------------------------
 
-	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
+	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
 	bool significantOnly = vm.count("significant");
 
 	if (vm.count("no-header") == 0)
@@ -503,7 +503,7 @@ or txEnd to have the start at the cdsEnd e.g.
 // 			{ "pv-cut-off",		po::value<float>()->default_value(0.05f),	"P-value cut off"},
 // 			{ "binom-fdr-cut-off",
 // 								po::value<float>()->default_value(1.f),		"binom FDR cut off" },
-// 			{ "effect-size",
+// 			{ "odds-ratio",
 // 								po::value<float>()->default_value(1.2f),	"effect size" },
 
 // 			{ "no-header",		new po::untyped_value(true),				"Do not print a header line" },
@@ -561,7 +561,7 @@ or txEnd to have the start at the cdsEnd e.g.
 
 // 	float pvCutOff = vm["pv-cut-off"].as<float>();
 // 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
-// 	float effectSize = vm["effect-size"].as<float>();
+// 	float oddsRatio = vm["odds-ratio"].as<float>();
 
 // 	// -----------------------------------------------------------------------
 
@@ -616,7 +616,7 @@ or txEnd to have the start at the cdsEnd e.g.
 // 	}
 // 	file.close();
 
-// 	auto r = SLdataPoints(transcripts, insertions, controlInsertions, groupSize, pvCutOff, binom_fdrCutOff, effectSize);
+// 	auto r = SLdataPoints(transcripts, insertions, controlInsertions, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
 // 	bool significantOnly = vm.count("significant");
 
 // 	if (vm.count("no-header") == 0)
@@ -696,7 +696,7 @@ int main_analyze(int argc, char* const argv[])
 			{ "binom-fdr-cut-off",
 							po::value<float>()->default_value(0.05f),
 														"binom FDR cut off" },
-			{ "effect-size",
+			{ "odds-ratio",
 							po::value<float>()->default_value(1.2f),
 														"effect size" },
 

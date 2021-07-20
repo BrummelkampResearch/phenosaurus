@@ -136,7 +136,7 @@ struct SLDataPoint
 	float ref_pv[4];
 	float ref_fcpv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
-	float effectSize;
+	float oddsRatio;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
@@ -149,7 +149,7 @@ struct SLDataPoint
 		   & zeep::make_nvp("antisense", antisense)
 		   & zeep::make_nvp("sense_normalized", sense_normalized)
 		   & zeep::make_nvp("antisense_normalized", antisense_normalized)
-		   & zeep::make_nvp("effect_size", effectSize);
+		   & zeep::make_nvp("odds_ratio", oddsRatio);
 	}
 };
 
@@ -401,7 +401,7 @@ class SLScreenData : public ScreenData
 
 	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
-		float pvCutOff, float binomCutOff, float effectSize);
+		float pvCutOff, float binomCutOff, float oddsRatio);
 
 	std::vector<std::string> getReplicateNames() const;
 	std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> getInsertionsForReplicate(

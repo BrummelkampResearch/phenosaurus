@@ -18,7 +18,7 @@ export let significantGenes = new Set();
 class ColorMap {
 
 	constructor() {
-		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, 1]);
+		this.scale = d3.scaleSequential(d3.interpolatePRGn).domain([0, 1]);
 
 		this.geneColorMap = new Map();
 		this.type = 'raw';
@@ -32,10 +32,10 @@ class ColorMap {
 
 		switch (this.type) {
 			case 'raw':
-				return this.scale(mapped.effect_size);
+				return this.scale(Math.log(mapped.odds_ratio));
 			case 'significant':
 				if (significantGenes.has(d.gene))
-					return this.scale(mapped.effect_size);
+					return this.scale(Math.log(mapped.odds_ratio));
 				else if (highlightedGenes.has(d.gene))
 					return highlight;
 				else
@@ -49,26 +49,32 @@ class ColorMap {
 		data.forEach(d => {
 			const prev = this.geneColorMap.get(d.gene);
 			if (prev != null)
-				prev.effect_size = d.effect_size;
+				prev.odds_ratio = d.odds_ratio;
 			else
-				this.geneColorMap.set(d.gene, {effectSize: d.effect_size});
+				this.geneColorMap.set(d.gene, {oddsRatio: d.odds_ratio});
 		});
 	}
 
 	setData(data) {
-		let maxEffectSize = 0;
+		let minOddsRatio = 100, maxOddsRatio = 0;
 		data.forEach(d => {
-			if (maxEffectSize < d.effect_size)
-				maxEffectSize = d.effect_size;
+			if (d.odds_ratio)
+			{
+				if (minOddsRatio > d.odds_ratio)
+					minOddsRatio = d.odds_ratio;
+	
+				if (maxOddsRatio < d.odds_ratio)
+					maxOddsRatio = d.odds_ratio;
+			}
 
 			const e = this.geneColorMap.get(d.gene);
 			if (e != null) {
 				e.binom_fdr = d.binom_fdr;
-				e.effect_size = d.effect_size;
+				e.odds_ratio = d.odds_ratio;
 			}
 		});
 
-		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, maxEffectSize]);
+		this.scale = d3.scaleSequential(d3.interpolatePRGn).domain([Math.log(minOddsRatio), Math.log(maxOddsRatio)]);
 
 		this.control.updateColors();
 	}
@@ -146,7 +152,7 @@ class SLScreenPlot extends ScreenPlot {
 
 			options.append("pvCutOff", pvCutOff);
 			options.append("binomCutOff", document.getElementById('binom_fdr').value);
-			options.append("effectSize", document.getElementById('effect-size').value);
+			options.append("oddsRatio", document.getElementById('odds-ratio').value);
 
 			if (this.control != null)
 				options.append("control", this.control.name);
@@ -351,7 +357,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
-				col(d.effect_size ? d.effect_size.toFixed(2) : '');
+				col(d.odds_ratio ? d.odds_ratio.toFixed(2) : '');
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
@@ -384,7 +390,7 @@ class SLScreenPlot extends ScreenPlot {
 
 		options.append("pvCutOff", pvCutOff);
 		options.append("binomCutOff", document.getElementById('binom_fdr').value);
-		options.append("effectSize", document.getElementById('effect-size').value);
+		options.append("oddsRatio", document.getElementById('odds-ratio').value);
 
 		if (this.control != null)
 			options.append("control", this.control.name);
@@ -401,7 +407,7 @@ class SLScreenPlot extends ScreenPlot {
 
 				const byteArrays = [];
 
-				const header = "replicate,gene,effect_size,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
+				const header = "replicate,gene,odds_ratio,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
 				const hbytes = new Array(header.length);
 				for (let i in header)
 					hbytes[i] = header.charCodeAt(i);
@@ -409,7 +415,7 @@ class SLScreenPlot extends ScreenPlot {
 	
 				data.replicate
 					.forEach(r => {
-						r.data.map(e => [ r.name, e.gene, e.effect_size, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
+						r.data.map(e => [ r.name, e.gene, e.odds_ratio, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
 							.forEach(l => {
 								const bytes = new Array(l.length);
 								for (let i in l)
@@ -522,15 +528,15 @@ window.addEventListener('load', () => {
 		});
 	}
 
-	const effectSizeEdit = document.getElementById("effect-size");
-	if (effectSizeEdit != null) {
-		effectSizeEdit.addEventListener("change", () => {
-			const es = effectSizeEdit.value;
+	const oddsRatioEdit = document.getElementById("odds-ratio");
+	if (oddsRatioEdit != null) {
+		oddsRatioEdit.addEventListener("change", () => {
+			const es = oddsRatioEdit.value;
 
 			if (isNaN(es)) {
-				effectSizeEdit.classList.add("error");
+				oddsRatioEdit.classList.add("error");
 			} else {
-				effectSizeEdit.classList.remove("error");
+				oddsRatioEdit.classList.remove("error");
 			}
 		});
 	}
