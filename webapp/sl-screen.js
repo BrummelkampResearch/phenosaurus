@@ -471,6 +471,7 @@ window.addEventListener('load', () => {
 	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
 	const selectedControl = params["control"] || 'ControlData-HAP1';
+	const selectedReplicate = params["replicate"] || 1;
 
 	const screenList = document.getElementById("screenList");
 
@@ -482,16 +483,18 @@ window.addEventListener('load', () => {
 	const controlSvg = d3.select("#plot-control");
 	const controlPlot = new SLControlScreenPlot(controlSvg, plot, controlList);
 
-	controlPlot.loadScreen(selectedControl);
+	controlPlot.loadScreen(selectedControl)
+		.then(() => {
+			if (typeof selectedScreen === 'string')
+			{
+				const r = screenReplicates.find(e => e.name === selectedScreen);
+				if (r != null) {
+					plot.loadScreen(selectedScreen, +selectedReplicate)
+						.then(() => plot.highlightGene(params['gene']));
+				}
+			}
+		});
 
-	if (typeof selectedScreen === 'string')
-	{
-		const r = screenReplicates.find(e => e.name === selectedScreen);
-		if (r != null) {
-			plot.loadScreen(selectedScreen, +selectedReplicate)
-				.then(() => plot.highlightGene(params['gene']));
-		}
-	}
 
 	// for (let btn of document.getElementsByClassName("graph-color-btn")) {
 	// 	if (btn.checked)
