@@ -474,10 +474,10 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 
 	// --------------------------------------------------------------------
 	
-#warning "make groupSize a parameter"
+// #warning "make groupSize a parameter"
 	// unsigned groupSize = 500;
 	unsigned groupSize = 200;
-#warning "make trimLength a parameter"
+// #warning "make trimLength a parameter"
 	unsigned trimLength = 50;
 
 	// -----------------------------------------------------------------------

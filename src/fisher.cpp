@@ -77,7 +77,7 @@ double bd0(double x, double np)
 	return x * s + np - x;
 }
 
-constexpr double calculate_sterling_error(long n)
+double calculate_sterling_error(long n)
 {
 	return lgamma(n + 1.) - (n + 0.5) * log(n) + n - log(sqrt(2 * M_PI));
 }
@@ -201,8 +201,6 @@ double zeroin(F &&f, double a, double b)
 	if (std::signbit(fa) == std::signbit(fb))
 		throw std::runtime_error("Sign of f(a) should differ from sign of f(b)");
 	
-	int k = 2;
-
 	// a is the previous value of b and [b, c] always contains the zero.
 	auto c = a;
 	auto fc = fa;
@@ -226,7 +224,7 @@ double zeroin(F &&f, double a, double b)
 		// Midpoint
 		auto m = (b + c) / 2;
 		if (std::abs(m - b) <= eps(std::abs(b)))
-			return b;
+			break;
 
 		// p/q is the the secant step.
 		auto p = (b - a) * fb;
@@ -259,6 +257,8 @@ double zeroin(F &&f, double a, double b)
 			fb = f(b);
 		}
 	}
+
+	return b;
 }
 
 // --------------------------------------------------------------------

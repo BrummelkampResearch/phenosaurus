@@ -86,6 +86,7 @@ export default class GeneInfo {
 			$("<td/>").text(d3.format(".2e")(d.binom_fdr)).appendTo(row);
 			$("<td/>").text(d.sense).appendTo(row);
 			$("<td/>").text(d.antisense).appendTo(row);
+			$("<td/>").text(d3.format(".2e")(d.effect_size)).appendTo(row);
 			row.appendTo(table);
 		});
 	}

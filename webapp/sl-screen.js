@@ -32,10 +32,10 @@ class ColorMap {
 
 		switch (this.type) {
 			case 'raw':
-				return this.scale(mapped.effectSize);
+				return this.scale(mapped.effect_size);
 			case 'significant':
 				if (significantGenes.has(d.gene))
-					return this.scale(mapped.effectSize);
+					return this.scale(mapped.effect_size);
 				else if (highlightedGenes.has(d.gene))
 					return highlight;
 				else
@@ -49,22 +49,22 @@ class ColorMap {
 		data.forEach(d => {
 			const prev = this.geneColorMap.get(d.gene);
 			if (prev != null)
-				prev.effectSize = d.effectSize;
+				prev.effect_size = d.effect_size;
 			else
-				this.geneColorMap.set(d.gene, {effectSize: d.effectSize});
+				this.geneColorMap.set(d.gene, {effectSize: d.effect_size});
 		});
 	}
 
 	setData(data) {
 		let maxEffectSize = 0;
 		data.forEach(d => {
-			if (maxEffectSize < d.effectSize)
-				maxEffectSize = d.effectSize;
+			if (maxEffectSize < d.effect_size)
+				maxEffectSize = d.effect_size;
 
 			const e = this.geneColorMap.get(d.gene);
 			if (e != null) {
 				e.binom_fdr = d.binom_fdr;
-				e.effectSize = d.effectSize;
+				e.effect_size = d.effect_size;
 			}
 		});
 
@@ -167,8 +167,6 @@ class SLScreenPlot extends ScreenPlot {
 
 					this.data.replicate.forEach(r => {
 						r.data.forEach(d => {
-							d.effectSize = d.effect_size;
-
 							d.sense_raw = d.sense;
 							d.antisense_raw = d.antisense;
 	
@@ -342,7 +340,7 @@ class SLScreenPlot extends ScreenPlot {
 		const fmt = d3.format(".3g");
 
 		data
-			.filter(d => d.significant || (d.ref_pv[0] >= 0 && d.ref_pv[1] >= 0 && d.ref_pv[2] >= 0 && d.ref_pv[3] >= 0 && d.effectSize >= 0))
+			.filter(d => d.significant)
 			.sort((a, b) => a.gene > b.gene)
 			.forEach(d => {
 				const row = document.createElement("tr");
@@ -353,7 +351,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
-				col(d.effectSize ? d.effectSize.toFixed(2) : '');
+				col(d.effect_size ? d.effect_size.toFixed(2) : '');
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
