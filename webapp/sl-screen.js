@@ -19,9 +19,7 @@ class ColorMap {
 
 	constructor() {
 		this.scale = d3.scaleSequential(d3.interpolatePRGn).domain([0, 1]);
-
 		this.geneColorMap = new Map();
-		this.type = 'raw';
 	}
 
 	getColor(d) {
@@ -30,17 +28,12 @@ class ColorMap {
 		if (mapped == null || mapped.binom_fdr == null || mapped.binom_fdr >= pvCutOff)
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
 
-		switch (this.type) {
-			case 'raw':
-				return this.scale(Math.log(mapped.odds_ratio));
-			case 'significant':
-				if (significantGenes.has(d.gene))
-					return this.scale(Math.log(mapped.odds_ratio));
-				else if (highlightedGenes.has(d.gene))
-					return highlight;
-				else
-					return neutral;
-		}
+		if (significantGenes.has(d.gene))
+			return this.scale(Math.log(mapped.odds_ratio));
+		else if (highlightedGenes.has(d.gene))
+			return highlight;
+		else
+			return neutral;
 	}
 
 	setControl(data, control) {
@@ -82,19 +75,10 @@ class ColorMap {
 	setSignificantGenes(genes) {
 		significantGenes = new Set(genes);
 
-		if (this.type === 'significant') {
-			const btns = document.getElementById("graphColorBtns");
-			btns.dispatchEvent(new Event("change-color"));
-		}
-
-		return significantGenes;
-	}
-
-	selectType(colortype) {
-		this.type = colortype;
-
 		const btns = document.getElementById("graphColorBtns");
 		btns.dispatchEvent(new Event("change-color"));
+
+		return significantGenes;
 	}
 }
 
@@ -509,11 +493,11 @@ window.addEventListener('load', () => {
 		}
 	}
 
-	for (let btn of document.getElementsByClassName("graph-color-btn")) {
-		if (btn.checked)
-			colorMap.selectType(btn.dataset.colortype);
-		btn.onchange = () => colorMap.selectType(btn.dataset.colortype);
-	}
+	// for (let btn of document.getElementsByClassName("graph-color-btn")) {
+	// 	if (btn.checked)
+	// 		colorMap.selectType(btn.dataset.colortype);
+	// 	btn.onchange = () => colorMap.selectType(btn.dataset.colortype);
+	// }
 
 	const pvCutOffEdit = document.getElementById("pv-cut-off");
 	if (pvCutOffEdit != null) {
