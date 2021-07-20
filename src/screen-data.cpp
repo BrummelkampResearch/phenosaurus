@@ -840,6 +840,8 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize,
 	float pvCutOff, float binomCutOff, float effectSize)
 {
+#warning "only introns!"
+
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
 
