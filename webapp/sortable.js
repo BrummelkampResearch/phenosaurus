@@ -2,6 +2,9 @@
 
 function sortColumn(th) {
 	const tr = th.parentNode;
+	const thead = tr.parentNode;
+	const table = thead.parentNode;
+	const tbody = table.getElementsByTagName("tbody")[0];
 	const ths = Array.from(tr.getElementsByTagName("th"));
 	const ix = ths.indexOf(th);
 
@@ -9,14 +12,14 @@ function sortColumn(th) {
 
 	ths.forEach(th => th.classList.remove("sorted-asc", "sorted-desc"));
 
-	const rowArray = this.rows.map(r => r.tr);
+	const rowArray = [...tbody.getElementsByTagName("tr")];
 
-	let desc = !this.sortDescending;
-	if (this.sortedOnColumn !== ix) {
+	let desc = !table.sortDescending;
+	if (table.sortedOnColumn !== ix) {
 		desc = false;
-		this.sortedOnColumn = ix;
+		table.sortedOnColumn = ix;
 	}
-	this.sortDescending = desc;
+	table.sortDescending = desc;
 
 	rowArray.sort((a, b) => {
 		let ka = Array.from(a.getElementsByTagName("td"))[ix].innerText;
@@ -51,7 +54,7 @@ function sortColumn(th) {
 		return desc ? -d : d;
 	});
 
-	rowArray.forEach(row => this.tbody.appendChild(row));
+	rowArray.forEach(row => tbody.appendChild(row));
 
 	th.classList.add(desc ? "sorted-desc" : "sorted-asc");
 }

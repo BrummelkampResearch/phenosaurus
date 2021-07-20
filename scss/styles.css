@@ -183,7 +183,7 @@ g.dot.link circle {
 }
 
 /*
-    gene finder styles
+	gene finder styles
  */
 
 ul.option-group {
@@ -348,4 +348,34 @@ div.option-row div.option-col {
 
 div.option-col-screenselector {
 	width: 15em;
+}
+
+/*
+	sortable tables
+*/
+
+th.sortable {
+	text-decoration: underline;
+}
+
+th.sortable:hover {
+	background-color: #ccc;
+}
+
+th.sorted-asc::after {
+	content: "";
+	background: url("../docroot/images/driehoek-op.png") no-repeat top right;
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin: 0 auto;
+}
+
+th.sorted-desc::after {
+	content: "";
+	background: url("../docroot/images/driehoek-neer.png") no-repeat top right;
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin: 0 auto;
 }

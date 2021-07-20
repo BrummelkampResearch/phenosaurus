@@ -911,21 +911,24 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 	parallel_for(transcripts.size(), [&](size_t i) {
 		// for (size_t i = 0; i < transcripts.size(); ++ i) {
 
-		double minSenseRatio = std::numeric_limits<double>::max();
-		for (size_t j = 0; j < 4; ++j)
-		{
-			auto &nc = normalizedControlInsertions[j][i];
-			if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
-				minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
-		}
+		// double minSenseRatio = std::numeric_limits<double>::max();
+		// for (size_t j = 0; j < 4; ++j)
+		// {
+		// 	auto &nc = normalizedControlInsertions[j][i];
+		// 	if (minSenseRatio > (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2))
+		// 		minSenseRatio = (nc.sense + 1.0) / (nc.sense + nc.antiSense + 2);
+		// }
 
-		auto maxSenseRatio = std::numeric_limits<double>::lowest();
+		// auto maxSenseRatio = std::numeric_limits<double>::lowest();
 		size_t n = 0;
 		size_t s_g = 0, a_g = 0;
 
 		for (auto &r : result.replicate)
 		{
 			auto &nc = r.data[i];
+
+			s_g += nc.sense_normalized;
+			a_g += nc.antisense_normalized;
 
 			if (nc.binom_fdr > binomCutOff)
 				continue;
@@ -936,49 +939,44 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
 				continue;
 
-			double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
-			// if (senseRatio >= 0.5)
-			// 	continue;
+			// double senseRatio = (nc.sense + 1.0) / (nc.sense + nc.antisense + 2);
+			// // if (senseRatio >= 0.5)
+			// // 	continue;
 
 			++n;
 
-			s_g += nc.sense_normalized;
-			a_g += nc.antisense_normalized;
-
-			if (maxSenseRatio < senseRatio)
-				maxSenseRatio = senseRatio;
+			// if (maxSenseRatio < senseRatio)
+			// 	maxSenseRatio = senseRatio;
 		}
 
-		if (n == result.replicate.size())
+		size_t s_wt = 0, a_wt = 0;
+
+		for (auto &nc : normalizedControlInsertions)
 		{
-			size_t s_wt = 0, a_wt = 0;
+			s_wt += nc[i].sense;
+			a_wt += nc[i].antiSense;
+		}
 
-			for (auto &nc : normalizedControlInsertions)
-			{
-				s_wt += nc[i].sense;
-				a_wt += nc[i].antiSense;
-			}
+		// if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
+		// {
+		// 	std::unique_lock lock(m);
+		// 	result.significant.insert(transcripts[i].geneName);
+		// }
 
-			// if ((1.0f * s_wt) / a_wt >= (effectSize * s_g) / a_g)
-			// {
-			// 	std::unique_lock lock(m);
-			// 	result.significant.insert(transcripts[i].geneName);
-			// }
+		long v[2][2] = {
+				{ static_cast<long>(s_g), static_cast<long>(a_g) },
+				{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
+		};
 
-			long v[2][2] = {
-					{ s_g, a_g },
-					{ s_wt, a_wt },
-			};
+		FishersExactTest f(v, FisherAlternative::TwoSided);
 
-			FishersExactTest f(v, FisherAlternative::TwoSided);
+		for (auto &r : result.replicate)
+				r.data[i].effectSize = f.oddsRatio();
 
-			if (f.oddsRatio() >= effectSize)
-			{
-				std::unique_lock lock(m);
-				for (auto &r : result.replicate)
-						r.data[i].effectSize = f.oddsRatio();
-				result.significant.insert(transcripts[i].geneName);
-			}
+		if (n == result.replicate.size() and f.oddsRatio() >= effectSize)
+		{
+			std::unique_lock lock(m);
+			result.significant.insert(transcripts[i].geneName);
 		}
 
 		// if (maxSenseRatio > 0 and maxSenseRatio < minSenseRatio and (minSenseRatio - maxSenseRatio) >= effectSize and minSenseRatio != 0.5)

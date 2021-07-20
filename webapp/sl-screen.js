@@ -342,7 +342,7 @@ class SLScreenPlot extends ScreenPlot {
 		const fmt = d3.format(".3g");
 
 		data
-			.filter(d => d.significant)
+			.filter(d => d.significant || (d.ref_pv[0] >= 0 && d.ref_pv[1] >= 0 && d.ref_pv[2] >= 0 && d.ref_pv[3] >= 0 && d.effectSize >= 0))
 			.sort((a, b) => a.gene > b.gene)
 			.forEach(d => {
 				const row = document.createElement("tr");
@@ -353,7 +353,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
-				col(d.effectSize.toFixed(2));
+				col(d.effectSize ? d.effectSize.toFixed(2) : '');
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
@@ -403,7 +403,7 @@ class SLScreenPlot extends ScreenPlot {
 
 				const byteArrays = [];
 
-				const header = "replicate,gene,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
+				const header = "replicate,gene,effect_size,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
 				const hbytes = new Array(header.length);
 				for (let i in header)
 					hbytes[i] = header.charCodeAt(i);
@@ -411,7 +411,7 @@ class SLScreenPlot extends ScreenPlot {
 	
 				data.replicate
 					.forEach(r => {
-						r.data.map(e => [ r.name, e.gene, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
+						r.data.map(e => [ r.name, e.gene, e.effect_size, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
 							.forEach(l => {
 								const bytes = new Array(l.length);
 								for (let i in l)

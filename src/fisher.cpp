@@ -401,14 +401,26 @@ FishersExactTest::FishersExactTest(long v[2][2], FisherAlternative alternative)
 		}
 	};
 
-	double mu = mnhyper(1);
-
-	if (mu > x)
-		m_oddsRatio = zeroin([x, &mnhyper](double t) { return mnhyper(t) - x; }, 0, 1);
-	else if (mu < x)
-		m_oddsRatio = 1 / zeroin([x, &mnhyper](double t) { return mnhyper(1 / t) - x; }, std::nextafter(0.0, 1.0), 1);
-	else
+	if (hi <= lo + 2)
 		m_oddsRatio = 1;
+	else
+	{
+		try
+		{
+			double mu = mnhyper(1);
+
+			if (mu > x)
+				m_oddsRatio = zeroin([x, &mnhyper](double t) { return mnhyper(t) - x; }, 0, 1);
+			else if (mu < x)
+				m_oddsRatio = 1 / zeroin([x, &mnhyper](double t) { return mnhyper(1 / t) - x; }, std::nextafter(0.0, 1.0), 1);
+			else
+				m_oddsRatio = 1;
+		}
+		catch (...)
+		{
+			m_oddsRatio = 1;
+		}
+	}
 }
 
 std::vector<double> adjustFDR_BH(const std::vector<double> &p)
