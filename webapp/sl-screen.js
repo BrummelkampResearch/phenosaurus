@@ -11,6 +11,8 @@ const radius = 5;
 
 let binomCutOff = 0.05, oddsRatioCutOff = 0.8;
 
+export let significantGenes = new Set();
+
 /*global context_name, screenReplicates, selectedReplicate $ */
 
 // --------------------------------------------------------------------
@@ -18,7 +20,7 @@ let binomCutOff = 0.05, oddsRatioCutOff = 0.8;
 class ColorMap {
 
 	constructor() {
-		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, 1]);
+		this.scale = [];
 		this.geneColorMap = new Map();
 	}
 
@@ -28,8 +30,11 @@ class ColorMap {
 		if (mapped == null)
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
 		
-		if (d.significant)
-			return this.scale(Math.log(mapped.odds_ratio));
+		if (significantGenes.has(d.gene))
+		{
+			const type = mapped.type || 1;
+			return this.scale[type - 1](Math.log(mapped.odds_ratio));
+		}
 		
 		if (highlightedGenes.has(d.gene))
 			return highlight;
@@ -50,35 +55,44 @@ class ColorMap {
 	}
 
 	setData(data) {
-		let minOddsRatio = 100, maxOddsRatio = 0;
+		let minOddsRatio = [ 100, 100, 100 ], maxOddsRatio = [ 0, 0, 0 ];
 		data.forEach(d => {
+			let t = d.type || 1;
+
 			if (d.odds_ratio)
 			{
-				if (minOddsRatio > d.odds_ratio)
-					minOddsRatio = d.odds_ratio;
+				if (minOddsRatio[t - 1] > d.odds_ratio)
+					minOddsRatio[t - 1] = d.odds_ratio;
 	
-				if (maxOddsRatio < d.odds_ratio)
-					maxOddsRatio = d.odds_ratio;
+				if (maxOddsRatio[t - 1] < d.odds_ratio)
+					maxOddsRatio[t - 1] = d.odds_ratio;
 			}
 
 			const e = this.geneColorMap.get(d.gene);
 			if (e != null) {
 				e.binom_fdr = d.binom_fdr;
 				e.odds_ratio = d.odds_ratio;
+				e.type = t;
 			}
 		});
 
-		this.scale = d3.scaleSequential(d3.interpolateReds).domain([Math.log(minOddsRatio), Math.log(maxOddsRatio)]);
+		this.scale = [
+			d3.scaleSequential(d3.interpolateReds).domain([Math.log(minOddsRatio[0]), Math.log(maxOddsRatio[0])]),
+			d3.scaleSequential(d3.interpolateBlues).domain([Math.log(minOddsRatio[1]), Math.log(maxOddsRatio[1])]),
+			d3.scaleSequential(d3.interpolatePurples).domain([Math.log(minOddsRatio[2]), Math.log(maxOddsRatio[2])])
+		];
 
 		this.control.updateColors();
 	}
 
-	// setSignificantGenes(genes) {
+	setSignificantGenes(genes) {
+		significantGenes = new Set(genes);
+
 	// 	const btns = document.getElementById("graphColorBtns");
 	// 	btns.dispatchEvent(new Event("change-color"));
 
-	// 	return significantGenes;
-	// }
+		return significantGenes;
+	}
 }
 
 const colorMap = new ColorMap();
@@ -99,8 +113,9 @@ class SLScreenPlot extends ScreenPlot {
 		this.control = null;
 		this.updateColorMap = (data) => colorMap.setData(data);
 
-		const btns = document.getElementById("graphColorBtns");
-		btns.addEventListener("change-color", () => this.updateColors());
+		// const btns = document.getElementById("selectSLTypeBtns");
+		// btns.addEventListener("change-color", () => this.updateColors());
+		// btns.addEventListener('click', () => alert('x'));
 
 		screenList.addEventListener('change', () => {
 			const selected = screenList.selectedOptions;
@@ -218,7 +233,7 @@ class SLScreenPlot extends ScreenPlot {
 
 	getOpacity() {
 		return (d) => {
-			if (d.highlight() || d.values.findIndex(g => g.significant) >= 0) return 1;
+			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.gene)) >= 0) return 1;
 			if (d.significant(binomCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
@@ -261,8 +276,24 @@ class SLScreenPlot extends ScreenPlot {
 				pv: maxPV,
 				binom_fdr: maxBinom,
 
+				control_binom: d.control_binom,
+				control_sense_ratio: d.control_sense_ratio,
+
 				get significant() {
 					return this.pv < pvCutOff && this.binom_fdr < binomCutOff && (this.odds_ratio < oddsRatioCutOff || this.odds_ratio > (1/oddsRatioCutOff));
+				},
+
+				get type() {
+					if (this.senseratio < this.control_sense_ratio)
+						return 1;
+					
+					if (this.control_binom < binomCutOff && this.control_sense_ratio < 0.5)
+						return 2;
+					
+					if (this.senseratio > 0.5 && (this.control_sense_ratio < 0.5 || this.control_binom > binomCutOff))
+						return 3;
+					
+					return 0;
 				}
 			});
 		});
@@ -270,6 +301,8 @@ class SLScreenPlot extends ScreenPlot {
 		// const data = this.data[0].replicate[this.replicate].data;
 
 		this.screens.set(0, data);
+
+		this.recalcSignificant();
 
 		this.updateColorMap(data);
 
@@ -434,9 +467,10 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	recalcSignificant() {
-		// loop over all genes
-
-		// colorMap.setSignificantGenes(this.data.significant);
+		colorMap.setSignificantGenes(
+			this.screens.get(0)
+			.filter(d => d.significant)
+			.map(d => d.gene));
 	}
 
 	exportCSV() {
