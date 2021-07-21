@@ -22,7 +22,7 @@ inline double xlog1py(double x, double y)
 
 double binom_pmf(int x, int n, double p)
 {
-	double combiln = std::lgamma(n + 1) - (std::lgamma(x + 1) + lgamma(n - x + 1));
+	double combiln = std::lgamma(n + 1) - (std::lgamma(x + 1) + std::lgamma(n - x + 1));
 	return std::exp(combiln + xlogy(x, p) + xlog1py(n - x, -p));
 }
 

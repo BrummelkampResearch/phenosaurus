@@ -79,7 +79,7 @@ struct Transcript
 
 	uint32_t start() const
 	{
-		return ranges.empty() ? 0 : ranges.front().start;
+		return ranges.empty() ? tx.start : ranges.front().start;
 	}
 
 	uint32_t length_exons() const;
@@ -94,7 +94,7 @@ struct Transcript
 
 	uint32_t end() const
 	{
-		return ranges.empty() ? 0 : ranges.back().end;
+		return ranges.empty() ? tx.end : ranges.back().end;
 	}
 
 	void end(uint32_t v)

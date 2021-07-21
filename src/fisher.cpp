@@ -77,9 +77,9 @@ double bd0(double x, double np)
 	return x * s + np - x;
 }
 
-double calculate_sterling_error(long n)
+constexpr double calculate_sterling_error(long n)
 {
-	return lgamma(n + 1.) - (n + 0.5) * log(n) + n - log(sqrt(2 * M_PI));
+	return std::lgamma(n + 1.) - (n + 0.5) * std::log(n) + n - std::log(std::sqrt(2 * M_PI));
 }
 
 const double kStirlingErrors[16] = {
@@ -141,9 +141,9 @@ double binomial_coefficient(long x, long n, double p)
 		else if (x == 0 and n == 0)
 			result = 1;
 		else if (x == 0)
-			result = (p < 0.1) ? -bd0(n, n * q) - n * p : n * log(q);
+			result = (p < 0.1) ? -bd0(n, n * q) - n * p : n * std::log(q);
 		else if (x == n)
-			result = (q < 0.1) ? -bd0(n, n * p) - n * q : n * log(p);
+			result = (q < 0.1) ? -bd0(n, n * p) - n * q : n * std::log(p);
 		else if (x < 0 or x > n)
 			result = 0;
 		else
@@ -151,7 +151,7 @@ double binomial_coefficient(long x, long n, double p)
 			auto lc = stirling_error(n) - stirling_error(x) - stirling_error(n - x) - bd0(x, n * p) - bd0(n - x, n * q);
 
 			// auto lf = kLn2PI + log(x) + log(n-x) - log(n);
-			auto lf = kLn2PI + log(x) + log1p(-x / n);
+			auto lf = kLn2PI + std::log(x) + std::log1p(-x / n);
 
 			result = lc - 0.5 * lf;
 		}

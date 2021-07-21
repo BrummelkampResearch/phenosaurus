@@ -995,7 +995,7 @@ void filterOutExons(std::vector<Transcript>& transcripts)
 {
 	for (auto& t: transcripts)
 	{
-		std::vector<Range> r{ t.tx };
+		std::vector<Range> r{ { t.start(), t.end() } };
 
 		for (auto& exon: t.exons)
 			exclude_range(r, exon);
