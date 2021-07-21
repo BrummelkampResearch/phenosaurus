@@ -77,9 +77,9 @@ class ColorMap {
 		});
 
 		this.scale = [
-			d3.scaleSequential(d3.interpolateReds).domain([Math.log(minOddsRatio[0]), Math.log(maxOddsRatio[0])]),
-			d3.scaleSequential(d3.interpolateBlues).domain([Math.log(minOddsRatio[1]), Math.log(maxOddsRatio[1])]),
-			d3.scaleSequential(d3.interpolatePurples).domain([Math.log(minOddsRatio[2]), Math.log(maxOddsRatio[2])])
+			d3.scaleSequential(d3.interpolateReds).domain([Math.log(maxOddsRatio[0]), Math.log(minOddsRatio[0])]),
+			d3.scaleSequential(d3.interpolateBlues).domain([Math.log(maxOddsRatio[1]), Math.log(minOddsRatio[1])]),
+			d3.scaleSequential(d3.interpolatePurples).domain([Math.log(maxOddsRatio[2], Math.log(minOddsRatio[2]))])
 		];
 
 		this.control.updateColors();

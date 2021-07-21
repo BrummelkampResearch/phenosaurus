@@ -1,28 +1,52 @@
 {
     "version": "2.0.0",
     "tasks": [
-        {
-            "type": "process",
-            "label": "make screen-analyzer",
-            "command": "make",
-            "args": [
+		{
+			"type": "process",
+			"label": "make screen-analyzer",
+			"command": "make",
+			"args": [
 				"DEBUG=1",
-                "screen-analyzer"
-            ],
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": {
-                "base": "$gcc",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceFolder}"
-                ]
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+				"screen-analyzer"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": {
+				"base": "$gcc",
+				"fileLocation": [
+					"relative",
+					"${workspaceFolder}"
+				]
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "process",
+			"label": "make screen-analyzer no-debug",
+			"command": "make",
+			"args": [
+				"DEBUG=0",
+				"-j12",
+				"screen-analyzer"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": {
+				"base": "$gcc",
+				"fileLocation": [
+					"relative",
+					"${workspaceFolder}"
+				]
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
 		},
 		{
             "type": "process",
