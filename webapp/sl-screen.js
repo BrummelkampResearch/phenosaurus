@@ -9,7 +9,7 @@ import GenomeViewer from "./genome-viewer";
 
 const radius = 5;
 
-export let significantGenes = new Set();
+let binomCutOff = 0.05, oddsRatioCutOff = 0.8;
 
 /*global context_name, screenReplicates, selectedReplicate $ */
 
@@ -18,22 +18,23 @@ export let significantGenes = new Set();
 class ColorMap {
 
 	constructor() {
-		this.scale = d3.scaleSequential(d3.interpolatePRGn).domain([0, 1]);
+		this.scale = d3.scaleSequential(d3.interpolateReds).domain([0, 1]);
 		this.geneColorMap = new Map();
 	}
 
 	getColor(d) {
 		const mapped = this.geneColorMap.get(d.gene);
 
-		if (mapped == null || mapped.binom_fdr == null || mapped.binom_fdr >= pvCutOff)
+		if (mapped == null)
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
-
-		if (significantGenes.has(d.gene))
+		
+		if (d.significant)
 			return this.scale(Math.log(mapped.odds_ratio));
-		else if (highlightedGenes.has(d.gene))
+		
+		if (highlightedGenes.has(d.gene))
 			return highlight;
-		else
-			return neutral;
+
+		return neutral;
 	}
 
 	setControl(data, control) {
@@ -44,7 +45,7 @@ class ColorMap {
 			if (prev != null)
 				prev.odds_ratio = d.odds_ratio;
 			else
-				this.geneColorMap.set(d.gene, {oddsRatio: d.odds_ratio});
+				this.geneColorMap.set(d.gene, { odds_ratio: d.odds_ratio });
 		});
 	}
 
@@ -67,19 +68,17 @@ class ColorMap {
 			}
 		});
 
-		this.scale = d3.scaleSequential(d3.interpolatePRGn).domain([Math.log(minOddsRatio), Math.log(maxOddsRatio)]);
+		this.scale = d3.scaleSequential(d3.interpolateReds).domain([Math.log(minOddsRatio), Math.log(maxOddsRatio)]);
 
 		this.control.updateColors();
 	}
 
-	setSignificantGenes(genes) {
-		significantGenes = new Set(genes);
+	// setSignificantGenes(genes) {
+	// 	const btns = document.getElementById("graphColorBtns");
+	// 	btns.dispatchEvent(new Event("change-color"));
 
-		const btns = document.getElementById("graphColorBtns");
-		btns.dispatchEvent(new Event("change-color"));
-
-		return significantGenes;
-	}
+	// 	return significantGenes;
+	// }
 }
 
 const colorMap = new ColorMap();
@@ -110,6 +109,39 @@ class SLScreenPlot extends ScreenPlot {
 				this.loadScreen(name);
 			}
 		});
+
+		const binomCutOffEdit = document.getElementById("binom_fdr");
+		if (binomCutOffEdit != null) {
+			binomCutOffEdit.addEventListener("change", () => {
+				const pv = binomCutOffEdit.value;
+
+				if (isNaN(pv)) {
+					binomCutOffEdit.classList.add("error");
+				}
+				else {
+					binomCutOffEdit.classList.remove("error");
+					this.setBinomCutOff(pv);
+				}
+			});
+		}
+		binomCutOff = +binomCutOffEdit.value;
+
+		const oddsRatioCutOffEdit = document.getElementById("odds-ratio");
+		if (oddsRatioCutOffEdit != null) {
+			oddsRatioCutOffEdit.addEventListener("change", () => {
+				const pv = oddsRatioCutOffEdit.value;
+
+				if (isNaN(pv)) {
+					oddsRatioCutOffEdit.classList.add("error");
+				}
+				else {
+					oddsRatioCutOffEdit.classList.remove("error");
+					this.setOddsRatioCutOff(pv);
+				}
+			});
+		}
+		oddsRatioCutOff = +oddsRatioCutOffEdit.value;
+
 	}
 
 	reloadScreen(name) {
@@ -134,10 +166,6 @@ class SLScreenPlot extends ScreenPlot {
 
 			const options = geneSelectionEditor.getOptions();
 
-			options.append("pvCutOff", pvCutOff);
-			options.append("binomCutOff", document.getElementById('binom_fdr').value);
-			options.append("oddsRatio", document.getElementById('odds-ratio').value);
-
 			if (this.control != null)
 				options.append("control", this.control.name);
 
@@ -153,24 +181,8 @@ class SLScreenPlot extends ScreenPlot {
 
 					this.data = data;
 
-					const significant = colorMap.setSignificantGenes(this.data.significant);
-
-					this.data.replicate.forEach(r => {
-						r.data.forEach(d => {
-							d.sense_raw = d.sense;
-							d.antisense_raw = d.antisense;
-	
-							d.sense = d.sense_normalized;
-							d.antisense = d.antisense_normalized;
-	
-							d.insertions = d.sense + d.antisense;
-							d.senseratio = (d.sense + 1) / (d.insertions + 2);
-
-							d.significant = significant.has(d.gene);
-						});
-					})
-
 					this.process(replicate);
+
 					plotTitle.classList.remove("plot-status-loading");
 					plotTitle.classList.add("plot-status-loaded");
 					resolve();
@@ -206,8 +218,8 @@ class SLScreenPlot extends ScreenPlot {
 
 	getOpacity() {
 		return (d) => {
-			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.gene)) >= 0) return 1;
-			if (d.significant(pvCutOff)) return this.presentationMode ? 1 : 0.66;
+			if (d.highlight() || d.values.findIndex(g => g.significant) >= 0) return 1;
+			if (d.significant(binomCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
 	}
@@ -220,7 +232,7 @@ class SLScreenPlot extends ScreenPlot {
 	process(replicate) {
 		
 		this.replicate = replicate;
-		if (this.data == null || this.replicate > this.data.replicate.length)
+		if (this.data == null || this.replicate > this.data[0].replicate.length)
 		{
 			screenPlot.selectAll("g.dot")
 				.remove();
@@ -229,7 +241,33 @@ class SLScreenPlot extends ScreenPlot {
 
 		this.updateReplicateBtns(replicate);
 
-		const data = this.data.replicate[this.replicate].data;
+		const data = [];
+		this.data.forEach(d => {
+			const sense = d.replicate[replicate].sense_normalized;
+			const antisense = d.replicate[replicate].antisense_normalized;
+			const insertions = sense + antisense;
+			const senseratio = (1 + sense) / (2 + insertions);
+
+			const maxPV = Math.max(...d.replicate.map(r => Math.max(...r.ref_pv)));
+			const maxBinom = Math.max(...d.replicate.map(r => r.binom_fdr));
+
+			data.push({
+				gene: d.gene,
+				sense: sense,
+				antisense: antisense,
+				insertions: insertions,
+				senseratio: senseratio,
+				odds_ratio: d.odds_ratio,
+				pv: maxPV,
+				binom_fdr: maxBinom,
+
+				get significant() {
+					return this.pv < pvCutOff && this.binom_fdr < binomCutOff && (this.odds_ratio < oddsRatioCutOff || this.odds_ratio > (1/oddsRatioCutOff));
+				}
+			});
+		});
+	
+		// const data = this.data[0].replicate[this.replicate].data;
 
 		this.screens.set(0, data);
 
@@ -280,7 +318,7 @@ class SLScreenPlot extends ScreenPlot {
 			.style("opacity", this.getOpacity());
 
 		if (this.control != null)
-			this.updateSignificantTable(data);
+			this.updateSignificantTable();
 
 		this.highlightGenes();
 	}
@@ -291,11 +329,11 @@ class SLScreenPlot extends ScreenPlot {
 		[...replicateBtnContainer.getElementsByTagName("label")]
 			.forEach(r => r.remove());
 
-		if (this.data.replicate.length > 0) {
+		if (this.data[0].replicate.length > 0) {
 			const btns = [];
 
-			for (let i in this.data.replicate) {
-				const replicate = this.data.replicate[i].name.replace(/replicate-/, '');
+			for (let i in this.data[0].replicate) {
+				const replicate = i;//this.data[0].replicate[i].name.replace(/replicate-/, '');
 				const label = document.createElement("label");
 				label.classList.add("btn", "btn-secondary");
 				if (+number === +i)
@@ -307,7 +345,7 @@ class SLScreenPlot extends ScreenPlot {
 				btn.dataset.replicate = i;
 				label.appendChild(btn);
 				label.appendChild(document.createTextNode(`${replicate}`));
-				btn.onchange = () => this.process(i);
+				btn.addEventListener('change', () => this.process(i));
 
 				btns.push(label);
 			}
@@ -317,6 +355,33 @@ class SLScreenPlot extends ScreenPlot {
 		}
 	}
 
+	setPvCutOff(pv) {
+		super.setPvCutOff(+pv);
+		this.recalcSignificant();
+		this.recolorGenes();
+
+		if (this.control != null)
+			this.updateSignificantTable();
+	}
+
+	setBinomCutOff(binom) {
+		binomCutOff = +binom;
+		this.recalcSignificant();
+		this.recolorGenes();
+
+		if (this.control != null)
+			this.updateSignificantTable();
+	}
+
+	setOddsRatioCutOff(or) {
+		oddsRatioCutOff = +or;
+		this.recalcSignificant();
+		this.recolorGenes();
+
+		if (this.control != null)
+			this.updateSignificantTable();
+	}
+
 	updateColors() {
 		this.plotData.selectAll("g.dot")
 			.select("circle")
@@ -324,12 +389,12 @@ class SLScreenPlot extends ScreenPlot {
 			.style("opacity", this.getOpacity());
 	}
 
-	updateSignificantTable(data) {
+	updateSignificantTable() {
 		const table = document.getElementById("significantGenesTable");
 		[...table.querySelectorAll("tr")].forEach(tr => tr.remove());
 		const fmt = d3.format(".3g");
 
-		data
+		this.screens.get(0)
 			.filter(d => d.significant)
 			.sort((a, b) => a.gene > b.gene)
 			.forEach(d => {
@@ -345,14 +410,14 @@ class SLScreenPlot extends ScreenPlot {
 				col(d.senseratio.toFixed(2));
 				col(`${d.sense}/${d.antisense}`);
 				col(fmt(d.binom_fdr));
-				col(fmt(d.ref_pv[0]));
-				col(fmt(d.ref_fcpv[0]));
-				col(fmt(d.ref_pv[1]));
-				col(fmt(d.ref_fcpv[1]));
-				col(fmt(d.ref_pv[2]));
-				col(fmt(d.ref_fcpv[2]));
-				col(fmt(d.ref_pv[3]));
-				col(fmt(d.ref_fcpv[3]));
+				// col(fmt(d.ref_pv[0]));
+				// col(fmt(d.ref_fcpv[0]));
+				// col(fmt(d.ref_pv[1]));
+				// col(fmt(d.ref_fcpv[1]));
+				// col(fmt(d.ref_pv[2]));
+				// col(fmt(d.ref_fcpv[2]));
+				// col(fmt(d.ref_pv[3]));
+				// col(fmt(d.ref_fcpv[3]));
 
 				table.appendChild(row);
 				// row.appendTo(table);
@@ -368,13 +433,19 @@ class SLScreenPlot extends ScreenPlot {
 			.raise();
 	}
 
+	recalcSignificant() {
+		// loop over all genes
+
+		// colorMap.setSignificantGenes(this.data.significant);
+	}
+
 	exportCSV() {
 
 		const options = geneSelectionEditor.getOptions();
 
 		options.append("pvCutOff", pvCutOff);
-		options.append("binomCutOff", document.getElementById('binom_fdr').value);
-		options.append("oddsRatio", document.getElementById('odds-ratio').value);
+		options.append("binomCutOff", binomCutOff);
+		options.append("oddsRatio", oddsRatioCutOff);
 
 		if (this.control != null)
 			options.append("control", this.control.name);
@@ -431,13 +502,6 @@ class SLControlScreenPlot extends SLScreenPlot {
 	}
 
 	updateColors() {
-		if (this.dotData !== undefined) {
-			this.dotData
-				.forEach(d => {
-					d.values.forEach(v => v.significant = significantGenes.has(v.gene));
-				});
-		}
-		
 		this.plotData
 			.selectAll("g.dot")
 			.filter(d => d.significantGene())
@@ -449,8 +513,10 @@ class SLControlScreenPlot extends SLScreenPlot {
 	reload() {
 		return this.loadScreen(this.name, 0);
 	}
-}
 
+	recalcSignificant() {
+	}
+}
 
 window.addEventListener('load', () => {
 

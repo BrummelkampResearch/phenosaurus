@@ -129,53 +129,38 @@ struct IPDataPoint
 
 // --------------------------------------------------------------------
 
-struct SLDataPoint
+struct SLDataReplicate
 {
-	std::string gene;
 	double binom_fdr;
 	float ref_pv[4];
 	float ref_fcpv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
-	float oddsRatio;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("binom_fdr", binom_fdr)
+		ar & zeep::make_nvp("binom_fdr", binom_fdr)
 		   & zeep::make_nvp("ref_pv", ref_pv)
 		   & zeep::make_nvp("ref_fcpv", ref_fcpv)
 		   & zeep::make_nvp("sense", sense)
 		   & zeep::make_nvp("antisense", antisense)
 		   & zeep::make_nvp("sense_normalized", sense_normalized)
-		   & zeep::make_nvp("antisense_normalized", antisense_normalized)
-		   & zeep::make_nvp("odds_ratio", oddsRatio);
+		   & zeep::make_nvp("antisense_normalized", antisense_normalized);
 	}
 };
 
-struct SLDataReplicate
+struct SLDataPoint
 {
-	std::string name;
-	std::vector<SLDataPoint> data;
+	std::string gene;
+	float oddsRatio;
+	std::vector<SLDataReplicate> replicates;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long)
 	{
-		ar & zeep::make_nvp("name", name)
-		   & zeep::make_nvp("data", data);
-	}
-};
-
-struct SLDataResult
-{
-	std::vector<SLDataReplicate> replicate;
-	std::set<std::string> significant;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("replicate", replicate)
-		   & zeep::make_nvp("significant", significant);
+		ar & zeep::make_nvp("gene", gene)
+		   & zeep::make_nvp("odds_ratio", oddsRatio)
+		   & zeep::make_nvp("replicate", replicates);
 	}
 };
 
@@ -399,9 +384,8 @@ class SLScreenData : public ScreenData
 
 	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
-	SLDataResult dataPoints(const std::string& assembly, unsigned readLength,
-		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize,
-		float pvCutOff, float binomCutOff, float oddsRatio);
+	std::vector<SLDataPoint> dataPoints(const std::string& assembly, unsigned readLength,
+		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize);
 
 	std::vector<std::string> getReplicateNames() const;
 	std::tuple<std::vector<uint32_t>,std::vector<uint32_t>> getInsertionsForReplicate(
@@ -415,7 +399,11 @@ class SLScreenData : public ScreenData
 	void count_insertions(const std::string& replicate, const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const;
 
-	std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
+	std::vector<SLDataReplicate> dataPoints(const std::vector<Transcript>& transcripts,
 		const std::vector<InsertionCount>& insertions,
 		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
+
+	// std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
+	// 	const std::vector<InsertionCount>& insertions,
+	// 	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 };

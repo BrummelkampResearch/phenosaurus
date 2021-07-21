@@ -426,17 +426,23 @@ or txEnd to have the start at the cdsEnd e.g.
 	float pvCutOff = vm["pv-cut-off"].as<float>();
 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
 	float oddsRatio = vm["odds-ratio"].as<float>();
+	if (oddsRatio < 0 or oddsRatio >= 1)
+		throw std::runtime_error("Odds ratio should be between 0 and 1");
 
 	// -----------------------------------------------------------------------
 
-	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
+	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize);
 	bool significantOnly = vm.count("significant");
 
 	if (vm.count("no-header") == 0)
 	{
 		std::cout
-				<< "replicate" << '\t'
 				<< "gene" << '\t'
+				<< "odds_ratio" << '\t';
+		
+		for (size_t i = 0; i < (r.empty() ? 0 :  r[0].replicates.size()); ++i)
+		{
+			std::cout
 				<< "sense" << '\t'
 				<< "antisense" << '\t'
 				<< "binom_fdr" << '\t'
@@ -449,39 +455,59 @@ or txEnd to have the start at the cdsEnd e.g.
 				// << "fcpv_control_3" << '\t'
 				<< "pv_control_3" << '\t'
 				// << "fcpv_control_4" << '\t'
-				<< "pv_control_4" << '\t'
-				// << "effect"
-				<< std::endl;
+				<< "pv_control_4" << '\t';
+				// << "effect";
+		}
+
+		std::cout << std::endl;
 	}
 
-	for (const auto& replicate: r.replicate)
+	for (auto& dp : r)
 	{
-		for (size_t i = 0; i < transcripts.size(); ++i)
+		if (significantOnly)
 		{
-			auto& dp = replicate.data[i];
-
-			if (significantOnly and not r.significant.count(dp.gene))
+			if (dp.oddsRatio >= oddsRatio)
 				continue;
 			
-			std::cout
-				<< replicate.name << '\t'
-				<< dp.gene << '\t'
-				<< dp.sense << '\t'
-				<< dp.antisense << '\t'
-				<< dp.binom_fdr << '\t'
-				<< dp.sense_normalized << '\t'
-				<< dp.antisense_normalized << '\t'
-				//   << dp.ref_fcpv[0] << '\t'
-				<< dp.ref_pv[0] << '\t'
-				//   << dp.ref_fcpv[1] << '\t'
-				<< dp.ref_pv[1] << '\t'
-				//   << dp.ref_fcpv[2] << '\t'
-				<< dp.ref_pv[2] << '\t'
-				//   << dp.ref_fcpv[3] << '\t'
-				<< dp.ref_pv[3] << '\t'
-				// << dp.strength
-				<< std::endl;
+			size_t n = 0;
+			for (auto &c : dp.replicates)
+			{
+				if (c.binom_fdr >= binom_fdrCutOff)
+					continue;
+				
+				if (c.ref_pv[0] >= pvCutOff or c.ref_pv[1] >= pvCutOff or c.ref_pv[2] >= pvCutOff or c.ref_pv[3] >= pvCutOff)
+					continue;
+				
+				++n;
+			}
+
+			if (n != dp.replicates.size())
+				continue;
 		}
+		
+		std::cout
+			<< dp.gene << '\t'
+			<< dp.oddsRatio << '\t';
+		
+		for (auto &c : dp.replicates)
+		{
+			std::cout
+				<< c.sense << '\t'
+				<< c.antisense << '\t'
+				<< c.binom_fdr << '\t'
+				<< c.sense_normalized << '\t'
+				<< c.antisense_normalized << '\t'
+				//   << c.ref_fcpv[0] << '\t'
+				<< c.ref_pv[0] << '\t'
+				//   << c.ref_fcpv[1] << '\t'
+				<< c.ref_pv[1] << '\t'
+				//   << c.ref_fcpv[2] << '\t'
+				<< c.ref_pv[2] << '\t'
+				//   << c.ref_fcpv[3] << '\t'
+				<< c.ref_pv[3] << '\t';
+		}
+
+		std::cout << std::endl;
 	}
 
 	return 0;
@@ -503,7 +529,7 @@ or txEnd to have the start at the cdsEnd e.g.
 // 			{ "binom-fdr-cut-off",
 // 								po::value<float>()->default_value(1.f),		"binom FDR cut off" },
 // 			{ "odds-ratio",
-// 								po::value<float>()->default_value(1.2f),	"effect size" },
+// 								po::value<float>()->default_value(1.2f),	"Odds Ratio" },
 
 // 			{ "no-header",		new po::untyped_value(true),				"Do not print a header line" },
 
@@ -696,8 +722,8 @@ int main_analyze(int argc, char* const argv[])
 							po::value<float>()->default_value(0.05f),
 														"binom FDR cut off" },
 			{ "odds-ratio",
-							po::value<float>()->default_value(1.2f),
-														"effect size" },
+							po::value<float>()->default_value(0.8f),
+														"Odds Ratio" },
 
 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
 

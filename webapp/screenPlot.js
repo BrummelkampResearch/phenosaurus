@@ -59,6 +59,7 @@ export default class ScreenPlot {
 				}
 			});
 		}
+		pvCutOff = +pvCutOffEdit.value;
 
 		const highlightGene = document.getElementById("highlightGene");
 		if (highlightGene != null)

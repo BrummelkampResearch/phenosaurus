@@ -836,9 +836,8 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 	return result;
 }
 
-SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
-	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize,
-	float pvCutOff, float binomCutOff, float oddsRatio)
+std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize)
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
@@ -874,27 +873,22 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 	if (eptr)
 		std::rethrow_exception(eptr);
 
-	SLDataResult result;
+	std::vector<std::tuple<std::string, std::vector<SLDataReplicate>>> replicates;
 
 	for (auto &f : mInfo.files)
-		result.replicate.push_back({f.name});
+		replicates.push_back({f.name, {}});
 
-	parallel_for(result.replicate.size(), [&](size_t i) {
+	parallel_for(replicates.size(), [&](size_t i) {
 		try
 		{
-			auto &replicate = result.replicate[i];
+			auto &&[replicate, repl] = replicates[i];
 
 			// Then load the screen data
 			std::vector<InsertionCount> insertions;
-			count_insertions(replicate.name, assembly, trimLength, transcripts, insertions);
+			count_insertions(replicate, assembly, trimLength, transcripts, insertions);
 
 			// And now analyse this
-			replicate.data = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
-
-			// // remove redundant datapoints
-			// replicate.data.erase(
-			// 	std::remove_if(replicate.data.begin(), replicate.data.end(), [](auto& dp) { return dp.sense == 0 or dp.antisense == 0; }),
-			// 	replicate.data.end());
+			repl = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
 		}
 		catch (const std::exception &e)
 		{
@@ -905,62 +899,49 @@ SLDataResult SLScreenData::dataPoints(const std::string &assembly, unsigned trim
 	if (eptr)
 		std::rethrow_exception(eptr);
 
-	// find out which genes are significant
+	// merge data, calculate odds ratio
 
-	std::mutex m;
-	parallel_for(transcripts.size(), [&](size_t i) {
-
-		size_t n = 0;
-		size_t s_g = 0, a_g = 0;
-
-		for (auto &r : result.replicate)
+	std::vector<SLDataPoint> result(transcripts.size());
+	parallel_for(result.size(), [&](size_t i) {
+		try
 		{
-			auto &nc = r.data[i];
+			auto &dp = result[i];
 
-			s_g += nc.sense_normalized;
-			a_g += nc.antisense_normalized;
+			size_t s_g = 0, a_g = 0;
 
-			if (nc.binom_fdr > binomCutOff)
-				continue;
+			for (const auto &[replicate, replc] : replicates)
+			{
+				auto &nc = replc[i];
 
-			if (nc.ref_pv[0] > pvCutOff or nc.ref_pv[1] > pvCutOff or nc.ref_pv[2] > pvCutOff or nc.ref_pv[3] > pvCutOff)
-				continue;
+				s_g += nc.sense_normalized;
+				a_g += nc.antisense_normalized;
 
-			++n;
+				dp.replicates.push_back(nc);
+			}
+
+			size_t s_wt = 0, a_wt = 0;
+
+			for (auto &nc : normalizedControlInsertions)
+			{
+				s_wt += nc[i].sense;
+				a_wt += nc[i].antiSense;
+			}
+
+			long v[2][2] = {
+					{ static_cast<long>(s_g), static_cast<long>(a_g) },
+					{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
+			};
+
+			FishersExactTest f(v, FisherAlternative::Right);
+
+			dp.gene = transcripts[i].geneName;
+			dp.oddsRatio = f.oddsRatio();
 		}
-
-		size_t s_wt = 0, a_wt = 0;
-
-		for (auto &nc : normalizedControlInsertions)
+		catch (const std::exception &e)
 		{
-			s_wt += nc[i].sense;
-			a_wt += nc[i].antiSense;
-		}
-
-		long v[2][2] = {
-				{ static_cast<long>(s_g), static_cast<long>(a_g) },
-				{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
-		};
-
-		FishersExactTest f(v, FisherAlternative::Right);
-
-		for (auto &r : result.replicate)
-			r.data[i].oddsRatio = f.oddsRatio();
-
-		if (n == result.replicate.size() and (f.oddsRatio() <= oddsRatio or f.oddsRatio() >= (1/oddsRatio)))
-		{
-			std::unique_lock lock(m);
-			result.significant.insert(transcripts[i].geneName);
+			eptr = std::current_exception();
 		}
 	});
-
-	for (auto &r : result.replicate)
-	{
-		// remove redundant datapoints
-		r.data.erase(
-			std::remove_if(r.data.begin(), r.data.end(), [](auto &dp) { return dp.sense == 0 or dp.antisense == 0; }),
-			r.data.end());
-	}
 
 	return result;
 }
@@ -1163,14 +1144,18 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> SLScreenData::getInsert
 
 // --------------------------------------------------------------------
 
-std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
-	const std::vector<InsertionCount> &insertions, const std::array<std::vector<InsertionCount>, 4> &controlInsertions,
-	unsigned groupSize)
+// std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
+// 	const std::vector<InsertionCount> &insertions,
+// 	const std::array<std::vector<InsertionCount>, 4> &controlInsertions,
+// 	unsigned groupSize)
+std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
+	const std::vector<InsertionCount>& insertions,
+	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
 	const size_t N = transcripts.size();
-	std::vector<SLDataPoint> datapoints(N, SLDataPoint{});
+	std::vector<SLDataReplicate> result(N, SLDataReplicate{});
 
 	std::vector<size_t> index;
 	index.reserve(N);
@@ -1204,30 +1189,29 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript> 
 	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
 
-		SLDataPoint &dp = datapoints[i];
+		SLDataReplicate &repl = result[i];
 
-		dp.gene = transcripts[i].geneName;
-		dp.sense = insertions[i].sense;
-		dp.antisense = insertions[i].antiSense;
-		dp.sense_normalized = normalized[i].sense;
-		dp.antisense_normalized = normalized[i].antiSense;
+		repl.sense = insertions[i].sense;
+		repl.antisense = insertions[i].antiSense;
+		repl.sense_normalized = normalized[i].sense;
+		repl.antisense_normalized = normalized[i].antiSense;
 
 		// calculate p-value for insertion
-		pvalues[0][ix] = binom_test(dp.sense_normalized, dp.sense_normalized + dp.antisense_normalized);
+		pvalues[0][ix] = binom_test(repl.sense_normalized, repl.sense_normalized + repl.antisense_normalized);
 
 		// and calculate p-values for the screen vs controls
 		for (int j = 0; j < 4; ++j)
 		{
 			long v[2][2] = {
-				{dp.sense_normalized, dp.antisense_normalized},
+				{repl.sense_normalized, repl.antisense_normalized},
 				{static_cast<long>(controlInsertions[j][i].sense), static_cast<long>(controlInsertions[j][i].antiSense)}};
 
 			if (v[0][0] + v[0][1] == 0 or v[1][0] + v[1][1] == 0)
-				dp.ref_pv[j] = -1;
+				repl.ref_pv[j] = -1;
 			else
-				dp.ref_pv[j] = fisherTest2x2(v);
+				repl.ref_pv[j] = fisherTest2x2(v);
 
-			pvalues[j + 1][ix] = dp.ref_pv[j];
+			pvalues[j + 1][ix] = repl.ref_pv[j];
 		}
 	});
 
@@ -1239,17 +1223,17 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::vector<Transcript> 
 	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
 
-		auto &dp = datapoints[i];
+		auto &repl = result[i];
 
-		dp.binom_fdr = fcpv[0][ix];
+		repl.binom_fdr = fcpv[0][ix];
 
-		dp.ref_fcpv[0] = fcpv[1][ix];
-		dp.ref_fcpv[1] = fcpv[2][ix];
-		dp.ref_fcpv[2] = fcpv[3][ix];
-		dp.ref_fcpv[3] = fcpv[4][ix];
+		repl.ref_fcpv[0] = fcpv[1][ix];
+		repl.ref_fcpv[1] = fcpv[2][ix];
+		repl.ref_fcpv[2] = fcpv[3][ix];
+		repl.ref_fcpv[3] = fcpv[4][ix];
 	});
 
-	return datapoints;
+	return result;
 }
 
 // --------------------------------------------------------------------

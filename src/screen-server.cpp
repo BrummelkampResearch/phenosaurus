@@ -419,7 +419,7 @@ class SLScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
-			"id", "assembly", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pvCutOff", "binomCutOff", "oddsRatio");
+			"id", "assembly", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
 		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 
@@ -427,9 +427,8 @@ class SLScreenRestController : public zh::rest_controller
 		map_get_request("screen/{id}/bed/{replicate}", &SLScreenRestController::getBED, "id", "replicate", "assembly");
 	}
 
-	SLDataResult screenData(const std::string& screen, const std::string& assembly, std::string control,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		Direction direction, float pvCutOff, float binomCutOff, float oddsRatio);
+	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly, std::string control,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -439,9 +438,8 @@ class SLScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-SLDataResult SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
-	float pvCutOff, float binomCutOff, float oddsRatio)
+std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -482,7 +480,7 @@ SLDataResult SLScreenRestController::screenData(const std::string& screen, const
 
 	// -----------------------------------------------------------------------
 
-	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize, pvCutOff, binomCutOff, oddsRatio);
+	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize);
 }
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)
