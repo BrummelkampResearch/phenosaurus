@@ -1,3 +1,8 @@
+SL bugs:
+- aggregate counts for sense ratio (type selection)
+- coloring of type (purple!)
+
+
 - ignored screens -> aparte weergave
 
 - weergave mapping in lijst
