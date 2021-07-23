@@ -153,6 +153,7 @@ struct SLDataPoint
 {
 	std::string gene;
 	float oddsRatio;
+	float senseRatio;
 	float controlBinom;
 	float controlSenseRatio;
 	std::vector<SLDataReplicate> replicates;
@@ -162,6 +163,7 @@ struct SLDataPoint
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("odds_ratio", oddsRatio)
+		   & zeep::make_nvp("sense_ratio", senseRatio)
 		   & zeep::make_nvp("control_binom", controlBinom)
 		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
 		   & zeep::make_nvp("replicate", replicates);

@@ -21,6 +21,7 @@ class ColorMap {
 
 	constructor() {
 		this.scale = [];
+		this.max = [];
 		this.geneColorMap = new Map();
 	}
 
@@ -29,13 +30,13 @@ class ColorMap {
 
 		if (mapped == null)
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
-		
-		if (significantGenes.has(d.gene))
-		{
+
+		if (significantGenes.has(d.gene)) {
 			const type = mapped.type || 1;
-			return this.scale[type - 1](Math.log(mapped.odds_ratio));
+			const scale = this.scale[type - 1];
+			return scale(this.max[type - 1] - mapped.odds_ratio);
 		}
-		
+
 		if (highlightedGenes.has(d.gene))
 			return highlight;
 
@@ -55,15 +56,14 @@ class ColorMap {
 	}
 
 	setData(data) {
-		let minOddsRatio = [ 100, 100, 100 ], maxOddsRatio = [ 0, 0, 0 ];
+		let minOddsRatio = [100, 100, 100], maxOddsRatio = [0, 0, 0];
 		data.forEach(d => {
 			let t = d.type || 1;
 
-			if (d.odds_ratio)
-			{
+			if (d.odds_ratio) {
 				if (minOddsRatio[t - 1] > d.odds_ratio)
 					minOddsRatio[t - 1] = d.odds_ratio;
-	
+
 				if (maxOddsRatio[t - 1] < d.odds_ratio)
 					maxOddsRatio[t - 1] = d.odds_ratio;
 			}
@@ -77,10 +77,12 @@ class ColorMap {
 		});
 
 		this.scale = [
-			d3.scaleSequential(d3.interpolateReds).domain([Math.log(maxOddsRatio[0]), Math.log(minOddsRatio[0])]),
-			d3.scaleSequential(d3.interpolateBlues).domain([Math.log(maxOddsRatio[1]), Math.log(minOddsRatio[1])]),
-			d3.scaleSequential(d3.interpolatePurples).domain([Math.log(maxOddsRatio[2], Math.log(minOddsRatio[2]))])
+			d3.scaleSequentialLog(d3.interpolateReds).domain([minOddsRatio[0], maxOddsRatio[0]]),
+			d3.scaleSequentialLog(d3.interpolateBlues).domain([minOddsRatio[1], maxOddsRatio[1]]),
+			d3.scaleSequentialLog(d3.interpolatePurples).domain([minOddsRatio[2], maxOddsRatio[2]])
 		];
+
+		this.max = maxOddsRatio;
 
 		this.control.updateColors();
 	}
@@ -88,8 +90,8 @@ class ColorMap {
 	setSignificantGenes(genes) {
 		significantGenes = new Set(genes);
 
-	// 	const btns = document.getElementById("graphColorBtns");
-	// 	btns.dispatchEvent(new Event("change-color"));
+		// 	const btns = document.getElementById("graphColorBtns");
+		// 	btns.dispatchEvent(new Event("change-color"));
 
 		return significantGenes;
 	}
@@ -185,7 +187,7 @@ class SLScreenPlot extends ScreenPlot {
 				options.append("control", this.control.name);
 
 			fetch(`${context_name}sl/screen/${name}`,
-					{ credentials: "include", method: "post", body: options })
+				{ credentials: "include", method: "post", body: options })
 				.then(value => {
 					if (value.ok)
 						return value.json();
@@ -208,7 +210,7 @@ class SLScreenPlot extends ScreenPlot {
 					console.log(err);
 					if (err === "invalid-credentials")
 						alert('session timeout, please login again');
-						// showLoginDialog(null, () => this.loadScreen(this.name, this.id));
+					// showLoginDialog(null, () => this.loadScreen(this.name, this.id));
 					else reject(err);
 				});
 		});
@@ -245,10 +247,9 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	process(replicate) {
-		
+
 		this.replicate = replicate;
-		if (this.data == null || this.replicate > this.data[0].replicate.length)
-		{
+		if (this.data == null || this.replicate > this.data[0].replicate.length) {
 			screenPlot.selectAll("g.dot")
 				.remove();
 			return;
@@ -257,47 +258,54 @@ class SLScreenPlot extends ScreenPlot {
 		this.updateReplicateBtns(replicate);
 
 		const data = [];
-		this.data.forEach(d => {
-			const sense = d.replicate[replicate].sense_normalized;
-			const antisense = d.replicate[replicate].antisense_normalized;
-			const insertions = sense + antisense;
-			const senseratio = (1 + sense) / (2 + insertions);
+		this.data
+			.filter(d => d.replicate[replicate].sense_normalized && d.replicate[replicate].antisense_normalized)
+			.forEach(d => {
+				const sense = d.replicate[replicate].sense_normalized;
+				const antisense = d.replicate[replicate].antisense_normalized;
+				const insertions = sense + antisense;
+				const sense_ratio = (1 + sense) / (2 + insertions);
+				const odds_ratio =
+					d.odds_ratio > 1 ? 1 / d.odds_ratio : d.odds_ratio;
 
-			const maxPV = Math.max(...d.replicate.map(r => Math.max(...r.ref_pv)));
-			const maxBinom = Math.max(...d.replicate.map(r => r.binom_fdr));
+				const maxPV = Math.max(...d.replicate.map(r => Math.max(...r.ref_pv)));
+				const maxBinom = Math.max(...d.replicate.map(r => r.binom_fdr));
 
-			data.push({
-				gene: d.gene,
-				sense: sense,
-				antisense: antisense,
-				insertions: insertions,
-				senseratio: senseratio,
-				odds_ratio: d.odds_ratio,
-				pv: maxPV,
-				binom_fdr: maxBinom,
+				data.push({
+					gene: d.gene,
+					sense: sense,
+					antisense: antisense,
+					insertions: insertions,
+					sense_ratio: sense_ratio,
+					aggr_sense_ratio: d.sense_ratio,
+					odds_ratio: odds_ratio,
+					pv: maxPV,
+					binom_fdr: maxBinom,
 
-				control_binom: d.control_binom,
-				control_sense_ratio: d.control_sense_ratio,
+					control_binom: d.control_binom,
+					control_sense_ratio: d.control_sense_ratio,
 
-				get significant() {
-					return this.pv < pvCutOff && this.binom_fdr < binomCutOff && (this.odds_ratio < oddsRatioCutOff || this.odds_ratio > (1/oddsRatioCutOff));
-				},
+					replicate: d.replicate,
 
-				get type() {
-					if (this.senseratio < this.control_sense_ratio)
-						return 1;
-					
-					if (this.control_binom < binomCutOff && this.control_sense_ratio < 0.5)
-						return 2;
-					
-					if (this.senseratio > 0.5 && (this.control_sense_ratio < 0.5 || this.control_binom > binomCutOff))
-						return 3;
-					
-					return 0;
-				}
+					get significant() {
+						return this.pv < pvCutOff && this.binom_fdr < binomCutOff && this.odds_ratio < oddsRatioCutOff;
+					},
+
+					get type() {
+						if (this.aggr_sense_ratio < this.control_sense_ratio)
+							return 1;
+
+						if (this.control_binom < binomCutOff && this.control_sense_ratio < 0.5)
+							return 2;
+
+						if (this.aggr_sense_ratio > 0.5 && (this.control_sense_ratio < 0.5 || this.control_binom > binomCutOff))
+							return 3;
+
+						return 0;
+					}
+				});
 			});
-		});
-	
+
 		// const data = this.data[0].replicate[this.replicate].data;
 
 		this.screens.set(0, data);
@@ -310,7 +318,7 @@ class SLScreenPlot extends ScreenPlot {
 		maxInsertions = Math.ceil(Math.pow(10, Math.log10(maxInsertions) + 0.1));
 
 		this.dotData = d3.nest()
-			.key(d => [d.senseratio, d.insertions].join(":"))
+			.key(d => [d.sense_ratio, d.insertions].join(":"))
 			.entries(data)
 			.map(d => new SLDot(d.key, d.values));
 
@@ -320,8 +328,7 @@ class SLScreenPlot extends ScreenPlot {
 
 		const screenPlotID = 'plot-0';
 		let screenPlot = this.plotData.select(`#${screenPlotID}`);
-		if (screenPlot === null || screenPlot.empty())
-		{
+		if (screenPlot === null || screenPlot.empty()) {
 			screenPlot = this.plotData.append("g")
 				.classed("screen-plot", true)
 				.attr("id", screenPlotID);
@@ -425,7 +432,8 @@ class SLScreenPlot extends ScreenPlot {
 	updateSignificantTable() {
 		const table = document.getElementById("significantGenesTable");
 		[...table.querySelectorAll("tr")].forEach(tr => tr.remove());
-		const fmt = d3.format(".3g");
+		const fmt2 = d3.format(".2g");
+		const fmt3 = d3.format(".3g");
 
 		this.screens.get(0)
 			.filter(d => d.significant)
@@ -439,18 +447,18 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				col(d.gene);
-				col(d.odds_ratio ? d.odds_ratio.toFixed(2) : '');
-				col(d.senseratio.toFixed(2));
+				col(d.odds_ratio ? fmt2(d.odds_ratio) : '');
+				col(fmt2(d.sense_ratio));
 				col(`${d.sense}/${d.antisense}`);
-				col(fmt(d.binom_fdr));
-				// col(fmt(d.ref_pv[0]));
-				// col(fmt(d.ref_fcpv[0]));
-				// col(fmt(d.ref_pv[1]));
-				// col(fmt(d.ref_fcpv[1]));
-				// col(fmt(d.ref_pv[2]));
-				// col(fmt(d.ref_fcpv[2]));
-				// col(fmt(d.ref_pv[3]));
-				// col(fmt(d.ref_fcpv[3]));
+				col(fmt3(d.binom_fdr));
+				col(fmt2(d.aggr_sense_ratio));
+				col(fmt2(d.control_binom));
+				col(fmt2(d.control_sense_ratio));
+
+				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
 
 				table.appendChild(row);
 				// row.appendTo(table);
@@ -460,7 +468,7 @@ class SLScreenPlot extends ScreenPlot {
 					this.control.highlightGene(d.gene);
 				});
 			});
-			
+
 		this.plotData.selectAll("g.dot")
 			.filter(d => d.significantGene())
 			.raise();
@@ -469,8 +477,8 @@ class SLScreenPlot extends ScreenPlot {
 	recalcSignificant() {
 		colorMap.setSignificantGenes(
 			this.screens.get(0)
-			.filter(d => d.significant)
-			.map(d => d.gene));
+				.filter(d => d.significant)
+				.map(d => d.gene));
 	}
 
 	exportCSV() {
@@ -485,7 +493,7 @@ class SLScreenPlot extends ScreenPlot {
 			options.append("control", this.control.name);
 
 		fetch(`${context_name}sl/screen/${this.name}`,
-				{ credentials: "include", method: "post", body: options })
+			{ credentials: "include", method: "post", body: options })
 			.then(value => {
 				if (value.ok)
 					return value.json();
@@ -501,10 +509,10 @@ class SLScreenPlot extends ScreenPlot {
 				for (let i in header)
 					hbytes[i] = header.charCodeAt(i);
 				byteArrays.push(new Uint8Array(hbytes));
-	
+
 				data.replicate
 					.forEach(r => {
-						r.data.map(e => [ r.name, e.gene, e.odds_ratio, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
+						r.data.map(e => [r.name, e.gene, e.odds_ratio, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
 							.forEach(l => {
 								const bytes = new Array(l.length);
 								for (let i in l)
@@ -513,15 +521,15 @@ class SLScreenPlot extends ScreenPlot {
 							});
 					})
 
-	
+
 				const blob = new Blob(byteArrays, { type: 'text/plain' });
 				const url = window.URL.createObjectURL(blob);
 				const a = document.createElement('a');
 				a.href = url;
 				a.download = `Raw_data_for_${screen}.csv`;
 				document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
-				a.click();    
-				a.remove();  
+				a.click();
+				a.remove();
 			});
 	}
 
@@ -585,8 +593,7 @@ window.addEventListener('load', () => {
 
 	controlPlot.loadScreen(selectedControl)
 		.then(() => {
-			if (typeof selectedScreen === 'string')
-			{
+			if (typeof selectedScreen === 'string') {
 				const r = screenReplicates.find(e => e.name === selectedScreen);
 				if (r != null) {
 					plot.loadScreen(selectedScreen, +selectedReplicate)

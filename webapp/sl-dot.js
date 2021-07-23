@@ -1,4 +1,5 @@
 import { highlightedGenes } from "./screenPlot";
+import { significantGenes } from "./sl-screen";
 import Dot from './dot';
 
 export default class SLDot extends Dot {
@@ -6,9 +7,9 @@ export default class SLDot extends Dot {
     constructor(key, values) {
         super(key, values);
 
-        this.senseratio = values[0].senseratio;
+        this.sense_ratio = values[0].sense_ratio;
 
-        this.y = this.senseratio;
+        this.y = this.sense_ratio;
     }
 
     highlight() {
@@ -20,6 +21,6 @@ export default class SLDot extends Dot {
     }
 
     significantGene() {
-        return this.values.findIndex(d => d.significant) >= 0;
+        return this.values.findIndex(d => significantGenes.has(d.gene)) >= 0;
     }
 }

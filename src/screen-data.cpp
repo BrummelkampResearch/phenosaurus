@@ -936,7 +936,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 
 			dp.gene = transcripts[i].geneName;
 			dp.oddsRatio = f.oddsRatio();
-
+			dp.senseRatio = (1.0f + s_g) / (2.0f + s_g + a_g);
 			dp.controlBinom = binom_test(s_wt, s_wt + a_wt);
 			dp.controlSenseRatio = (1.0f + s_wt) / (2.0f + s_wt + a_wt);
 		}
