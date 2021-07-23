@@ -483,56 +483,66 @@ class SLScreenPlot extends ScreenPlot {
 
 	exportCSV() {
 
-		const options = geneSelectionEditor.getOptions();
+		const byteArrays = [];
 
-		options.append("pvCutOff", pvCutOff);
-		options.append("binomCutOff", binomCutOff);
-		options.append("oddsRatio", oddsRatioCutOff);
+		const header = [
+			"gene",
+			"sense",
+			"antisense",
+			"sense_normalized",
+			"antisense_normalized",
+			"binom_fdr",
+			"odds_ratio",
+			"aggr_odds_ratio",
+			"ref_pv_1",
+			"ref_pv_2",
+			"ref_pv_3",
+			"ref_pv_4",
+			"cntl_binom_fdr",
+			"cntl_senseratio"
+		];
+		const hbytes = new Array(header.length);
+		const hl = header.join('\t') + '\n';
+		for (let i in hl)
+			hbytes[i] = hl.charCodeAt(i);
+		byteArrays.push(new Uint8Array(hbytes));
 
-		if (this.control != null)
-			options.append("control", this.control.name);
+		const data = this.screens.get(0);
+		data.forEach(d => {
+			const values = [
+				d.gene,												// gene
+				d.replicate[this.replicate].sense,					// sense
+				d.replicate[this.replicate].antisense,				// antisense
+				d.replicate[this.replicate].sense_normalized,		// sense_normalized
+				d.replicate[this.replicate].antisense_normalized,	// antisense_normalized
+				d.binom_fdr,										// binom_fdr
+				d.odds_ratio,										// odds_ratio
+				d.aggr_sense_ratio,									// aggr_sense_ratio
+				d.replicate[this.replicate].ref_pv[0],				// ref_pv_1
+				d.replicate[this.replicate].ref_pv[1],				// ref_pv_2
+				d.replicate[this.replicate].ref_pv[2],				// ref_pv_3
+				d.replicate[this.replicate].ref_pv[3],				// ref_pv_4
+				d.control_binom,									// control_binom
+				d.control_sense_ratio								// control_sense_ratio
+			];
+			
+			const l = values.join('\t') + '\n';
 
-		fetch(`${context_name}sl/screen/${this.name}`,
-			{ credentials: "include", method: "post", body: options })
-			.then(value => {
-				if (value.ok)
-					return value.json();
-				if (value.status === 403)
-					throw "invalid-credentials";
-			})
-			.then(data => {
+			const bytes = new Array(l.length);
+			for (let i in l)
+				bytes[i] = l.charCodeAt(i);
+			byteArrays.push(new Uint8Array(bytes));
+		});
 
-				const byteArrays = [];
-
-				const header = "replicate,gene,odds_ratio,binom_fdr,ref_pv_1,ref_pv_2,ref_pv_3,ref_pv_4,ref_fcpv_1,ref_fcpv_2,ref_fcpv_3,ref_fcpv_4,sense,sense_normalized,antisense,antisense_normalized\n";
-				const hbytes = new Array(header.length);
-				for (let i in header)
-					hbytes[i] = header.charCodeAt(i);
-				byteArrays.push(new Uint8Array(hbytes));
-
-				data.replicate
-					.forEach(r => {
-						r.data.map(e => [r.name, e.gene, e.odds_ratio, e.binom_fdr, e.ref_pv[0], e.ref_pv[1], e.ref_pv[2], e.ref_pv[3], e.ref_fcpv[0], e.ref_fcpv[1], e.ref_fcpv[2], e.ref_fcpv[3], e.sense, e.sense_normalized, e.antisense, e.antisense_normalized].join(",") + "\n")
-							.forEach(l => {
-								const bytes = new Array(l.length);
-								for (let i in l)
-									bytes[i] = l.charCodeAt(i);
-								byteArrays.push(new Uint8Array(bytes));
-							});
-					})
-
-
-				const blob = new Blob(byteArrays, { type: 'text/plain' });
-				const url = window.URL.createObjectURL(blob);
-				const a = document.createElement('a');
-				a.href = url;
-				a.download = `Raw_data_for_${screen}.csv`;
-				document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
-				a.click();
-				a.remove();
-			});
+		const blob = new Blob(byteArrays, { type: 'text/plain' });
+		const url = window.URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `Raw_data_for_${screen}.csv`;
+		document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
+		a.click();
+		a.remove();
 	}
-
 }
 
 class SLControlScreenPlot extends SLScreenPlot {
