@@ -905,6 +905,10 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 	parallel_for(result.size(), [&](size_t i) {
 		try
 		{
+			enum class ConsistencyCheck {
+				Undefined, Up, Down, Inconsistent
+			} check = ConsistencyCheck::Undefined;
+
 			auto &dp = result[i];
 
 			size_t s_g = 0, a_g = 0;
@@ -917,6 +921,37 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 				a_g += nc.antisense_normalized;
 
 				dp.replicates.push_back(nc);
+
+				// check consistency
+				if (check == ConsistencyCheck::Inconsistent)
+					continue;
+				
+				for (auto &ncc : normalizedControlInsertions)
+				{
+					bool up = ((1.0f + nc.sense_normalized) / (2.0f + nc.sense_normalized + nc.antisense_normalized)) <
+						 ((1.0f + ncc[i].sense) / (2.0f + ncc[i].sense + ncc[i].antiSense));
+					
+					if (up)
+					{
+						if (check == ConsistencyCheck::Down)
+						{
+							check = ConsistencyCheck::Inconsistent;
+							break;
+						}
+						else
+							check = ConsistencyCheck::Up;
+					}
+					else
+					{
+						if (check == ConsistencyCheck::Up)
+						{
+							check = ConsistencyCheck::Inconsistent;
+							break;
+						}
+						else
+							check = ConsistencyCheck::Down;
+					}
+				}
 			}
 
 			size_t s_wt = 0, a_wt = 0;
@@ -939,6 +974,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 			dp.senseRatio = (1.0f + s_g) / (2.0f + s_g + a_g);
 			dp.controlBinom = binom_test(s_wt, s_wt + a_wt);
 			dp.controlSenseRatio = (1.0f + s_wt) / (2.0f + s_wt + a_wt);
+			dp.consistent = check != ConsistencyCheck::Inconsistent;
 		}
 		catch (const std::exception &e)
 		{

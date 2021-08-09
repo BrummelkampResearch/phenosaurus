@@ -282,13 +282,15 @@ class SLScreenPlot extends ScreenPlot {
 					pv: maxPV,
 					binom_fdr: maxBinom,
 
+					consistent: d.consistent,
+
 					control_binom: d.control_binom,
 					control_sense_ratio: d.control_sense_ratio,
 
 					replicate: d.replicate,
 
 					get significant() {
-						return this.pv < pvCutOff && this.binom_fdr < binomCutOff && this.odds_ratio < oddsRatioCutOff;
+						return this.consistent && this.pv < pvCutOff && this.binom_fdr < binomCutOff && this.odds_ratio < oddsRatioCutOff;
 					},
 
 					get type() {
