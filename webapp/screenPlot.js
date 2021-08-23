@@ -131,6 +131,9 @@ export default class ScreenPlot {
 		this.plotData = this.plot.append('g')
 			.attr("width", this.width)
 			.attr("height", this.height);
+		
+		if (this.createLegend)
+			this.createLegend();
 
 		const zoom = d3.zoom()
 			.scaleExtent([1, 8])

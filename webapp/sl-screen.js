@@ -159,7 +159,45 @@ class SLScreenPlot extends ScreenPlot {
 			});
 		}
 		oddsRatioCutOff = +oddsRatioCutOffEdit.value;
+	}
 
+	createLegend() {
+		const m = { top: 5, left: 0, bottom: 0, right: 5 };
+		const lh = 16;
+		const w = 120, h = 3 * lh + m.top + m.bottom;
+
+		this.legendG = this.svg.append('g')
+			.attr('class', 'legend')
+			.attr("transform", `translate(${this.width + this.margin.left - m.right - w}, ${this.margin.top + m.top})`);
+		
+		this.legendG.append('svg:rect')
+			.attr('x', 0.5)
+			.attr('y', 0.5)
+			.attr('height', h)
+			.attr('width', w)
+			.style('fill', 'white')
+			.style('stroke', 'black')
+			.style('stroke-width', 1);
+
+		const c = [
+			{ color: d3.interpolateReds(0.75), label: 'synthetic lethal' },
+			{ color: d3.interpolateBlues(0.75), label: 'suppressed essential' },
+			{ color: d3.interpolatePurples(0.75), label: 'fitness enhancer' }
+		]
+
+		for (let ci in c) {
+			ci = +ci;
+			const cc = c[ci];
+			this.legendG.append('circle')
+				.attr('cx', radius * 2)
+				.attr('cy', m.top + (ci + 0.5) * lh)
+				.attr('r', radius)
+				.style('fill', cc.color);
+			this.legendG.append('text')
+				.attr('x', radius * 4)
+				.attr('y', m.top + (ci + 0.75) * lh)
+				.text(cc.label);
+		}
 	}
 
 	reloadScreen(name) {
