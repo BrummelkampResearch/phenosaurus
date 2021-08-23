@@ -6,6 +6,7 @@ import * as d3 from 'd3';
 import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
 import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";
+import { format_pv } from './pvformat';
 
 const positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;
@@ -141,6 +142,7 @@ class ScreenPlotRegular extends ScreenPlot {
 					// fill tables
 
 					const fmt = d3.format(".3g");
+					const fmt2 = format_pv;
 
 					const fillTable = function (table, genes) {
 						$("tr", table).remove();
@@ -149,7 +151,7 @@ class ScreenPlotRegular extends ScreenPlot {
 							$("<td/>").text(d.gene).appendTo(row);
 							$("<td/>").text(d.low).appendTo(row);
 							$("<td/>").text(d.high).appendTo(row);
-							$("<td/>").text(fmt(d.fcpv)).appendTo(row);
+							$("<td/>").text(fmt2(d.fcpv)).appendTo(row);
 							$("<td/>").text(fmt(d.log2mi)).appendTo(row);
 							row.appendTo(table);
 						});

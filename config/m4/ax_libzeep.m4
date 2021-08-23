@@ -28,6 +28,12 @@
 
 AC_DEFUN([AX_LIBZEEP],
 [
+	AS_CASE([${host_cpu}],
+		[x86_64],[libsubdirs="lib64 libx32 lib lib64"],
+		[ppc64|powerpc64|s390x|sparc64|aarch64|ppc64le|powerpc64le|riscv64],[libsubdirs="lib64 lib lib64"],
+		[libsubdirs="lib"]
+	)
+
 	AC_ARG_WITH([zeep],
 		AS_HELP_STRING([--with-zeep=@<:@location@:>@],
 			[Use the libzeep library as specified.]),
@@ -36,8 +42,12 @@ AC_DEFUN([AX_LIBZEEP],
 					AC_MSG_ERROR(['${withval}'' is not a valid directory for --with-zeep])
 				])
 
+				for libsubdir in $libsubdirs .libs ; do
+					if ls "${withval}/$libsubdir/libzeep"* >/dev/null 2>&1 ; then break; fi
+				done
+
 				ZEEP_CFLAGS="-I ${withval}/include"
-				ZEEP_LIBS="-L${withval}/.libs -lzeep"
+				ZEEP_LIBS="-L${withval}/$libsubdir -lzeep"
 
 				AC_SUBST([ZEEP_CFLAGS], [$ZEEP_CFLAGS])
 				AC_SUBST([ZEEP_LIBS], [$ZEEP_LIBS])
@@ -50,16 +60,10 @@ AC_DEFUN([AX_LIBZEEP],
 		else
 		    AC_REQUIRE([AC_CANONICAL_HOST])
 
-			AS_CASE([${host_cpu}],
-				[x86_64],[libsubdirs="lib64 libx32 lib lib64"],
-				[ppc64|powerpc64|s390x|sparc64|aarch64|ppc64le|powerpc64le|riscv64],[libsubdirs="lib64 lib lib64"],
-				[libsubdirs="lib"]
-			)
-
 			for _AX_ZEEP_path in /usr /usr/local /opt /opt/local ; do
 				if test -d "$_AX_ZEEP_path/include/zeep" && test -r "$_AX_ZEEP_path/include/zeep" ; then
 
-					for libsubdir in $search_libsubdirs ; do
+					for libsubdir in $libsubdirs ; do
 						if ls "$_AX_ZEEP_path/$libsubdir/libzeep"* >/dev/null 2>&1 ; then break; fi
 					done
 					ZEEP_LDFLAGS="-L$_AX_ZEEP_path/$libsubdir"

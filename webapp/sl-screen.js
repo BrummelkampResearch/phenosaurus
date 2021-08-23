@@ -4,6 +4,7 @@ import SLDot from './sl-dot';
 import { gene } from "./geneInfo";
 
 import * as d3 from 'd3';
+import { format_pv } from './pvformat';
 
 import GenomeViewer from "./genome-viewer";
 
@@ -434,7 +435,7 @@ class SLScreenPlot extends ScreenPlot {
 	updateSignificantTable() {
 		const table = document.getElementById("significantGenesTable");
 		[...table.querySelectorAll("tr")].forEach(tr => tr.remove());
-		const fmt2 = d3.format(".2g");
+		const fmt2 = format_pv;
 		const fmt3 = d3.format(".3g");
 
 		this.screens.get(0)
