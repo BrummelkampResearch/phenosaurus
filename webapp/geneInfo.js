@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { format_pv } from "./pvformat";
 
 export let gene;
 
@@ -69,7 +70,7 @@ export default class GeneInfo {
 		data.forEach(d => {
 			const row = $("<tr/>");
 			$("<td/>").text(d.gene).appendTo(row);
-			$("<td/>").text(d3.format(".2e")(d.fcpv)).appendTo(row);
+			$("<td/>").text(format_pv(d.fcpv)).appendTo(row);
 			$("<td/>").text(d.high).appendTo(row);
 			$("<td/>").text(d.low).appendTo(row);
 			row.appendTo(table);
