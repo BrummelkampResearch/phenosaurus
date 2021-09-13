@@ -14,6 +14,13 @@ let binomCutOff = 0.05, oddsRatioCutOff = 0.8;
 
 export let significantGenes = new Set();
 
+const SLType = {
+	None: 0,
+	SyntheticLethal: 1,
+	SuppressedEssential: 2,
+	FitnessEnhancer: 3
+};
+
 /*global context_name, screenReplicates, selectedReplicate $ */
 
 // --------------------------------------------------------------------
@@ -33,9 +40,11 @@ class ColorMap {
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
 
 		if (significantGenes.has(d.gene)) {
-			const type = mapped.type || 1;
-			const scale = this.scale[type - 1];
-			return scale(this.max[type - 1] - mapped.odds_ratio);
+			const type = mapped.type || SLType.None;
+			if (type != SLType.None) {
+				const scale = this.scale[type - 1];
+				return scale(this.max[type - 1] - mapped.odds_ratio);
+			}
 		}
 
 		if (highlightedGenes.has(d.gene))
@@ -59,7 +68,7 @@ class ColorMap {
 	setData(data) {
 		let minOddsRatio = [100, 100, 100], maxOddsRatio = [0, 0, 0];
 		data.forEach(d => {
-			let t = d.type || 1;
+			let t = d.type || SLType.None;
 
 			if (d.odds_ratio) {
 				if (minOddsRatio[t - 1] > d.odds_ratio)
@@ -329,20 +338,23 @@ class SLScreenPlot extends ScreenPlot {
 					replicate: d.replicate,
 
 					get significant() {
-						return this.consistent && this.pv < pvCutOff && this.binom_fdr < binomCutOff && this.odds_ratio < oddsRatioCutOff;
+						// return this.consistent && this.pv < pvCutOff && this.binom_fdr < binomCutOff;
+						return this.consistent && this.pv < pvCutOff && this.odds_ratio < oddsRatioCutOff && this.type != SLType.None;
 					},
 
 					get type() {
-						if (this.aggr_sense_ratio < this.control_sense_ratio)
-							return 1;
 
-						if (this.control_binom < binomCutOff && this.control_sense_ratio < 0.5)
-							return 2;
 
-						if (this.aggr_sense_ratio > 0.5 && (this.control_sense_ratio < 0.5 || this.control_binom > binomCutOff))
-							return 3;
+						if (this.aggr_sense_ratio < this.control_sense_ratio && this.aggr_sense_ratio < 0.5 && this.binom_fdr < binomCutOff)
+							return SLType.SyntheticLethal;
 
-						return 0;
+						if (this.control_binom < binomCutOff && this.control_sense_ratio < 0.5 && (this.binom_fdr >= binomCutOff || this.aggr_sense_ratio < 0.5))
+							return SLType.SuppressedEssential;
+
+						if (this.aggr_sense_ratio > 0.5 && this.binom_fdr < binomCutOff && (this.control_sense_ratio < 0.5 || this.control_binom > binomCutOff))
+							return SLType.FitnessEnhancer;
+
+						return SLType.None;
 					}
 				});
 			});
@@ -497,9 +509,9 @@ class SLScreenPlot extends ScreenPlot {
 				col(fmt2(d.control_sense_ratio));
 
 				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[1]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[2]));
+				col(fmt2(d.replicate[this.replicate].ref_pv[3]));
 
 				table.appendChild(row);
 				// row.appendTo(table);
