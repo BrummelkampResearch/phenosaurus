@@ -19,8 +19,4 @@ export default class SLDot extends Dot {
     significant(pvCutOff) {
         return this.values.findIndex(d => d.binom_fdr < pvCutOff) >= 0;
     }
-
-    significantGene() {
-        return this.values.findIndex(d => significantGenes.has(d.gene)) >= 0;
-    }
 }

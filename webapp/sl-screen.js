@@ -12,8 +12,6 @@ const radius = 5;
 
 let binomCutOff = 0.05, oddsRatioCutOff = 0.8;
 
-export let significantGenes = new Set();
-
 const SLType = {
 	None: 0,
 	SyntheticLethal: 1,
@@ -29,7 +27,6 @@ class ColorMap {
 
 	constructor() {
 		this.scale = [];
-		this.max = [];
 		this.geneColorMap = new Map();
 	}
 
@@ -39,52 +36,23 @@ class ColorMap {
 		if (mapped == null)
 			return highlightedGenes.has(d.gene) ? highlight : neutral;
 
-		if (significantGenes.has(d.gene)) {
-			const type = mapped.type || SLType.None;
-			if (type != SLType.None) {
-				const scale = this.scale[type - 1];
-				return scale(this.max[type - 1] - mapped.odds_ratio);
-			}
-		}
-
-		if (highlightedGenes.has(d.gene))
-			return highlight;
-
-		return neutral;
-	}
-
-	setControl(data, control) {
-		this.control = control;
-
-		data.forEach(d => {
-			const prev = this.geneColorMap.get(d.gene);
-			if (prev != null)
-				prev.odds_ratio = d.odds_ratio;
-			else
-				this.geneColorMap.set(d.gene, { odds_ratio: d.odds_ratio });
-		});
+		return mapped;
 	}
 
 	setData(data) {
 		let minOddsRatio = [100, 100, 100], maxOddsRatio = [0, 0, 0];
-		data.forEach(d => {
-			let t = d.type || SLType.None;
+		data.filter(d => d.significant)
+			.forEach(d => {
+				let t = d.type;
 
-			if (d.odds_ratio) {
-				if (minOddsRatio[t - 1] > d.odds_ratio)
-					minOddsRatio[t - 1] = d.odds_ratio;
+				if (d.odds_ratio) {
+					if (minOddsRatio[t - 1] > d.odds_ratio)
+						minOddsRatio[t - 1] = d.odds_ratio;
 
-				if (maxOddsRatio[t - 1] < d.odds_ratio)
-					maxOddsRatio[t - 1] = d.odds_ratio;
-			}
-
-			const e = this.geneColorMap.get(d.gene);
-			if (e != null) {
-				e.binom_fdr = d.binom_fdr;
-				e.odds_ratio = d.odds_ratio;
-				e.type = t;
-			}
-		});
+					if (maxOddsRatio[t - 1] < d.odds_ratio)
+						maxOddsRatio[t - 1] = d.odds_ratio;
+				}
+			});
 
 		this.scale = [
 			d3.scaleSequentialLog(d3.interpolateReds).domain([minOddsRatio[0], maxOddsRatio[0]]),
@@ -92,18 +60,18 @@ class ColorMap {
 			d3.scaleSequentialLog(d3.interpolatePurples).domain([minOddsRatio[2], maxOddsRatio[2]])
 		];
 
-		this.max = maxOddsRatio;
+		this.geneColorMap = new Map();
 
-		this.control.updateColors();
+		data.filter(d => d.significant)
+			.forEach(d => {
+				const type = d.type;
+				const scale = this.scale[type - 1];
+				this.geneColorMap.set(d.gene, scale(maxOddsRatio[type - 1] - d.odds_ratio));
+			});
 	}
 
-	setSignificantGenes(genes) {
-		significantGenes = new Set(genes);
-
-		// 	const btns = document.getElementById("graphColorBtns");
-		// 	btns.dispatchEvent(new Event("change-color"));
-
-		return significantGenes;
+	significant(gene) {
+		return this.geneColorMap.has(gene);
 	}
 }
 
@@ -178,7 +146,7 @@ class SLScreenPlot extends ScreenPlot {
 		this.legendG = this.svg.append('g')
 			.attr('class', 'legend')
 			.attr("transform", `translate(${this.width + this.margin.left - m.right - w}, ${this.margin.top + m.top})`);
-		
+
 		this.legendG.append('svg:rect')
 			.attr('x', 0.5)
 			.attr('y', 0.5)
@@ -283,7 +251,7 @@ class SLScreenPlot extends ScreenPlot {
 
 	getOpacity() {
 		return (d) => {
-			if (d.highlight() || d.values.findIndex(g => significantGenes.has(g.gene)) >= 0) return 1;
+			if (d.highlight() || d.values.findIndex(g => colorMap.significant(g.gene)) >= 0) return 1;
 			if (d.significant(binomCutOff)) return this.presentationMode ? 1 : 0.66;
 			return 0.16;
 		};
@@ -343,8 +311,6 @@ class SLScreenPlot extends ScreenPlot {
 					},
 
 					get type() {
-
-
 						if (this.aggr_sense_ratio < this.control_sense_ratio && this.aggr_sense_ratio < 0.5 && this.binom_fdr < binomCutOff)
 							return SLType.SyntheticLethal;
 
@@ -362,8 +328,6 @@ class SLScreenPlot extends ScreenPlot {
 		// const data = this.data[0].replicate[this.replicate].data;
 
 		this.screens.set(0, data);
-
-		this.recalcSignificant();
 
 		this.updateColorMap(data);
 
@@ -414,6 +378,7 @@ class SLScreenPlot extends ScreenPlot {
 			this.updateSignificantTable();
 
 		this.highlightGenes();
+		this.updateColors();
 	}
 
 	updateReplicateBtns(number) {
@@ -480,6 +445,11 @@ class SLScreenPlot extends ScreenPlot {
 			.select("circle")
 			.style("fill", this.getColor())
 			.style("opacity", this.getOpacity());
+		this.plotData.selectAll("g.dot")
+			.filter(d => d.highlight() || d.values.findIndex(g => colorMap.significant(g.gene)) >= 0)
+			.raise();
+		if (this.control != null)
+			this.control.updateColors();
 	}
 
 	updateSignificantTable() {
@@ -521,17 +491,6 @@ class SLScreenPlot extends ScreenPlot {
 					this.control.highlightGene(d.gene);
 				});
 			});
-
-		this.plotData.selectAll("g.dot")
-			.filter(d => d.significantGene())
-			.raise();
-	}
-
-	recalcSignificant() {
-		colorMap.setSignificantGenes(
-			this.screens.get(0)
-				.filter(d => d.significant)
-				.map(d => d.gene));
 	}
 
 	exportCSV() {
@@ -578,7 +537,7 @@ class SLScreenPlot extends ScreenPlot {
 				d.control_binom,									// control_binom
 				d.control_sense_ratio								// control_sense_ratio
 			];
-			
+
 			const l = values.join('\t') + '\n';
 
 			const bytes = new Array(l.length);
@@ -602,17 +561,8 @@ class SLControlScreenPlot extends SLScreenPlot {
 	constructor(svg, plot, screenList) {
 		super(svg, screenList);
 
-		this.updateColorMap = (data) => colorMap.setControl(data, this);
+		this.updateColorMap = (data) => {};
 		plot.control = this;
-	}
-
-	updateColors() {
-		this.plotData
-			.selectAll("g.dot")
-			.filter(d => d.significantGene())
-			.raise();
-
-		super.updateColors();
 	}
 
 	reload() {
@@ -664,26 +614,6 @@ window.addEventListener('load', () => {
 				}
 			}
 		});
-
-
-	// for (let btn of document.getElementsByClassName("graph-color-btn")) {
-	// 	if (btn.checked)
-	// 		colorMap.selectType(btn.dataset.colortype);
-	// 	btn.onchange = () => colorMap.selectType(btn.dataset.colortype);
-	// }
-
-	const pvCutOffEdit = document.getElementById("pv-cut-off");
-	if (pvCutOffEdit != null) {
-		pvCutOffEdit.addEventListener("change", () => {
-			const pv = pvCutOffEdit.value;
-
-			if (isNaN(pv)) {
-				pvCutOffEdit.classList.add("error");
-			} else {
-				pvCutOffEdit.classList.remove("error");
-			}
-		});
-	}
 
 	const oddsRatioEdit = document.getElementById("odds-ratio");
 	if (oddsRatioEdit != null) {

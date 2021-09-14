@@ -741,7 +741,7 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	Direction direction)
 {
 	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long> {
-		long low, high;
+		long low = 0, high = 0;
 		switch (direction)
 		{
 			case Direction::Sense:
@@ -766,7 +766,6 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
 		auto &&[low, high] = countLowHigh(i);
-		;
 		lowCount += low;
 		highCount += high;
 	}
