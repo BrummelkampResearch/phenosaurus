@@ -93,10 +93,6 @@ class SLScreenPlot extends ScreenPlot {
 		this.control = null;
 		this.updateColorMap = (data) => colorMap.setData(data);
 
-		// const btns = document.getElementById("selectSLTypeBtns");
-		// btns.addEventListener("change-color", () => this.updateColors());
-		// btns.addEventListener('click', () => alert('x'));
-
 		screenList.addEventListener('change', () => {
 			const selected = screenList.selectedOptions;
 			if (selected.length === 1) {
@@ -329,8 +325,6 @@ class SLScreenPlot extends ScreenPlot {
 
 		this.screens.set(0, data);
 
-		this.updateColorMap(data);
-
 		let maxInsertions = Math.max(...data.map(d => d.insertions));
 		maxInsertions = Math.ceil(Math.pow(10, Math.log10(maxInsertions) + 0.1));
 
@@ -378,7 +372,7 @@ class SLScreenPlot extends ScreenPlot {
 			this.updateSignificantTable();
 
 		this.highlightGenes();
-		this.updateColors();
+		this.recolorGenes();
 	}
 
 	updateReplicateBtns(number) {
@@ -413,43 +407,53 @@ class SLScreenPlot extends ScreenPlot {
 		}
 	}
 
-	setPvCutOff(pv) {
-		super.setPvCutOff(+pv);
-		this.recalcSignificant();
-		this.recolorGenes();
-
+	recolorGenes(uniqueScale) {
 		if (this.control != null)
-			this.updateSignificantTable();
-	}
+			colorMap.setData(this.screens.get(0));
 
-	setBinomCutOff(binom) {
-		binomCutOff = +binom;
-		this.recalcSignificant();
-		this.recolorGenes();
+		super.recolorGenes(uniqueScale);
 
-		if (this.control != null)
-			this.updateSignificantTable();
-	}
-
-	setOddsRatioCutOff(or) {
-		oddsRatioCutOff = +or;
-		this.recalcSignificant();
-		this.recolorGenes();
-
-		if (this.control != null)
-			this.updateSignificantTable();
-	}
-
-	updateColors() {
 		this.plotData.selectAll("g.dot")
 			.select("circle")
 			.style("fill", this.getColor())
 			.style("opacity", this.getOpacity());
+
 		this.plotData.selectAll("g.dot")
 			.filter(d => d.highlight() || d.values.findIndex(g => colorMap.significant(g.gene)) >= 0)
 			.raise();
+
 		if (this.control != null)
-			this.control.updateColors();
+			this.control.recolorGenes(uniqueScale);
+	}
+
+	setPvCutOff(pv) {
+		if (this.control != null)
+		{
+			super.setPvCutOff(+pv);
+			this.recolorGenes();
+	
+			this.updateSignificantTable();
+		}
+	}
+
+	setBinomCutOff(binom) {
+		if (this.control != null)
+		{
+			binomCutOff = +binom;
+			this.recolorGenes();
+	
+			this.updateSignificantTable();
+		}
+	}
+
+	setOddsRatioCutOff(or) {
+		if (this.control != null)
+		{
+			oddsRatioCutOff = +or;
+			this.recolorGenes();
+	
+			this.updateSignificantTable();
+		}
 	}
 
 	updateSignificantTable() {
@@ -567,9 +571,6 @@ class SLControlScreenPlot extends SLScreenPlot {
 
 	reload() {
 		return this.loadScreen(this.name, 0);
-	}
-
-	recalcSignificant() {
 	}
 }
 
