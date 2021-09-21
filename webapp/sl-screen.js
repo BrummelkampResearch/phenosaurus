@@ -1,3 +1,4 @@
+import 'chosen-js/chosen.jquery';
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
 import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
@@ -259,6 +260,9 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	process(replicate) {
+
+		const plot = this.svg.node();
+		plot.dispatchEvent(new Event("reset-screen"));
 
 		this.replicate = replicate;
 		if (this.data == null || this.replicate > this.data[0].replicate.length) {
@@ -648,6 +652,15 @@ window.addEventListener('load', () => {
 					}
 				});
 		})
+
+	$("select.chosen").chosen().on('change', () => {
+		const selected = screenList.selectedOptions;
+		if (selected.length === 1) {
+			const screen = selected.item(0).dataset.screen;
+			plot.loadScreen(screen);
+		}
+	});
+	
 
 });
 

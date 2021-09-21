@@ -62,6 +62,14 @@ export default class GenomeViewer {
 		[...document.querySelectorAll("svg.fishtail")]
 			.forEach(plot => plot.addEventListener("clicked-gene", (event) => this.selectedGene(event)));
 
+		[...document.querySelectorAll("svg.fishtail")]
+			.forEach(plot => plot.addEventListener("reset-screen", () => {
+				if (this.svg) {
+					this.svg.remove();
+					this.svg = null;
+				}
+			}));
+
 		// create the context menu
 		const contextMenuDiv = document.getElementById("genome-viewer-context-menu");
 		if (contextMenuDiv)
