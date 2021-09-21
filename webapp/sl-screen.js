@@ -384,8 +384,8 @@ class SLScreenPlot extends ScreenPlot {
 		if (this.data[0].replicate.length > 0) {
 			const btns = [];
 
-			for (let i in this.data[0].replicate) {
-				const replicate = i;//this.data[0].replicate[i].name.replace(/replicate-/, '');
+			for (let i = 0; i < this.data[0].replicate.length; ++i) {
+				const replicate = i + 1;
 				const label = document.createElement("label");
 				label.classList.add("btn", "btn-secondary");
 				if (+number === +i)
@@ -477,7 +477,7 @@ class SLScreenPlot extends ScreenPlot {
 				col(d.odds_ratio ? fmt2(d.odds_ratio) : '');
 				col(fmt2(d.sense_ratio));
 				col(`${d.sense}/${d.antisense}`);
-				col(fmt3(d.binom_fdr));
+				col(fmt3(d.replicate[this.replicate].binom_fdr));
 				col(fmt2(d.aggr_sense_ratio));
 				col(fmt2(d.control_binom));
 				col(fmt2(d.control_sense_ratio));

@@ -8,6 +8,14 @@ import Tooltip from "./tooltip";
 
 const tooltip = new Tooltip();
 
+const INSERTION_STRIP_HEIGHT = 10;
+
+// --------------------------------------------------------------------
+
+function getRandomInt(max) {
+	return Math.floor(Math.random() * max);
+}
+
 // --------------------------------------------------------------------
 
 export class GenomeViewerContextMenu extends ContextMenu {
@@ -63,11 +71,11 @@ export default class GenomeViewer {
 	createSVG(nrOfGenes, nrOfInsertionLines) {
 		if (this.svg)
 			this.svg.remove();
-		
+
 		const container = document.getElementById('genome-viewer-container');
 
 		const boxWidth = container.clientWidth;
-		const boxHeight = 32 + nrOfInsertionLines * 7 + nrOfGenes * 7;
+		const boxHeight = 32 + nrOfInsertionLines * INSERTION_STRIP_HEIGHT + nrOfGenes * INSERTION_STRIP_HEIGHT;
 
 		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
@@ -91,7 +99,7 @@ export default class GenomeViewer {
 		const bBoxWidth = viewerContainer.clientWidth;
 		const bBoxHeight = viewerContainer.clientWidth;
 
-		this.margin = {top: 0, right: 50, bottom: 30, left: 50};
+		this.margin = { top: 0, right: 50, bottom: 30, left: 50 };
 		this.width = bBoxWidth - this.margin.left - this.margin.right;
 		this.height = bBoxHeight - this.margin.top - this.margin.bottom;
 
@@ -145,10 +153,10 @@ export default class GenomeViewer {
 		this.insertionsData = this.plotData.append('g')
 			.attr("width", this.width)
 			.attr("height", 25);
-		
+
 		this.genesData = this.plotData.append('g')
 			.attr("width", this.width)
-			.attr("height", nrOfGenes * 7);
+			.attr("height", nrOfGenes * INSERTION_STRIP_HEIGHT);
 
 		// const zoom = d3.zoom()
 		// 	.scaleExtent([1, 40])
@@ -162,8 +170,7 @@ export default class GenomeViewer {
 	selectedGene(event) {
 		const gene = event.gene;
 
-		if (this.svg)
-		{
+		if (this.svg) {
 			this.svg.remove();
 			this.svg = null;
 		}
@@ -173,8 +180,7 @@ export default class GenomeViewer {
 
 		let screenID = event.screen;
 
-		if (screenID === null)
-		{
+		if (screenID === null) {
 			const screenList = document.getElementById("screenList");
 			const selected = screenList.selectedOptions;
 			if (selected.length === 1) {
@@ -220,12 +226,11 @@ export default class GenomeViewer {
 	}
 
 	zoomed() {
-		if (this.xAxis != null)
-		{
+		if (this.xAxis != null) {
 			this.plotData.attr('transform', d3.event.transform);
-	
+
 			const x = d3.event.transform.rescaleX(this.x);
-	
+
 			this.insertionsData.selectAll("rect.ins")
 				.attr("x", d => x(d));
 
@@ -246,43 +251,74 @@ export default class GenomeViewer {
 
 		const x = this.adjustAxis();
 
-		let Y = -7;
+		let Y = -INSERTION_STRIP_HEIGHT;
+
+		// this.insertionsData.selectAll('rect.area').remove();
+		// data.area.forEach(a => {
+		// 	for (let r = 0; r < data.insertions.length; ++r)
+		// 	{
+		// 		this.insertionsData
+		// 			.append("rect")
+		// 			.attr("class", "area")
+		// 			.attr("x", x(a.start))
+		// 			.attr("y", r * INSERTION_STRIP_HEIGHT)
+		// 			.attr("width", x(a.end) - x(a.start))
+		// 			.attr("height", INSERTION_STRIP_HEIGHT - 1)
+		// 			.attr("fill", "#eee")
+		// 			.attr("opacity", 0.5);
+		// 	}
+		// });
 
 		this.insertionsData.selectAll('g.ins').remove();
 
-		data.insertions.map(d => {
+		data.insertions.sort((a, b) => {
+			let d = a.name.localeCompare(b.name);
+			if (d == 0)
+				d = -a.strand.localeCompare(b.strand);
+			return d > 0;
+		}).map(d => {
 			return {
 				name: d.name,
 				strand: d.strand,
 				low: d.name === "low",
 				high: d.name === "high",
-				y: (Y += 7),
+				y: (Y += INSERTION_STRIP_HEIGHT),
 				i: d.pos,
-				n: `${d.name}-${d.strand==='+'?'p':'m'}`,
+				n: `${d.name}-${d.strand === '+' ? 'p' : 'm'}`,
 				sense: data.geneStrand === d.strand
 			};
 		}).forEach(ii => {
+
 			const g = this.insertionsData
 				.append("g")
 				.attr("class", "ins")
 				.attr("transform", `translate(0, ${ii.y})`)
 				.on("mouseover", () => tooltip.show(`${ii.name} ${ii.strand}`, d3.event.pageX + 5, d3.event.pageY - 5))
 				.on("mouseout", () => tooltip.hide());
-	
+
+			data.area.forEach(a => {
+				g.append("rect")
+					.attr("class", "area")
+					.attr("x", x(a.start))
+					.attr("width", x(a.end) - x(a.start))
+					.attr("height", INSERTION_STRIP_HEIGHT - 1)
+					.attr("fill", "#eee")
+					.attr("opacity", 0.5);
+			});
+
 			const r = g.selectAll(`rect.${ii.n}`)
 				.data(ii.i, d => d);
-		
+
 			r.exit().remove();
 			const l = r.enter()
 				.append("rect")
 				.attr("class", `ins ${ii.n}`)
-				// .attr("y", ii.y)
-				.attr("height", 5)
+				.attr("y", () => getRandomInt(INSERTION_STRIP_HEIGHT - 3))
+				.attr("height", 2)
 				.attr("width", 2)
 				.attr("fill", d => {
 					let color = "#888";
-					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense))
-					{
+					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense)) {
 						this.region.area.forEach(a => {
 							if (d >= a.start && d < a.end)
 								color = ii.low ? "#3bc" : "#fb8";
@@ -292,7 +328,7 @@ export default class GenomeViewer {
 				});
 
 			l.merge(r)
-				.attr("x", d => x(d + 1));			
+				.attr("x", d => x(d + 1));
 		});
 
 		// number the genes to get an id
@@ -301,15 +337,15 @@ export default class GenomeViewer {
 
 		const g = this.genesData.selectAll("g.gene")
 			.data(data.genes, g => g.nr);
-		
+
 		g.exit().remove();
 		const gl = g.enter()
 			.append("g")
 			.attr("class", "gene")
-			.attr("transform", g => `translate(0, ${Y + 12 + g.nr * 7})`)
+			.attr("transform", g => `translate(0, ${Y + 12 + g.nr * INSERTION_STRIP_HEIGHT})`)
 			.on("mouseover", g => tooltip.show(g.name, d3.event.pageX + 5, d3.event.pageY - 5))
 			.on("mouseout", () => tooltip.hide());
-		
+
 		gl.append("line")
 			.attr("class", "direction")
 			.style("stroke", "#777")
@@ -318,7 +354,7 @@ export default class GenomeViewer {
 			.attr("y1", 3)
 			.attr("y2", 3)
 			.attr("marker-end", g => `url(#gene-head-${g.nr})`);
-		
+
 		gl.append("marker")
 			.attr("id", g => `gene-head-${g.nr}`)
 			.attr("orient", "auto")
@@ -329,7 +365,7 @@ export default class GenomeViewer {
 			.append("path")
 			.attr("d", "M0,0 V6 L3,3 Z")
 			.style("fill", "#777");
-		
+
 		gl.merge(g)
 			.select("line")
 			.attr("x1", gene => gene.strand == '+' ? x(gene.txStart + 1) : x(gene.txEnd + 1))
@@ -363,16 +399,15 @@ export default class GenomeViewer {
 		const direction = f['direction'].value;
 
 		[
-			{ low: false, y: 0, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
-			{ low: false, y: 7, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
-			{ low: true, y: 14, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
-			{ low: true, y: 21, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
+			{ low: false, y: 0 * INSERTION_STRIP_HEIGHT, i: this.region.highPlus, n: "high-p", sense: this.region.geneStrand == '+' },
+			{ low: false, y: 1 * INSERTION_STRIP_HEIGHT, i: this.region.highMinus, n: "high-m", sense: this.region.geneStrand == '-' },
+			{ low: true, y: 2 * INSERTION_STRIP_HEIGHT, i: this.region.lowPlus, n: "low-p", sense: this.region.geneStrand == '+' },
+			{ low: true, y: 3 * INSERTION_STRIP_HEIGHT, i: this.region.lowMinus, n: "low-m", sense: this.region.geneStrand == '-' }
 		].forEach(ii => {
 			this.insertionsData.selectAll(`rect.${ii.n}`)
 				.attr("fill", d => {
 					let color = "#888";
-					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense))
-					{
+					if (direction == 'both' || (direction == 'sense' && ii.sense) || (direction == 'antisense' && !ii.sense)) {
 						this.region.area.forEach(a => {
 							if (d >= a.start && d < a.end)
 								color = ii.low ? "#3bc" : "#fb8";
@@ -384,7 +419,7 @@ export default class GenomeViewer {
 	}
 
 	adjustAxis() {
-		const xRange = [ this.region.start + 1, this.region.end + 1 ];
+		const xRange = [this.region.start + 1, this.region.end + 1];
 
 		const x = d3.scaleLinear()
 			.domain(xRange)

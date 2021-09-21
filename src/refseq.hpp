@@ -148,6 +148,9 @@ std::vector<Transcript> loadTranscripts(const std::string& bedFile);
 
 void filterOutExons(std::vector<Transcript>& transcripts);
 
+
+void cutOverlappingRegions(std::vector<Transcript>& transcripts);
+
 // void filterTranscriptsNoExons(std::vector<Transcript>& transcripts,
 // 	const std::string& startPos, const std::string& endPos);
 

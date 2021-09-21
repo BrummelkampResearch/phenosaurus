@@ -425,6 +425,9 @@ class SLScreenRestController : public zh::rest_controller
 
 		// download data
 		map_get_request("screen/{id}/bed/{replicate}", &SLScreenRestController::getBED, "id", "replicate", "assembly");
+
+		// get replicate names
+		map_get_request("screen/{id}/replicates", &SLScreenRestController::getReplicates, "id");
 	}
 
 	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly, std::string control,
@@ -434,6 +437,8 @@ class SLScreenRestController : public zh::rest_controller
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
 
 	zeep::http::reply getBED(const std::string& screen, const std::string& replicate, const std::string &assembly);
+
+	std::vector<std::string> getReplicates(const std::string &screen);
 
 	fs::path mScreenDir;
 };
@@ -591,7 +596,9 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 	}
 
 	// filter
-	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
+	selectTranscripts(transcripts, 0, mode);
+	if (cutOverlap)
+		cutOverlappingRegions(transcripts);
 
 	for (auto& t: transcripts)
 	{
@@ -617,6 +624,12 @@ zeep::http::reply SLScreenRestController::getBED(const std::string& screen, cons
 	rep.set_header("content-disposition", "attachement; filename = \"" + screen + '-' + replicate + ".bed\"");
 
 	return rep;
+}
+
+std::vector<std::string> SLScreenRestController::getReplicates(const std::string &screen)
+{
+	auto data = SLScreenData::load(mScreenDir / screen);
+	return static_cast<SLScreenData*>(data.get())->getReplicateNames();
 }
 
 // --------------------------------------------------------------------

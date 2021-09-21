@@ -589,7 +589,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 	{
 		case Mode::LongestExon:
 			// Find the longest transcript for each gene
-			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+			for (size_t i = 0; i < transcripts.size(); ++i)
 			{
 				auto ix_a = index[i];
 				auto& a = transcripts[ix_a];
@@ -626,7 +626,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 		
 		case Mode::LongestTranscript:
 			// Find the longest transcript for each gene
-			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+			for (size_t i = 0; i < transcripts.size(); ++i)
 			{
 				auto ix_a = index[i];
 				auto& a = transcripts[ix_a];
@@ -660,7 +660,7 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 		case Mode::Collapse:
 			// Find the longest possible span for each gene, i.e. min start - max end
-			for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+			for (size_t i = 0; i < transcripts.size(); ++i)
 			{
 				auto ix_a = index[i];
 				auto& a = transcripts[ix_a];
@@ -770,7 +770,7 @@ std::vector<Transcript> loadTranscripts(const std::string& bedFile)
 // --------------------------------------------------------------------
 
 void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
-	const std::string& startPos, const std::string& endPos, bool cutOverlappingRegions)
+	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
 	enum class POS { TX_START, CDS_START, CDS_END, TX_END };
 
@@ -879,22 +879,29 @@ void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 	// reorder transcripts
 	std::sort(transcripts.begin(), transcripts.end(), cmp);
 
-	// cut out overlapping regions, if requested
-	if (cutOverlappingRegions)
-	{
-		for (size_t i = 0; i + 1 < transcripts.size(); ++i)
-		{
-			size_t j = i + 1;
+	// Cut out overlap, if needed
+	if (cutOverlap)
+		cutOverlappingRegions(transcripts);
 
-			if (transcripts[i].chrom != transcripts[j].chrom)
-				continue;
-			
-			if (transcripts[i].end() <= transcripts[j].start())
-				continue;
-			
-			if (transcripts[i].hasOverlap(transcripts[j]))
-				cutOverlap(transcripts[i], transcripts[j]);
-		}
+	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(),
+		[](auto& ts) { return ts.empty(); }),
+		transcripts.end());
+}
+
+void cutOverlappingRegions(std::vector<Transcript> &transcripts)
+{
+	for (size_t i = 0; i + 1 < transcripts.size(); ++i)
+	{
+		size_t j = i + 1;
+
+		if (transcripts[i].chrom != transcripts[j].chrom)
+			continue;
+		
+		if (transcripts[i].end() <= transcripts[j].start())
+			continue;
+		
+		if (transcripts[i].hasOverlap(transcripts[j]))
+			cutOverlap(transcripts[i], transcripts[j]);
 	}
 
 	transcripts.erase(std::remove_if(transcripts.begin(), transcripts.end(),
@@ -960,6 +967,12 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 // 	return transcripts;
 // }
 
+std::ostream &operator<<(std::ostream &os, const Range &r)
+{
+	os << '(' << r.start << ',' << r.end << ')';
+	return os;
+}
+
 void exclude_range(std::vector<Range>& r, const Range& x)
 {
 	for (auto ri = r.begin(); ri != r.end(); ++ri)
@@ -998,9 +1011,10 @@ void filterOutExons(std::vector<Transcript>& transcripts)
 		std::vector<Range> r{ { t.start(), t.end() } };
 
 		for (auto& exon: t.exons)
+		{
 			exclude_range(r, exon);
-		
-		std::sort(r.begin(), r.end(), [](auto& a, auto& b) { return a.start < b.start; });
+			std::sort(r.begin(), r.end(), [](auto& a, auto& b) { return a.start < b.start; });
+		}
 
 		std::swap(t.ranges, r);
 	}
