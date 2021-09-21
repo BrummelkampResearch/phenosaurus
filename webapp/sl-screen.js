@@ -368,11 +368,11 @@ class SLScreenPlot extends ScreenPlot {
 			.style("fill", this.getColor())
 			.style("opacity", this.getOpacity());
 
-		if (this.control != null)
-			this.updateSignificantTable();
-
 		this.highlightGenes();
 		this.recolorGenes();
+
+		if (this.control != null)
+			this.updateSignificantTable();
 	}
 
 	updateReplicateBtns(number) {
@@ -473,7 +473,10 @@ class SLScreenPlot extends ScreenPlot {
 					row.appendChild(td);
 				};
 
-				col(d.gene);
+				const td = document.createElement("td");
+				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${ colorMap.getColor(d) }" /></svg>`;
+				row.appendChild(td);
+
 				col(d.odds_ratio ? fmt2(d.odds_ratio) : '');
 				col(fmt2(d.sense_ratio));
 				col(`${d.sense}/${d.antisense}`);
