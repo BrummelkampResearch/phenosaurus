@@ -928,9 +928,9 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 
 			size_t s_g = 0, a_g = 0;
 
-			for (const auto &[replicate, replc] : replicates)
+			for (const auto &[replicate, replicate_counts] : replicates)
 			{
-				auto &nc = replc[i];
+				auto &nc = replicate_counts[i];
 
 				s_g += nc.sense_normalized;
 				a_g += nc.antisense_normalized;

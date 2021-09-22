@@ -287,17 +287,13 @@ class SLScreenPlot extends ScreenPlot {
 				const maxPV = Math.max(...d.replicate.map(r => Math.max(...r.ref_pv)));
 				const maxBinom = Math.max(...d.replicate.map(r => r.binom_fdr));
 
-				const aggr_sense_ratio = d.replicate.map(r => { return { sense: +r.sense, antisense: +r.antisense }})
-						.reduce((p, c) => { return { sense: p.sense + c.sense, antisense: p.antisense + c.antisense }})
-						.map(d => (1 + d.sense) / (2 + d.sense + d.antisense));
-				
 				data.push({
 					gene: d.gene,
 					sense: sense,
 					antisense: antisense,
 					insertions: insertions,
 					sense_ratio: sense_ratio,
-					aggr_sense_ratio: aggr_sense_ratio,
+					aggr_sense_ratio: d.sense_ratio,
 					odds_ratio: odds_ratio,
 					pv: maxPV,
 					binom_fdr: maxBinom,
@@ -467,8 +463,6 @@ class SLScreenPlot extends ScreenPlot {
 	updateSignificantTable() {
 		const table = document.getElementById("significantGenesTable");
 		[...table.querySelectorAll("tr")].forEach(tr => tr.remove());
-		const fmt2 = format_pv;
-		const fmt3 = d3.format(".3g");
 
 		this.screens.get(0)
 			.filter(d => d.significant)
@@ -485,18 +479,18 @@ class SLScreenPlot extends ScreenPlot {
 				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${ colorMap.getColor(d) }" /></svg>`;
 				row.appendChild(td);
 
-				col(d.odds_ratio ? fmt2(d.odds_ratio) : '');
-				col(fmt2(d.sense_ratio));
+				col(d.odds_ratio ? format_pv(d.odds_ratio) : '');
+				col(format_pv(d.sense_ratio));
 				col(`${d.sense}/${d.antisense}`);
-				col(fmt3(d.replicate[this.replicate].binom_fdr));
-				col(fmt2(d.aggr_sense_ratio));
-				col(fmt2(d.control_binom));
-				col(fmt2(d.control_sense_ratio));
+				col(format_pv(d.replicate[this.replicate].binom_fdr, 3));
+				col(format_pv(d.aggr_sense_ratio));
+				col(format_pv(d.control_binom));
+				col(format_pv(d.control_sense_ratio));
 
-				col(fmt2(d.replicate[this.replicate].ref_pv[0]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[1]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[2]));
-				col(fmt2(d.replicate[this.replicate].ref_pv[3]));
+				col(format_pv(d.replicate[this.replicate].ref_pv[0]));
+				col(format_pv(d.replicate[this.replicate].ref_pv[1]));
+				col(format_pv(d.replicate[this.replicate].ref_pv[2]));
+				col(format_pv(d.replicate[this.replicate].ref_pv[3]));
 
 				table.appendChild(row);
 				// row.appendTo(table);

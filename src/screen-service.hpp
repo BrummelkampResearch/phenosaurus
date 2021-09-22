@@ -213,6 +213,7 @@ struct sl_data_point
 	float oddsRatio;
 	float controlBinom;
 	float controlSenseRatio;
+	float senseRatio;
 	bool consistent;
 	std::vector<sl_data_replicate> replicates;
 
@@ -221,6 +222,7 @@ struct sl_data_point
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("odds_ratio", oddsRatio)
+		   & zeep::make_nvp("sense_ratio", senseRatio)
 		   & zeep::make_nvp("control_binom", controlBinom)
 		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
 		   & zeep::make_nvp("consistent", consistent)
@@ -258,9 +260,6 @@ class sl_screen_data_cache : public screen_data_cache
 	{
 		float odds_ratio;
 		float control_binom;
-		float control_sense_ratio;
-		float sense_ratio;
-		bool consistent;
 	};
 
 	struct data_point_replicate

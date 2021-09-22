@@ -774,10 +774,10 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 				auto& p = dp[ti];
 
 				d.odds_ratio = p.oddsRatio;
-				d.sense_ratio = p.senseRatio;
-				d.control_sense_ratio = p.controlSenseRatio;
+				// d.sense_ratio = p.senseRatio;
+				// d.control_sense_ratio = p.controlSenseRatio;
 				d.control_binom = p.controlBinom;
-				d.consistent = p.consistent;
+				// d.consistent = p.consistent;
 
 				for (size_t ri = 0; ri < p.replicates.size(); ++ri)
 				{
@@ -821,6 +821,7 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 	if (si == m_screens.end() or not si->filled)
 		return {};
 
+	// screen data
 	size_t screenIx = si - m_screens.begin();
 	auto data = m_data + screenIx * N;
 	data_point_replicate *r_data[4];
@@ -829,32 +830,100 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 	r_data[2] = r_data[1] + N;
 	r_data[3] = r_data[2] + N;
 
+
+	// reference/control data
+	std::string control = "ControlData-HAP1";
+	si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto& si) { return si.name == control; });
+	if (si == m_screens.end() or not si->filled)
+		throw std::runtime_error("Missing control data");
+	size_t controlScreenIx = si - m_screens.begin();
+
+	data_point_replicate *cr_data[4];
+	cr_data[0] = m_replicate_data + m_screens[controlScreenIx].replicate_offset;
+	cr_data[1] = cr_data[0] + N;
+	cr_data[2] = cr_data[1] + N;
+	cr_data[3] = cr_data[2] + N;
+
+
 	for (size_t i = 0; i < m_transcripts.size(); ++i)
 	{
 		auto &dp = data[i];
 
 		sl_data_point p{};
 
-		p.gene = m_transcripts[i].geneName;
-		p.consistent = dp.consistent;
-		p.controlBinom = dp.control_binom;
-		p.oddsRatio = dp.odds_ratio;
-		p.controlSenseRatio = dp.control_sense_ratio;
+		enum class ConsistencyCheck {
+			Undefined, Up, Down, Inconsistent
+		} check = ConsistencyCheck::Undefined;
+
+		size_t s_g = 0, a_g = 0;
 
 		for (size_t j = 0; j < m_screens[screenIx].file_count; ++j)
 		{
 			sl_data_replicate rp{};
 
-			rp.sense = r_data[j][i].sense;
-			rp.antisense = r_data[j][i].antisense;
-			rp.binom_fdr = r_data[j][i].binom_fdr;
-			rp.ref_pv[0] = r_data[j][i].pv[0];
-			rp.ref_pv[1] = r_data[j][i].pv[1];
-			rp.ref_pv[2] = r_data[j][i].pv[2];
-			rp.ref_pv[3] = r_data[j][i].pv[3];
+			auto &nc = r_data[j][i];
+
+			rp.sense = nc.sense;
+			rp.antisense = nc.antisense;
+			rp.binom_fdr = nc.binom_fdr;
+			rp.ref_pv[0] = nc.pv[0];
+			rp.ref_pv[1] = nc.pv[1];
+			rp.ref_pv[2] = nc.pv[2];
+			rp.ref_pv[3] = nc.pv[3];
 
 			p.replicates.emplace_back(std::move(rp));
+
+			s_g += nc.sense;
+			a_g += nc.antisense;
+
+			// check consistency
+			if (check == ConsistencyCheck::Inconsistent)
+				continue;
+			
+			for (size_t k = 0; k < 4; ++k)
+			{
+				auto &ncc = cr_data[k][i];
+
+				bool up = ((1.0f + nc.sense) / (2.0f + nc.sense + nc.antisense)) <
+						((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
+				
+				if (up)
+				{
+					if (check == ConsistencyCheck::Down)
+					{
+						check = ConsistencyCheck::Inconsistent;
+						break;
+					}
+					else
+						check = ConsistencyCheck::Up;
+				}
+				else
+				{
+					if (check == ConsistencyCheck::Up)
+					{
+						check = ConsistencyCheck::Inconsistent;
+						break;
+					}
+					else
+						check = ConsistencyCheck::Down;
+				}
+			}
 		}
+
+		size_t s_wt = 0, a_wt = 0;
+
+		for (size_t j = 0; j < 4; ++j)
+		{
+			s_wt += cr_data[j][i].sense;
+			a_wt += cr_data[j][i].antisense;
+		}
+
+		p.gene = m_transcripts[i].geneName;
+		p.consistent = check != ConsistencyCheck::Inconsistent;
+		p.controlBinom = dp.control_binom;
+		p.oddsRatio = dp.odds_ratio;
+		p.senseRatio = (1.0f + s_g) / (2.0f + s_g + a_g);
+		p.controlSenseRatio = (1.0f + s_wt) / (2.0f + s_wt + a_wt);
 
 		result.push_back(std::move(p));
 	}
