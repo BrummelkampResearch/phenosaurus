@@ -133,7 +133,7 @@ struct SLDataReplicate
 {
 	double binom_fdr;
 	float ref_pv[4];
-	float ref_fcpv[4];
+	// float ref_fcpv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
 
 	template<typename Archive>
@@ -161,7 +161,6 @@ struct SLDataPoint
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("odds_ratio", oddsRatio)
-		   & zeep::make_nvp("sense_ratio", senseRatio)
 		   & zeep::make_nvp("control_binom", controlBinom)
 		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
 		   & zeep::make_nvp("consistent", consistent)
@@ -389,6 +388,12 @@ class SLScreenData : public ScreenData
 
 	static std::unique_ptr<IPPAScreenData> create(const screen_info& info, const std::filesystem::path& dir);
 
+	std::array<std::vector<InsertionCount>,4> loadNormalizedInsertions(const std::string& assembly, unsigned readLength,
+		const std::vector<Transcript>& transcripts, unsigned groupSize) const;
+
+	std::vector<SLDataPoint> dataPoints(const std::string& assembly, unsigned readLength,
+		const std::vector<Transcript>& transcripts, const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
+
 	std::vector<SLDataPoint> dataPoints(const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, const SLScreenData& controlData, unsigned groupSize);
 
@@ -399,7 +404,7 @@ class SLScreenData : public ScreenData
   private:
 
 	std::vector<InsertionCount> normalize(const std::vector<InsertionCount>& counts,
-		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize) const;
 
 	void count_insertions(const std::string& replicate, const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const;

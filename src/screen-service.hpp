@@ -37,6 +37,8 @@ class screen_data_cache
 		std::string name;
 		bool filled = false;
 		bool ignore = false;
+		uint8_t file_count = 0;
+		uint32_t replicate_offset = 0;
 	};
 
 	ScreenType m_type;
@@ -251,15 +253,25 @@ class sl_screen_data_cache : public screen_data_cache
 	// std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
   private:
+
 	struct data_point
 	{
 		float odds_ratio;
-		float pv[4];
-		uint32_t sense;
-		uint32_t antisense;
+		float control_binom;
+		float control_sense_ratio;
+		float sense_ratio;
+		bool consistent;
 	};
 
-	data_point *m_data[4];
+	struct data_point_replicate
+	{
+		float binom_fdr;
+		uint32_t sense, antisense;
+		float pv[4];
+	};
+
+	data_point *m_data;
+	data_point_replicate *m_replicate_data;
 };
 
 // --------------------------------------------------------------------

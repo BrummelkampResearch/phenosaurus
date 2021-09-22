@@ -6,7 +6,8 @@
 			"label": "make screen-analyzer",
 			"command": "make",
 			"args": [
-				"DEBUG=0",
+				"DEBUG=1",
+				"-j",
 				"screen-analyzer"
 			],
 			"options": {

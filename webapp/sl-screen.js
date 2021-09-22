@@ -287,13 +287,17 @@ class SLScreenPlot extends ScreenPlot {
 				const maxPV = Math.max(...d.replicate.map(r => Math.max(...r.ref_pv)));
 				const maxBinom = Math.max(...d.replicate.map(r => r.binom_fdr));
 
+				const aggr_sense_ratio = d.replicate.map(r => { return { sense: +r.sense, antisense: +r.antisense }})
+						.reduce((p, c) => { return { sense: p.sense + c.sense, antisense: p.antisense + c.antisense }})
+						.map(d => (1 + d.sense) / (2 + d.sense + d.antisense));
+				
 				data.push({
 					gene: d.gene,
 					sense: sense,
 					antisense: antisense,
 					insertions: insertions,
 					sense_ratio: sense_ratio,
-					aggr_sense_ratio: d.sense_ratio,
+					aggr_sense_ratio: aggr_sense_ratio,
 					odds_ratio: odds_ratio,
 					pv: maxPV,
 					binom_fdr: maxBinom,

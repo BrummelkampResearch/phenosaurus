@@ -436,7 +436,7 @@ class SLScreenRestController : public zh::rest_controller
 			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 	}
 
-	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly, std::string control,
+	std::vector<sl_data_point> screenData(const std::string& screen, const std::string& assembly, std::string control,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
@@ -453,49 +453,53 @@ class SLScreenRestController : public zh::rest_controller
 	fs::path mScreenDir;
 };
 
-std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
+std::vector<sl_data_point> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, std::string control,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
-	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	auto dp = screen_service::instance().get_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd);
+	return dp->data_points(screen);
 
-	fs::path screenDir = mScreenDir / screen;
 
-	if (not fs::is_directory(screenDir))
-		throw std::runtime_error("No such screen: " + screen);
+// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
+// 		throw zeep::http::forbidden;
 
-	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
+// 	fs::path screenDir = mScreenDir / screen;
 
-	if (control.empty())
-		control = "ControlData-HAP1";
+// 	if (not fs::is_directory(screenDir))
+// 		throw std::runtime_error("No such screen: " + screen);
 
-	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
+// 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
+
+// 	if (control.empty())
+// 		control = "ControlData-HAP1";
+
+// 	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
 	
-	// -----------------------------------------------------------------------
+// 	// -----------------------------------------------------------------------
 
-	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
-	filterOutExons(transcripts);
+// 	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+// 	filterOutExons(transcripts);
 
-	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-	{
-		int d = a.chrom - b.chrom;
-		if (d == 0)
-			d = a.start() - b.start();
-		return d < 0;
-	});
+// 	// reorder transcripts based on chr > end-position, makes code easier and faster
+// 	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+// 	{
+// 		int d = a.chrom - b.chrom;
+// 		if (d == 0)
+// 			d = a.start() - b.start();
+// 		return d < 0;
+// 	});
 
-	// --------------------------------------------------------------------
+// 	// --------------------------------------------------------------------
 	
-// #warning "make groupSize a parameter"
-	// unsigned groupSize = 500;
-	unsigned groupSize = 200;
-// #warning "make trimLength a parameter"
-	unsigned trimLength = 50;
+// // #warning "make groupSize a parameter"
+// 	// unsigned groupSize = 500;
+// 	unsigned groupSize = 200;
+// // #warning "make trimLength a parameter"
+// 	unsigned trimLength = 50;
 
-	// -----------------------------------------------------------------------
+// 	// -----------------------------------------------------------------------
 
-	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize);
+// 	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize);
 }
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)

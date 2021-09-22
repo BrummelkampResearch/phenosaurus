@@ -22,6 +22,8 @@
 
 namespace fs = std::filesystem;
 
+extern int VERBOSE;
+
 // --------------------------------------------------------------------
 
 class gene_ranking
@@ -250,7 +252,7 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 
 	for (size_t si = 0; si < m_screens.size(); ++si)
 	{
-		const auto& [name, filled, ignore] = m_screens[si];
+		const auto& [name, filled, ignore, ignore_2, ignore_3] = m_screens[si];
 
 		if (filled and /*not ignore and*/ allowedScreens.count(name))
 		{
@@ -701,26 +703,34 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
 
-	for (auto& screen: screens)
-		m_screens.push_back({ screen.name, false, screen.ignore });
-
 	size_t N = m_transcripts.size();
-	size_t M = m_screens.size();
+	size_t M = screens.size();
+	size_t O = 0;
+	
+	for (auto& screen: screens)
+	{
+		m_screens.push_back({
+			screen.name, false, screen.ignore,
+			static_cast<uint8_t>(screen.files.size()),
+			static_cast<uint32_t>(O * M * N)
+		});
+		O += screen.files.size();
+	}
 
-	m_data[0] = new data_point[N * M];
-	m_data[1] = new data_point[N * M];
-	m_data[2] = new data_point[N * M];
-	m_data[3] = new data_point[N * M];
+	m_data = new data_point[N * M];
 	memset(m_data, 0, N * M * sizeof(data_point));
 
-	std::string control = "ControlData-HAP1";
-	auto controlData = SLScreenData::load(screenDataDir / control);
+	m_replicate_data = new data_point_replicate[N * M * O];
+	memset(m_replicate_data, 0, N * M * O * sizeof(data_point_replicate));
 
-	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
-	filterOutExons(transcripts);
+	std::string control = "ControlData-HAP1";
+	auto controlDataPtr = SLScreenData::load(screenDataDir / control);
+	auto controlData = static_cast<SLScreenData*>(controlDataPtr.get());
+
+	filterOutExons(m_transcripts);
 
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	std::sort(m_transcripts.begin(), m_transcripts.end(), [](auto& a, auto& b)
 	{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
@@ -731,103 +741,123 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 // #warning "make groupSize a parameter"
 	// unsigned groupSize = 500;
 	unsigned groupSize = 200;
-// #warning "make trimLength a parameter"
-	unsigned trimLength = 50;
 
+	auto normalizedControlInsertions = controlData->loadNormalizedInsertions(assembly, trim_length, m_transcripts, groupSize);
 
-	parallel_for(m_screens.size(), [&](size_t si)
+	auto d_data = m_data;
+
+	for (auto &screen : m_screens)
 	{
+		if (VERBOSE)
+			std::cerr << "loading " << screen.name << std::endl;
+
 		try
 		{
-			data_point *sd[4] = {
-				m_data[0] + si * m_transcripts.size(),
-				m_data[1] + si * m_transcripts.size(),
-				m_data[2] + si * m_transcripts.size(),
-				m_data[3] + si * m_transcripts.size()
-			};
-
-			fs::path screenDir = screenDataDir / m_screens[si].name;
+			fs::path screenDir = screenDataDir / screen.name;
 
 			auto dataPtr = SLScreenData::load(screenDir);
 			auto data = static_cast<SLScreenData*>(dataPtr.get());
 
-			// -----------------------------------------------------------------------
+			data_point_replicate *r_data[4];
+			r_data[0] = m_replicate_data + screen.replicate_offset;
+			r_data[1] = r_data[0] + N;
+			r_data[2] = r_data[1] + N;
+			r_data[3] = r_data[2]+ N;
 
-			auto dp = data->dataPoints(assembly, trimLength, transcripts, static_cast<SLScreenData&>(*controlData), groupSize);
+			// ----------------------------------------------------------------------
+
+			auto dp = data->dataPoints(assembly, trim_length, m_transcripts, normalizedControlInsertions, groupSize);
 
 			for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
 			{
+				auto &d = *d_data++;
 				auto& p = dp[ti];
+
+				d.odds_ratio = p.oddsRatio;
+				d.sense_ratio = p.senseRatio;
+				d.control_sense_ratio = p.controlSenseRatio;
+				d.control_binom = p.controlBinom;
+				d.consistent = p.consistent;
 
 				for (size_t ri = 0; ri < p.replicates.size(); ++ri)
 				{
-					auto &r = p.replicates[ri];
-					auto &d = sd[ri][ti];
+					auto &rp = p.replicates[ri];
+					auto &rd = r_data[ri][ti];
 
-					d.sense = r.sense_normalized;
-					d.antisense = r.antisense_normalized;
-					d.odds_ratio = p.oddsRatio;
-					d.pv[0] = r.ref_pv[0];
-					d.pv[1] = r.ref_pv[1];
-					d.pv[2] = r.ref_pv[2];
-					d.pv[3] = r.ref_pv[3];
+					rd.sense = rp.sense_normalized;
+					rd.antisense = rp.antisense_normalized;
+					rd.pv[0] = rp.ref_pv[0];
+					rd.pv[1] = rp.ref_pv[1];
+					rd.pv[2] = rp.ref_pv[2];
+					rd.pv[3] = rp.ref_pv[3];
+					rd.binom_fdr = rp.binom_fdr;
 				}
 			}
 
-			m_screens[si].filled = true;
+			screen.filled = true;
 		}
 		catch (const std::exception& ex)
 		{
 			std::cerr << ex.what() << std::endl;
 		}
-	});
+	};
 
+	assert(d_data == m_data + N * M);
 }
 
 sl_screen_data_cache::~sl_screen_data_cache()
 {
-
+	delete[] m_data;
+	delete[] m_replicate_data;
 }
 
 std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &screen)
 {
 	std::vector<sl_data_point> result;
 
+	size_t N = m_transcripts.size();
+
 	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
 	if (si == m_screens.end() or not si->filled)
 		return {};
-	
+
 	size_t screenIx = si - m_screens.begin();
-	size_t N = m_transcripts.size();
-	data_point *data[4] = {
-		m_data[0] + screenIx * N,
-		m_data[1] + screenIx * N,
-		m_data[2] + screenIx * N,
-		m_data[3] + screenIx * N
-	};
+	auto data = m_data + screenIx * N;
+	data_point_replicate *r_data[4];
+	r_data[0] = m_replicate_data + m_screens[screenIx].replicate_offset;
+	r_data[1] = r_data[0] + N;
+	r_data[2] = r_data[1] + N;
+	r_data[3] = r_data[2] + N;
 
+	for (size_t i = 0; i < m_transcripts.size(); ++i)
+	{
+		auto &dp = data[i];
 
+		sl_data_point p{};
 
-	// for (size_t i = 0; i < m_transcripts.size(); ++i)
-	// {
-	// 	auto& dp = data[0];
-	// 	if (dp->sense == 0 and dp->antisense == 0)
-	// 		continue;
+		p.gene = m_transcripts[i].geneName;
+		p.consistent = dp.consistent;
+		p.controlBinom = dp.control_binom;
+		p.oddsRatio = dp.odds_ratio;
+		p.controlSenseRatio = dp.control_sense_ratio;
 
-	// 	sl_data_point p{};
+		for (size_t j = 0; j < m_screens[screenIx].file_count; ++j)
+		{
+			sl_data_replicate rp{};
 
-	// 	p.gene = m_transcripts[i].geneName;
+			rp.sense = r_data[j][i].sense;
+			rp.antisense = r_data[j][i].antisense;
+			rp.binom_fdr = r_data[j][i].binom_fdr;
+			rp.ref_pv[0] = r_data[j][i].pv[0];
+			rp.ref_pv[1] = r_data[j][i].pv[1];
+			rp.ref_pv[2] = r_data[j][i].pv[2];
+			rp.ref_pv[3] = r_data[j][i].pv[3];
 
-	// 	p.
+			p.replicates.emplace_back(std::move(rp));
+		}
 
-	// 	p.pv = dp.pv;
-	// 	p.fcpv = dp.fcpv;
-	// 	p.mi = dp.mi;
-	// 	p.high = dp.high;
-	// 	p.low = dp.low;
-
-	// 	result.push_back(std::move(p));
-	// }
+		result.push_back(std::move(p));
+	}
 	
 	return result;
 }

@@ -835,8 +835,8 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 	return result;
 }
 
-std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
-	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize)
+std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions(const std::string& assembly, unsigned trimLength,
+	const std::vector<Transcript>& transcripts, unsigned groupSize) const
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
@@ -846,7 +846,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 	parallel_for(4, [&](size_t i) {
 		try
 		{
-			controlData.count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
+			count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
 		}
 		catch (const std::exception &e)
 		{
@@ -871,6 +871,22 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 
 	if (eptr)
 		std::rethrow_exception(eptr);
+
+	return normalizedControlInsertions;
+}
+
+std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize)
+{
+	auto normalizedControlInsertions = controlData.loadNormalizedInsertions(assembly, trimLength, transcripts, groupSize);
+	return dataPoints(assembly, trimLength, transcripts, normalizedControlInsertions, groupSize);
+}
+
+std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts,
+	const std::array<std::vector<InsertionCount>,4>& normalizedControlInsertions, unsigned groupSize)
+{
+	std::exception_ptr eptr;
 
 	std::vector<std::tuple<std::string, std::vector<SLDataReplicate>>> replicates;
 
@@ -1014,7 +1030,7 @@ std::vector<std::tuple<size_t, size_t>> divide(size_t listsize, size_t suggested
 // --------------------------------------------------------------------
 
 std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionCount> &insertions,
-	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize) const
 {
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions);
@@ -1209,10 +1225,8 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 
 	const size_t M = index.size();
 
-	std::vector<double> pvalues[5];
-
-	for (auto &pv : pvalues)
-		pv.resize(M);
+	std::vector<double> pvalues;
+	pvalues.resize(M);
 
 	// Calculate the minimal sense ratio per gene in the controls
 	std::vector<double> minSenseRatio(N);
@@ -1238,7 +1252,7 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 		repl.antisense_normalized = normalized[i].antiSense;
 
 		// calculate p-value for insertion
-		pvalues[0][ix] = binom_test(repl.sense_normalized, repl.sense_normalized + repl.antisense_normalized);
+		pvalues[ix] = binom_test(repl.sense_normalized, repl.sense_normalized + repl.antisense_normalized);
 
 		// and calculate p-values for the screen vs controls
 		for (int j = 0; j < 4; ++j)
@@ -1251,27 +1265,15 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 				repl.ref_pv[j] = -1;
 			else
 				repl.ref_pv[j] = fisherTest2x2(v);
-
-			pvalues[j + 1][ix] = repl.ref_pv[j];
 		}
 	});
 
-	std::vector<double> fcpv[5];
-	parallel_for(5, [&](size_t i) {
-		fcpv[i] = adjustFDR_BH(pvalues[i]);
-	});
+	std::vector<double> fcpv;
+	fcpv = adjustFDR_BH(pvalues);
 
 	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
-
-		auto &repl = result[i];
-
-		repl.binom_fdr = fcpv[0][ix];
-
-		repl.ref_fcpv[0] = fcpv[1][ix];
-		repl.ref_fcpv[1] = fcpv[2][ix];
-		repl.ref_fcpv[2] = fcpv[3][ix];
-		repl.ref_fcpv[3] = fcpv[4][ix];
+		result[i].binom_fdr = fcpv[ix];
 	});
 
 	return result;
