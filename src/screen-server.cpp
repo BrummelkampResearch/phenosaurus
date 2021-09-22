@@ -130,7 +130,9 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
-	return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	// return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	return dp->data_points(screen);
 }
 
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
@@ -428,6 +430,10 @@ class SLScreenRestController : public zh::rest_controller
 
 		// get replicate names
 		map_get_request("screen/{id}/replicates", &SLScreenRestController::getReplicates, "id");
+
+		// gene finder
+		map_post_request("finder/{gene}", &SLScreenRestController::find_gene,
+			"gene", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 	}
 
 	std::vector<SLDataPoint> screenData(const std::string& screen, const std::string& assembly, std::string control,
@@ -439,6 +445,10 @@ class SLScreenRestController : public zh::rest_controller
 	zeep::http::reply getBED(const std::string& screen, const std::string& replicate, const std::string &assembly);
 
 	std::vector<std::string> getReplicates(const std::string &screen);
+
+	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
+		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+		Direction direction);
 
 	fs::path mScreenDir;
 };
@@ -632,6 +642,14 @@ std::vector<std::string> SLScreenRestController::getReplicates(const std::string
 	return static_cast<SLScreenData*>(data.get())->getReplicateNames();
 }
 
+std::vector<gene_finder_data_point> SLScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+{
+	auto dp = screen_service::instance().get_screen_data(ScreenType::SyntheticLethal, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
+	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
+}
+
 // --------------------------------------------------------------------
 
 class SLScreenHtmlController : public ScreenHtmlControllerBase
@@ -642,9 +660,11 @@ class SLScreenHtmlController : public ScreenHtmlControllerBase
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &SLScreenHtmlController::screen);
+		mount("finder", &SLScreenHtmlController::finder);
 	}
 
 	void screen(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 
   private:
 	fs::path mScreenDir;
@@ -653,6 +673,11 @@ class SLScreenHtmlController : public ScreenHtmlControllerBase
 void SLScreenHtmlController::screen(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
 	get_template_processor().create_reply_from_template("sl-screen.html", scope, reply);
+}
+
+void SLScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+{
+	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
 }
 
 // --------------------------------------------------------------------

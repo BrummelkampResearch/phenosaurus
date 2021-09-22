@@ -141,9 +141,6 @@ struct SLDataReplicate
 	{
 		ar & zeep::make_nvp("binom_fdr", binom_fdr)
 		   & zeep::make_nvp("ref_pv", ref_pv)
-		   & zeep::make_nvp("ref_fcpv", ref_fcpv)
-		   & zeep::make_nvp("sense", sense)
-		   & zeep::make_nvp("antisense", antisense)
 		   & zeep::make_nvp("sense_normalized", sense_normalized)
 		   & zeep::make_nvp("antisense_normalized", antisense_normalized);
 	}

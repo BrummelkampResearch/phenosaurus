@@ -275,10 +275,10 @@ class SLScreenPlot extends ScreenPlot {
 
 		const data = [];
 		this.data
-			.filter(d => d.replicate[replicate].sense_normalized && d.replicate[replicate].antisense_normalized)
+			.filter(d => d.replicate[replicate].sense && d.replicate[replicate].antisense)
 			.forEach(d => {
-				const sense = d.replicate[replicate].sense_normalized;
-				const antisense = d.replicate[replicate].antisense_normalized;
+				const sense = d.replicate[replicate].sense;
+				const antisense = d.replicate[replicate].antisense;
 				const insertions = sense + antisense;
 				const sense_ratio = (1 + sense) / (2 + insertions);
 				const odds_ratio =
@@ -510,13 +510,11 @@ class SLScreenPlot extends ScreenPlot {
 
 		const header = [
 			"gene",
-			"sense",
-			"antisense",
-			"sense_normalized",
-			"antisense_normalized",
+			"sense (normalized)",
+			"antisense (normalized)",
 			"binom_fdr",
 			"odds_ratio",
-			"aggr_odds_ratio",
+			"aggr_sense_ratio",
 			"ref_pv_1",
 			"ref_pv_2",
 			"ref_pv_3",
@@ -536,8 +534,6 @@ class SLScreenPlot extends ScreenPlot {
 				d.gene,												// gene
 				d.replicate[this.replicate].sense,					// sense
 				d.replicate[this.replicate].antisense,				// antisense
-				d.replicate[this.replicate].sense_normalized,		// sense_normalized
-				d.replicate[this.replicate].antisense_normalized,	// antisense_normalized
 				d.binom_fdr,										// binom_fdr
 				d.odds_ratio,										// odds_ratio
 				d.aggr_sense_ratio,									// aggr_sense_ratio

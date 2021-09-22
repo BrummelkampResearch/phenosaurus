@@ -962,8 +962,8 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 			}
 
 			long v[2][2] = {
-					{ static_cast<long>(s_g), static_cast<long>(a_g) },
-					{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
+				{ static_cast<long>(s_g), static_cast<long>(a_g) },
+				{ static_cast<long>(s_wt), static_cast<long>(a_wt) },
 			};
 
 			FishersExactTest f(v, FisherAlternative::Right);
@@ -980,6 +980,9 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 			eptr = std::current_exception();
 		}
 	});
+
+	if (eptr)
+		std::rethrow_exception(eptr);
 
 	return result;
 }

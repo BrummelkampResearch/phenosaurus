@@ -68,6 +68,33 @@ screen_data_cache::~screen_data_cache()
 {
 }
 
+bool screen_data_cache::is_up_to_date() const
+{
+	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
+	auto screenDataDir = screen_service::instance().get_screen_data_dir();
+
+	std::set<std::string> current;
+	for (auto& s: screens)
+		current.insert(s.name);
+
+	bool result = true;
+
+	for (auto& s: m_screens)
+	{
+		if (not current.count(s.name))
+		{
+			result = false;
+			break;
+		}
+
+		current.erase(s.name);
+	}
+
+	result = result and current.empty();
+
+	return result;
+}
+
 // --------------------------------------------------------------------
 
 ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& assembly, short trim_length, Mode mode,
@@ -127,33 +154,6 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 ip_screen_data_cache::~ip_screen_data_cache()
 {
 	delete [] m_data;
-}
-
-bool ip_screen_data_cache::is_up_to_date() const
-{
-	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
-	auto screenDataDir = screen_service::instance().get_screen_data_dir();
-
-	std::set<std::string> current;
-	for (auto& s: screens)
-		current.insert(s.name);
-
-	bool result = true;
-
-	for (auto& s: m_screens)
-	{
-		if (not current.count(s.name))
-		{
-			result = false;
-			break;
-		}
-
-		current.erase(s.name);
-	}
-
-	result = result and current.empty();
-
-	return result;
 }
 
 std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& screen)
@@ -694,6 +694,151 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 // --------------------------------------------------------------------
 
+sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short trim_length,
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
+	: screen_data_cache(ScreenType::SyntheticLethal, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd)
+{
+	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
+	auto screenDataDir = screen_service::instance().get_screen_data_dir();
+
+	for (auto& screen: screens)
+		m_screens.push_back({ screen.name, false, screen.ignore });
+
+	size_t N = m_transcripts.size();
+	size_t M = m_screens.size();
+
+	m_data[0] = new data_point[N * M];
+	m_data[1] = new data_point[N * M];
+	m_data[2] = new data_point[N * M];
+	m_data[3] = new data_point[N * M];
+	memset(m_data, 0, N * M * sizeof(data_point));
+
+	std::string control = "ControlData-HAP1";
+	auto controlData = SLScreenData::load(screenDataDir / control);
+
+	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+	filterOutExons(transcripts);
+
+	// reorder transcripts based on chr > end-position, makes code easier and faster
+	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	{
+		int d = a.chrom - b.chrom;
+		if (d == 0)
+			d = a.start() - b.start();
+		return d < 0;
+	});
+
+// #warning "make groupSize a parameter"
+	// unsigned groupSize = 500;
+	unsigned groupSize = 200;
+// #warning "make trimLength a parameter"
+	unsigned trimLength = 50;
+
+
+	parallel_for(m_screens.size(), [&](size_t si)
+	{
+		try
+		{
+			data_point *sd[4] = {
+				m_data[0] + si * m_transcripts.size(),
+				m_data[1] + si * m_transcripts.size(),
+				m_data[2] + si * m_transcripts.size(),
+				m_data[3] + si * m_transcripts.size()
+			};
+
+			fs::path screenDir = screenDataDir / m_screens[si].name;
+
+			auto dataPtr = SLScreenData::load(screenDir);
+			auto data = static_cast<SLScreenData*>(dataPtr.get());
+
+			// -----------------------------------------------------------------------
+
+			auto dp = data->dataPoints(assembly, trimLength, transcripts, static_cast<SLScreenData&>(*controlData), groupSize);
+
+			for (size_t ti = 0; ti < m_transcripts.size(); ++ti)
+			{
+				auto& p = dp[ti];
+
+				for (size_t ri = 0; ri < p.replicates.size(); ++ri)
+				{
+					auto &r = p.replicates[ri];
+					auto &d = sd[ri][ti];
+
+					d.sense = r.sense_normalized;
+					d.antisense = r.antisense_normalized;
+					d.odds_ratio = p.oddsRatio;
+					d.pv[0] = r.ref_pv[0];
+					d.pv[1] = r.ref_pv[1];
+					d.pv[2] = r.ref_pv[2];
+					d.pv[3] = r.ref_pv[3];
+				}
+			}
+
+			m_screens[si].filled = true;
+		}
+		catch (const std::exception& ex)
+		{
+			std::cerr << ex.what() << std::endl;
+		}
+	});
+
+}
+
+sl_screen_data_cache::~sl_screen_data_cache()
+{
+
+}
+
+std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &screen)
+{
+	std::vector<sl_data_point> result;
+
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+	if (si == m_screens.end() or not si->filled)
+		return {};
+	
+	size_t screenIx = si - m_screens.begin();
+	size_t N = m_transcripts.size();
+	data_point *data[4] = {
+		m_data[0] + screenIx * N,
+		m_data[1] + screenIx * N,
+		m_data[2] + screenIx * N,
+		m_data[3] + screenIx * N
+	};
+
+
+
+	// for (size_t i = 0; i < m_transcripts.size(); ++i)
+	// {
+	// 	auto& dp = data[0];
+	// 	if (dp->sense == 0 and dp->antisense == 0)
+	// 		continue;
+
+	// 	sl_data_point p{};
+
+	// 	p.gene = m_transcripts[i].geneName;
+
+	// 	p.
+
+	// 	p.pv = dp.pv;
+	// 	p.fcpv = dp.fcpv;
+	// 	p.mi = dp.mi;
+	// 	p.high = dp.high;
+	// 	p.low = dp.low;
+
+	// 	result.push_back(std::move(p));
+	// }
+	
+	return result;
+}
+
+std::vector<gene_finder_data_point> sl_screen_data_cache::find_gene(const std::string &gene, const std::set<std::string> &allowedScreens)
+{
+	return {};
+}
+
+// --------------------------------------------------------------------
+
 std::unique_ptr<screen_service> screen_service::s_instance;
 
 void screen_service::init(const std::string& screen_data_dir)
@@ -963,49 +1108,76 @@ std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const Scre
 	return result;
 }
 
-std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+std::shared_ptr<sl_screen_data_cache> screen_service::get_screen_data(const std::string &assembly, short trim_length,
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
 {
-	auto i = std::find_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
-		std::bind(&ip_screen_data_cache::is_for, std::placeholders::_1, type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction));
+	std::unique_lock lock(m_mutex);
 
-	if (i != m_ip_data_cache.end() and (*i)->contains_data_for_screen(screen) and (*i)->is_up_to_date())
-		return (*i)->data_points(screen);
+	auto i = std::find_if(m_sl_data_cache.begin(), m_sl_data_cache.end(),
+		std::bind(&sl_screen_data_cache::is_for, std::placeholders::_1, ScreenType::SyntheticLethal, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd));
 
-	fs::path screenDir = m_screen_data_dir / screen;
+	std::shared_ptr<sl_screen_data_cache> result;
 
-	if (not fs::is_directory(screenDir))
-		throw std::runtime_error("No such screen: " + screen);
-
-	auto data = IPPAScreenData::load(screenDir);
-	
-	std::vector<ip_data_point> result;
-
-	auto& rank = gene_ranking::instance();
-
-	for (auto& dp: data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction))
+	if (i != m_sl_data_cache.end())
 	{
-		if (dp.low == 0 and dp.high == 0)
-			continue;
-
-		ip_data_point p{};
-
-		p.gene = dp.gene;
-		p.pv = dp.pv;
-		p.fcpv = dp.fcpv;
-		p.mi = dp.mi;
-		p.high = dp.high;
-		p.low = dp.low;
-
-		auto r = rank(p.gene);
-		if (r >= 0)
-			p.rank.emplace(r);
-
-		result.push_back(std::move(p));
+		if ((*i)->is_up_to_date())
+			result = *i;
+		else
+			m_sl_data_cache.erase(i);
+	}
+	
+	if (not result)
+	{
+		result = std::make_shared<sl_screen_data_cache>(assembly, trim_length, mode, cutOverlap, geneStart, geneEnd);
+		m_sl_data_cache.emplace_back(result);
 	}
 	
 	return result;
 }
+
+// std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
+// 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+// {
+// 	auto i = std::find_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
+// 		std::bind(&ip_screen_data_cache::is_for, std::placeholders::_1, type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction));
+
+// 	if (i != m_ip_data_cache.end() and (*i)->contains_data_for_screen(screen) and (*i)->is_up_to_date())
+// 		return (*i)->data_points(screen);
+
+// 	fs::path screenDir = m_screen_data_dir / screen;
+
+// 	if (not fs::is_directory(screenDir))
+// 		throw std::runtime_error("No such screen: " + screen);
+
+// 	auto data = IPPAScreenData::load(screenDir);
+	
+// 	std::vector<ip_data_point> result;
+
+// 	auto& rank = gene_ranking::instance();
+
+// 	for (auto& dp: data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction))
+// 	{
+// 		if (dp.low == 0 and dp.high == 0)
+// 			continue;
+
+// 		ip_data_point p{};
+
+// 		p.gene = dp.gene;
+// 		p.pv = dp.pv;
+// 		p.fcpv = dp.fcpv;
+// 		p.mi = dp.mi;
+// 		p.high = dp.high;
+// 		p.low = dp.low;
+
+// 		auto r = rank(p.gene);
+// 		if (r >= 0)
+// 			p.rank.emplace(r);
+
+// 		result.push_back(std::move(p));
+// 	}
+	
+// 	return result;
+// }
 
 void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 {
@@ -1280,6 +1452,6 @@ bool screen_rest_controller::validateScreenName(const std::string& name)
 
 void screen_rest_controller::map_screen(const std::string& screen, const std::string& assembly)
 {
-	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().load_screen(screen), assembly));
+	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().load_screen<ScreenData>(screen), assembly));
 }
 

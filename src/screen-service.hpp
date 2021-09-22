@@ -5,10 +5,10 @@
 
 #pragma once
 
-#include <zeep/http/security.hpp>
-#include <zeep/nvp.hpp>
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/rest-controller.hpp>
+#include <zeep/http/security.hpp>
+#include <zeep/nvp.hpp>
 
 #include "screen-data.hpp"
 
@@ -17,21 +17,27 @@
 class screen_data_cache
 {
   public:
-	screen_data_cache(ScreenType type, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+	screen_data_cache(ScreenType type, const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
 	virtual ~screen_data_cache();
 
-	bool is_for(ScreenType type, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd) const
+	virtual bool is_for(ScreenType type, const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd) const
 	{
 		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
-			m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
+		       m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
 	}
-	
-	virtual bool is_up_to_date() const = 0;
+
+	bool is_up_to_date() const;
 
   protected:
+	struct cached_screen
+	{
+		std::string name;
+		bool filled = false;
+		bool ignore = false;
+	};
 
 	ScreenType m_type;
 	std::string m_assembly;
@@ -41,6 +47,7 @@ class screen_data_cache
 	std::string m_geneStart;
 	std::string m_geneEnd;
 	std::vector<Transcript> m_transcripts;
+	std::vector<cached_screen> m_screens;
 };
 
 struct ip_data_point
@@ -53,8 +60,8 @@ struct ip_data_point
 	int high;
 	std::optional<int> rank;
 
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("pv", pv)
@@ -71,8 +78,8 @@ struct gene_uniqueness
 	std::string gene;
 	int color;
 
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("colour", color);
@@ -87,8 +94,8 @@ struct gene_finder_data_point
 	int insertions;
 	int replicate;
 
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
 	{
 		ar & zeep::make_nvp("screen", screen)
 		   & zeep::make_nvp("mi", mi)
@@ -105,10 +112,10 @@ struct similar_data_point
 	float zscore;
 	bool anti;
 
-	bool operator<(const similar_data_point& h) const { return distance < h.distance; }
+	bool operator<(const similar_data_point &h) const { return distance < h.distance; }
 
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
 	{
 		ar & zeep::make_nvp("gene", gene)
 		   & zeep::make_nvp("distance", distance)
@@ -122,71 +129,137 @@ struct cluster
 	std::vector<std::string> genes;
 	float variance;
 
-	bool operator<(const cluster& c) const { return genes.size() > c.genes.size(); }
+	bool operator<(const cluster &c) const { return genes.size() > c.genes.size(); }
 
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long version)
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long version)
 	{
 		ar & zeep::make_nvp("genes", genes)
 		   & zeep::make_nvp("variance", variance);
 	}
 };
 
+// --------------------------------------------------------------------
 
 class ip_screen_data_cache : public screen_data_cache
 {
   public:
-	ip_screen_data_cache(ScreenType type, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	ip_screen_data_cache(ScreenType type, const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
 	~ip_screen_data_cache();
 
-	virtual bool is_up_to_date() const override;
-
-	bool is_for(ScreenType type, std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	bool is_for(ScreenType type, std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction) const
 	{
 		return screen_data_cache::is_for(type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
 	}
 
-	bool contains_data_for_screen(const std::string& screen) const
+	bool contains_data_for_screen(const std::string &screen) const
 	{
-		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
+			{ return si.name == screen; });
 		return si != m_screens.end() and si->filled;
 	}
 
-	std::vector<ip_data_point> data_points(const std::string& screen);
-	std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
+	std::vector<ip_data_point> data_points(const std::string &screen);
+	std::vector<gene_uniqueness> uniqueness(const std::string &screen, float pvCutOff);
 
-	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::set<std::string>& allowedScreens);
-	std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
+	std::vector<gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
+	std::vector<similar_data_point> find_similar(const std::string &gene, float pvCutOff, float zscoreCutOff);
 	std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
   private:
-
 	struct data_point
 	{
-		float		pv;
-		float		fcpv;
-		float		mi;
-		uint32_t	low;
-		uint32_t	high;
+		float pv;
+		float fcpv;
+		float mi;
+		uint32_t low;
+		uint32_t high;
 	};
 
-	struct cached_screen
-	{
-		std::string name;
-		bool filled = false;
-		bool ignore = false;
-	};
-
-	size_t index(size_t screen_nr, size_t transcript) const;
+	// size_t index(size_t screen_nr, size_t transcript) const;
 
 	Direction m_direction;
-	data_point* m_data;
-	std::vector<cached_screen> m_screens;
+	data_point *m_data;
+};
+
+// --------------------------------------------------------------------
+
+struct sl_data_replicate
+{
+	float binom_fdr;
+	float ref_pv[4];
+	uint32_t sense, antisense;
+
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
+	{
+		ar & zeep::make_nvp("binom_fdr", binom_fdr)
+		   & zeep::make_nvp("ref_pv", ref_pv)
+		   & zeep::make_nvp("sense", sense)
+		   & zeep::make_nvp("antisense", antisense);
+	}
+};
+
+struct sl_data_point
+{
+	std::string gene;
+	float oddsRatio;
+	float controlBinom;
+	float controlSenseRatio;
+	bool consistent;
+	std::vector<sl_data_replicate> replicates;
+
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
+	{
+		ar & zeep::make_nvp("gene", gene)
+		   & zeep::make_nvp("odds_ratio", oddsRatio)
+		   & zeep::make_nvp("control_binom", controlBinom)
+		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
+		   & zeep::make_nvp("consistent", consistent)
+		   & zeep::make_nvp("replicate", replicates);
+	}
+};
+
+// --------------------------------------------------------------------
+
+class sl_screen_data_cache : public screen_data_cache
+{
+  public:
+	sl_screen_data_cache(const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
+
+	~sl_screen_data_cache();
+
+	bool contains_data_for_screen(const std::string &screen) const
+	{
+		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
+			{ return si.name == screen; });
+		return si != m_screens.end() and si->filled;
+	}
+
+	std::vector<sl_data_point> data_points(const std::string &screen);
+	// std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
+
+	std::vector<gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
+	// std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
+	// std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
+
+  private:
+	struct data_point
+	{
+		float odds_ratio;
+		float pv[4];
+		uint32_t sense;
+		uint32_t antisense;
+	};
+
+	data_point *m_data[4];
 };
 
 // --------------------------------------------------------------------
@@ -196,54 +269,68 @@ struct user;
 class screen_service
 {
   public:
-	static void init(const std::string& screen_data_dir);
+	static void init(const std::string &screen_data_dir);
 
-	static screen_service& instance();
+	static screen_service &instance();
 
-	const std::filesystem::path& get_screen_data_dir() const		{ return m_screen_data_dir; }
+	const std::filesystem::path &get_screen_data_dir() const { return m_screen_data_dir; }
 
 	std::vector<screen_info> get_all_screens() const;
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
-	std::vector<screen_info> get_all_screens_for_user(const std::string& user) const;
-	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const;
+	std::vector<screen_info> get_all_screens_for_user(const std::string &user) const;
+	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string &user, ScreenType type) const;
 
 	// return list of allowed screens based on user info (name, groups)
-	std::set<std::string> get_allowed_screens_for_user(const user& user) const;
+	std::set<std::string> get_allowed_screens_for_user(const user &user) const;
 
-	bool exists(const std::string& name) const noexcept;
-	static bool is_valid_name(const std::string& name);
+	bool exists(const std::string &name) const noexcept;
+	static bool is_valid_name(const std::string &name);
 
-	screen_info retrieve_screen(const std::string& name) const;
-	bool is_owner(const std::string& name, const std::string& username) const;
-	bool is_allowed(const std::string& screenname, const std::string& username) const;
+	screen_info retrieve_screen(const std::string &name) const;
+	bool is_owner(const std::string &name, const std::string &username) const;
+	bool is_allowed(const std::string &screenname, const std::string &username) const;
 
-	std::unique_ptr<ScreenData> create_screen(const screen_info& screen);
-	void update_screen(const std::string& name, const screen_info& screen);
-	void delete_screen(const std::string& name);
+	std::unique_ptr<ScreenData> create_screen(const screen_info &screen);
+	void update_screen(const std::string &name, const screen_info &screen);
+	void delete_screen(const std::string &name);
 
-	std::unique_ptr<ScreenData> load_screen(const std::string &screen)
+	template<typename ScreenDataType>
+	std::unique_ptr<ScreenDataType> load_screen(const std::string &screen)
 	{
-		return ScreenData::load(m_screen_data_dir / screen);
+		return std::make_unique<ScreenDataType>(m_screen_data_dir / screen);
 	}
 
-	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type, const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
+	std::shared_ptr<sl_screen_data_cache> get_screen_data(const std::string &assembly, short trim_length,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
-	void screen_mapped(const std::unique_ptr<ScreenData>& screen);
+	// std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string &screen, const std::string &assembly, short trim_length,
+	// 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
+
+	// std::vector<sl_data_point> get_data_points(const std::string &screen, std::string control, const std::string &assembly, short trim_length,
+	// 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
+
+	void screen_mapped(const std::unique_ptr<ScreenData> &screen);
 
   private:
-	screen_service(const std::string& screen_data_dir);
+	screen_service(const std::string &screen_data_dir);
 
 	std::filesystem::path m_screen_data_dir;
 	std::mutex m_mutex;
 	std::list<std::shared_ptr<ip_screen_data_cache>> m_ip_data_cache;
+	std::list<std::shared_ptr<sl_screen_data_cache>> m_sl_data_cache;
 
 	static std::unique_ptr<screen_service> s_instance;
 };
+
+template<>
+inline std::unique_ptr<ScreenData> screen_service::load_screen<ScreenData>(const std::string &screen)
+{
+	return ScreenData::load(m_screen_data_dir / screen);
+}
 
 // --------------------------------------------------------------------
 
@@ -252,10 +339,10 @@ class screen_html_controller : public zeep::http::html_controller
   public:
 	screen_html_controller();
 
-	void handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
-	void handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
-	void handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
-	void handle_screen_table(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply);
+	void handle_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
+	void handle_create_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
+	void handle_edit_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
+	void handle_screen_table(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
 };
 
 // --------------------------------------------------------------------
@@ -265,13 +352,13 @@ class screen_rest_controller : public zeep::http::rest_controller
   public:
 	screen_rest_controller();
 
-	std::string create_screen(const screen_info& screen);
-	screen_info retrieve_screen(const std::string& name);
-	void update_screen(const std::string& name, const screen_info& screen);
-	void delete_screen(const std::string& name);
+	std::string create_screen(const screen_info &screen);
+	screen_info retrieve_screen(const std::string &name);
+	void update_screen(const std::string &name, const screen_info &screen);
+	void delete_screen(const std::string &name);
 
-	bool validateFastQFile(const std::string& filename);
-	bool validateScreenName(const std::string& name);
+	bool validateFastQFile(const std::string &filename);
+	bool validateScreenName(const std::string &name);
 
-	void map_screen(const std::string& screen, const std::string& assembly);
+	void map_screen(const std::string &screen, const std::string &assembly);
 };
