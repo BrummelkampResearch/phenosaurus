@@ -40,6 +40,7 @@ class screen_data_cache
 		bool filled = false;
 		bool ignore = false;
 		uint8_t file_count = 0;
+		uint32_t data_offset = 0;
 		uint32_t replicate_offset = 0;
 	};
 

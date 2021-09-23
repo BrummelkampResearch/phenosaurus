@@ -267,7 +267,7 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 
 	for (size_t si = 0; si < m_screens.size(); ++si)
 	{
-		const auto& [name, filled, ignore, ignore_2, ignore_3] = m_screens[si];
+		const auto& [name, filled, ignore, ignore_2, ignore_3, ignore_4] = m_screens[si];
 
 		if (filled and /*not ignore and*/ allowedScreens.count(name))
 		{
@@ -722,13 +722,17 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 	size_t M = screens.size();
 	size_t O = 0;
 	
+	uint32_t data_offset = 0;
+
 	for (auto& screen: screens)
 	{
 		m_screens.push_back({
 			screen.name, false, screen.ignore,
 			static_cast<uint8_t>(screen.files.size()),
+			data_offset,
 			static_cast<uint32_t>(O * M * N)
 		});
+		data_offset += N;
 		O += screen.files.size();
 	}
 
@@ -759,8 +763,6 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 	auto normalizedControlInsertions = controlData->loadNormalizedInsertions(assembly, trim_length, m_transcripts, groupSize);
 
-	auto d_data = m_data;
-
 	for (auto &screen : m_screens)
 	{
 		if (VERBOSE)
@@ -772,6 +774,8 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 			auto dataPtr = SLScreenData::load(screenDir);
 			auto data = static_cast<SLScreenData*>(dataPtr.get());
+
+			auto d_data = m_data + screen.data_offset;
 
 			data_point_replicate *r_data[4];
 			r_data[0] = m_replicate_data + screen.replicate_offset;
@@ -802,8 +806,8 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 			for (size_t ti = 0; ti < N; ++ti)
 			{
-				auto &d = *d_data++;
-				auto& p = dp[ti];
+				auto &d = d_data[ti];
+				auto &p = dp[ti];
 
 				d.odds_ratio = p.oddsRatio;
 				// d.sense_ratio = p.senseRatio;
@@ -844,8 +848,6 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 			std::cerr << ex.what() << std::endl;
 		}
 	};
-
-	assert(d_data == m_data + N * M);
 }
 
 sl_screen_data_cache::~sl_screen_data_cache()
@@ -880,7 +882,8 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 	// screen data
 	size_t screenIx = si - m_screens.begin();
-	auto data = m_data + screenIx * N;
+	auto d_data = m_data + m_screens[screenIx].data_offset;
+
 	data_point_replicate *r_data[4];
 	r_data[0] = m_replicate_data + m_screens[screenIx].replicate_offset;
 	r_data[1] = r_data[0] + N;
@@ -902,7 +905,7 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 	for (size_t i = 0; i < N; ++i)
 	{
-		auto &dp = data[i];
+		auto &dp = d_data[i];
 
 		sl_data_point p{};
 
