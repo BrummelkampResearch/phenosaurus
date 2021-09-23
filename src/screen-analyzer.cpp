@@ -74,6 +74,7 @@ po::options_description get_config_options()
 		( "trim-length",		po::value<unsigned>(),		"Trim reads to this length, default is 50")
 		( "threads",			po::value<unsigned>(),		"Nr of threads to use")
 		( "screen-dir",			po::value<std::string>(),	"Directory containing the screen data")
+		( "cache-dir",			po::value<std::string>(),	"Directory containing cached screen data")
 		( "bowtie-index-hg19",	po::value<std::string>(),	"Bowtie index parameter for HG19")
 		( "bowtie-index-hg38",	po::value<std::string>(),	"Bowtie index parameter for HG38")
 		( "control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
@@ -895,9 +896,9 @@ Command should be either:
 	if (vm.count("context"))
 		context_name = vm["context"].as<std::string>();
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),context_name]()
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
 	{
-		return createServer(docroot, screenDir, secret, context_name);
+		return createServer(docroot, screenDir, cacheDir, secret, context_name);
 	}, "screen-analyzer");
 
 	std::string user = "www-data";

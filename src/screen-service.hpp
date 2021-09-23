@@ -31,6 +31,8 @@ class screen_data_cache
 
 	bool is_up_to_date() const;
 
+	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const = 0;
+
   protected:
 	struct cached_screen
 	{
@@ -173,6 +175,8 @@ class ip_screen_data_cache : public screen_data_cache
 	std::vector<similar_data_point> find_similar(const std::string &gene, float pvCutOff, float zscoreCutOff);
 	std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
+	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
+
   private:
 	struct data_point
 	{
@@ -254,6 +258,8 @@ class sl_screen_data_cache : public screen_data_cache
 	// std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
 	// std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
+	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
+
   private:
 
 	struct data_point
@@ -280,11 +286,12 @@ struct user;
 class screen_service
 {
   public:
-	static void init(const std::string &screen_data_dir);
+	static void init(const std::string &screen_data_dir, const std::string &screen_cache_dir);
 
 	static screen_service &instance();
 
 	const std::filesystem::path &get_screen_data_dir() const { return m_screen_data_dir; }
+	const std::filesystem::path &get_screen_cache_dir() const { return m_screen_cache_dir; }
 
 	std::vector<screen_info> get_all_screens() const;
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
@@ -327,9 +334,9 @@ class screen_service
 	void screen_mapped(const std::unique_ptr<ScreenData> &screen);
 
   private:
-	screen_service(const std::string &screen_data_dir);
+	screen_service(const std::string &screen_data_dir, const std::string &screen_cache_dir);
 
-	std::filesystem::path m_screen_data_dir;
+	std::filesystem::path m_screen_data_dir, m_screen_cache_dir;
 	std::mutex m_mutex;
 	std::list<std::shared_ptr<ip_screen_data_cache>> m_ip_data_cache;
 	std::list<std::shared_ptr<sl_screen_data_cache>> m_sl_data_cache;
