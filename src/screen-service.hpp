@@ -193,7 +193,7 @@ class ip_screen_data_cache : public screen_data_cache
 
 struct sl_data_replicate
 {
-	double binom_fdr;
+	float binom_fdr;
 	float ref_pv[4];
 	uint32_t sense, antisense;
 
@@ -211,7 +211,7 @@ struct sl_data_point
 {
 	std::string gene;
 	float oddsRatio;
-	double controlBinom;
+	float controlBinom;
 	float controlSenseRatio;
 	float senseRatio;
 	bool consistent;

@@ -120,7 +120,7 @@ struct IPDataPoint
 
 struct SLDataReplicate
 {
-	double binom_fdr;
+	float binom_fdr;
 	float ref_pv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
 };

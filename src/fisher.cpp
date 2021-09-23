@@ -77,7 +77,7 @@ double bd0(double x, double np)
 	return x * s + np - x;
 }
 
-constexpr double calculate_sterling_error(long n)
+double calculate_sterling_error(long n)
 {
 	return std::lgamma(n + 1.) - (n + 0.5) * std::log(n) + n - std::log(std::sqrt(2 * M_PI));
 }
