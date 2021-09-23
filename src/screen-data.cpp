@@ -1030,7 +1030,7 @@ std::vector<std::tuple<size_t, size_t>> divide(size_t listsize, size_t suggested
 // --------------------------------------------------------------------
 
 std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionCount> &insertions,
-	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize) const
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
 {
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions);

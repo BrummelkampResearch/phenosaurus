@@ -566,7 +566,7 @@ class SLControlScreenPlot extends SLScreenPlot {
 	constructor(svg, plot, screenList) {
 		super(svg, screenList);
 
-		this.updateColorMap = (data) => {};
+		this.updateColorMap = () => {};
 		plot.control = this;
 	}
 

@@ -22,7 +22,7 @@ class screen_data_cache
 
 	virtual ~screen_data_cache();
 
-	virtual bool is_for(ScreenType type, const std::string &assembly, short trim_length,
+	bool is_for(ScreenType type, const std::string &assembly, short trim_length,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd) const
 	{
 		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
@@ -193,7 +193,7 @@ class ip_screen_data_cache : public screen_data_cache
 
 struct sl_data_replicate
 {
-	float binom_fdr;
+	double binom_fdr;
 	float ref_pv[4];
 	uint32_t sense, antisense;
 
@@ -211,7 +211,7 @@ struct sl_data_point
 {
 	std::string gene;
 	float oddsRatio;
-	float controlBinom;
+	double controlBinom;
 	float controlSenseRatio;
 	float senseRatio;
 	bool consistent;

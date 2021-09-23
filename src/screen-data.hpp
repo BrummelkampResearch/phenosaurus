@@ -114,17 +114,6 @@ struct IPDataPoint
 	float mi;
 	int low;
 	int high;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("pv", pv)
-		   & zeep::make_nvp("fcpv", fcpv)
-		   & zeep::make_nvp("mi", mi)
-		   & zeep::make_nvp("low", low)
-		   & zeep::make_nvp("high", high);
-	}
 };
 
 // --------------------------------------------------------------------
@@ -133,17 +122,7 @@ struct SLDataReplicate
 {
 	double binom_fdr;
 	float ref_pv[4];
-	// float ref_fcpv[4];
 	uint32_t sense, sense_normalized, antisense, antisense_normalized;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("binom_fdr", binom_fdr)
-		   & zeep::make_nvp("ref_pv", ref_pv)
-		   & zeep::make_nvp("sense_normalized", sense_normalized)
-		   & zeep::make_nvp("antisense_normalized", antisense_normalized);
-	}
 };
 
 struct SLDataPoint
@@ -155,17 +134,6 @@ struct SLDataPoint
 	float controlSenseRatio;
 	bool consistent;
 	std::vector<SLDataReplicate> replicates;
-
-	template<typename Archive>
-	void serialize(Archive& ar, unsigned long)
-	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("odds_ratio", oddsRatio)
-		   & zeep::make_nvp("control_binom", controlBinom)
-		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
-		   & zeep::make_nvp("consistent", consistent)
-		   & zeep::make_nvp("replicate", replicates);
-	}
 };
 
 // --------------------------------------------------------------------
@@ -403,8 +371,8 @@ class SLScreenData : public ScreenData
 
   private:
 
-	std::vector<InsertionCount> normalize(const std::vector<InsertionCount>& counts,
-		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize) const;
+	static std::vector<InsertionCount> normalize(const std::vector<InsertionCount>& counts,
+		const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize);
 
 	void count_insertions(const std::string& replicate, const std::string& assembly, unsigned readLength,
 		const std::vector<Transcript>& transcripts, std::vector<InsertionCount>& insertions) const;
