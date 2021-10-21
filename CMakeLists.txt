@@ -152,6 +152,7 @@ endif()
 
 find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options regex iostreams)
+find_package(squeeze 1.0.0 REQUIRED)
 
 pkg_check_modules(PQ libpq REQUIRED)
 pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED)
@@ -174,7 +175,6 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-data.cpp
 	${CMAKE_SOURCE_DIR}/src/fisher.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-server.cpp
-	${CMAKE_SOURCE_DIR}/src/sq/squeeze.hpp
 	${CMAKE_SOURCE_DIR}/src/config.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-analyzer.cpp
 	${CMAKE_SOURCE_DIR}/src/job-scheduler.hpp
@@ -199,7 +199,7 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c
 	)
 
-target_include_directories(screen-analyzer PRIVATE zeep::zeep ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
 	${PQXX_LIBRARIES} ${PQ_LIBRARIES} ${MAILIO_LINK_LIBRARIES} ${SSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} std::filesystem
