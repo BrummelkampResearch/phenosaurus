@@ -78,7 +78,6 @@ AX_PKG_CHECK_MODULES([PQ], [libpq], [], [], [AC_MSG_ERROR([the required package 
 AX_PKG_CHECK_MODULES([SSL], [libssl openssl], [], [], [AC_MSG_ERROR([the required package libssl-dev is not installed])])
 AX_PKG_CHECK_MODULES([MAILIO], [mailio], [], [], [AC_MSG_ERROR([the required package mailio-dev is not installed])])
 AX_PKG_CHECK_MODULES([ZLIB], [zlib], [], [], [AC_MSG_ERROR([the required package zlib-dev is not installed])])
-AX_PKG_CHECK_MODULES([URIPARSER], [liburiparser >= 0.9.0], [], [], [AC_MSG_ERROR([the required package uriparser is not installed])])
 
 AX_PTHREAD
 
