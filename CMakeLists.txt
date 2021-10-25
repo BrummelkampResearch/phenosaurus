@@ -93,8 +93,6 @@ if(MSVC)
 	else()
 		message(FATAL_ERROR "Unsupported or unknown processor type ${CMAKE_SYSTEM_PROCESSOR}")
 	endif()	
-
-	set(COFF_SPEC "--coff=${COFF_TYPE}")
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -153,10 +151,10 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 find_package(zeep 5.1.3 REQUIRED)
-find_package(Boost COMPONENTS date_time program_options regex iostreams)
+find_package(Boost COMPONENTS system date_time program_options regex iostreams)
 
 pkg_check_modules(PQ libpq REQUIRED)
-pkg_check_modules(PQXX libpqxx>=7.5.1 REQUIRED)
+pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED)
 pkg_check_modules(MAILIO mailio REQUIRED)
 pkg_check_modules(SSL libssl)
 pkg_check_modules(CRYPTO libcrypto)
@@ -204,7 +202,7 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
-	${PQXX_LIBRARIES} ${PQ_LIBRARIES} ${MAILIO_LIBRARIES} ${SSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} std::filesystem
+	${PQXX_LIBRARIES} ${PQ_LIBRARIES} ${MAILIO_LINK_LIBRARIES} ${SSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} std::filesystem
 	${CMAKE_THREAD_LIBS_INIT})
 
 if(USE_RSRC)

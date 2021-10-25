@@ -336,12 +336,15 @@ inline void compress_simple_array_selector(obitstream& bits, const std::vector<u
 				case 4:
 					fits = fits and bn[3] <= w;
 					waste += w - bn[3];
+					[[fallthrough]]
 				case 3:
 					fits = fits and bn[2] <= w;
 					waste += w - bn[2];
+					[[fallthrough]]
 				case 2:
 					fits = fits and bn[1] <= w;
 					waste += w - bn[1];
+					[[fallthrough]]
 				case 1:
 					fits = fits and bn[0] <= w;
 					waste += w - bn[0];
