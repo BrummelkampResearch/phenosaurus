@@ -1,5 +1,3 @@
-#include "config.hpp"
-
 #include <boost/math/special_functions/beta.hpp>
 
 #include "binom.hpp"

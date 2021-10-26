@@ -5,7 +5,6 @@ docroot/scripts/
 docroot/jbrowse/data/
 docroot/jbrowse/dist/
 docroot/jbrowse
-screen-analyzer
 .vscode/
 screen-analyzer.conf
 *.csv

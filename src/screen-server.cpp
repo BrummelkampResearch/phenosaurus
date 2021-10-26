@@ -1,7 +1,5 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
-#include "config.hpp"
-
 #include <iostream>
 #include <numeric>
 

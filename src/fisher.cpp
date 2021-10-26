@@ -1,5 +1,3 @@
-#include "config.hpp"
-
 #include <algorithm>
 #include <cassert>
 #include <cmath>

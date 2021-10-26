@@ -3,15 +3,13 @@
 //      (See accompanying file LICENSE_1_0.txt or copy at
 //            http://www.boost.org/LICENSE_1_0.txt)
 
-#include "config.hpp"
-
 #include <filesystem>
 
 #include <pqxx/pqxx>
 
 #include <zeep/crypto.hpp>
 
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 
 #include "user-service.hpp"
 #include "screen-service.hpp"
