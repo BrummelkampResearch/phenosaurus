@@ -91,7 +91,7 @@ struct gene_uniqueness
 	}
 };
 
-struct gene_finder_data_point
+struct ip_gene_finder_data_point
 {
 	std::string screen;
 	float mi;
@@ -172,7 +172,7 @@ class ip_screen_data_cache : public screen_data_cache
 	std::vector<ip_data_point> data_points(const std::string &screen);
 	std::vector<gene_uniqueness> uniqueness(const std::string &screen, float pvCutOff);
 
-	std::vector<gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
+	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
 	std::vector<similar_data_point> find_similar(const std::string &gene, float pvCutOff, float zscoreCutOff);
 	std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 
@@ -237,6 +237,25 @@ struct sl_data_point
 
 // --------------------------------------------------------------------
 
+struct sl_gene_finder_data_point
+{
+	std::string screen;
+	float senseRatio;
+	bool consistent;
+	float oddsRatio;
+
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
+	{
+		ar & zeep::make_nvp("screen", screen)
+		   & zeep::make_nvp("sense_ratio", senseRatio)
+		   & zeep::make_nvp("odds_ratio", oddsRatio)
+		   & zeep::make_nvp("consistent", consistent);
+	}
+};
+
+// --------------------------------------------------------------------
+
 class sl_screen_data_cache : public screen_data_cache
 {
   public:
@@ -255,7 +274,7 @@ class sl_screen_data_cache : public screen_data_cache
 	std::vector<sl_data_point> data_points(const std::string &screen);
 	// std::vector<gene_uniqueness> uniqueness(const std::string& screen, float pvCutOff);
 
-	std::vector<gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
+	std::vector<sl_gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
 	// std::vector<similar_data_point> find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff);
 	// std::vector<cluster> find_clusters(float pvCutOff, size_t minPts, float eps, size_t NNs);
 

@@ -99,7 +99,7 @@ class IPScreenRestController : public zh::rest_controller
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
-	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
+	std::vector<ip_gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
@@ -145,7 +145,7 @@ std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::strin
 	return dp->uniqueness(screen, pvCutOff);
 }
 
-std::vector<gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
+std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
@@ -446,7 +446,7 @@ class SLScreenRestController : public zh::rest_controller
 
 	std::vector<std::string> getReplicates(const std::string &screen);
 
-	std::vector<gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
+	std::vector<sl_gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
@@ -646,10 +646,10 @@ std::vector<std::string> SLScreenRestController::getReplicates(const std::string
 	return static_cast<SLScreenData*>(data.get())->getReplicateNames();
 }
 
-std::vector<gene_finder_data_point> SLScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
+std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
 	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
 {
-	auto dp = screen_service::instance().get_screen_data(ScreenType::SyntheticLethal, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	auto dp = screen_service::instance().get_screen_data(assembly, 50, mode, cutOverlap, geneStart, geneEnd);
 	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
 	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }

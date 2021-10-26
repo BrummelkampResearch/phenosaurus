@@ -25,11 +25,11 @@ export class GeneLine {
 		this.data = [];
 
 		$("a", line)
-			.click(() => this.sort());
+			.on('click', () => this.sort());
 
 		this.input
-			.change(() => this.changed())
-			.focus();
+			.on('change', () => this.changed())
+			.trigger('focus');
 
 		// const td = d3.select($("td:nth-child(2)", line)[0]);
 		const td = d3.select(this.row.cells[2]);
@@ -111,7 +111,7 @@ export class GeneLine {
 
 	orderedScreens() {
 		return this.data
-			.sort((a, b) => b.mi - a.mi)
+			.sort((a, b) => b.y - a.y)
 			.map(a => a.screen);
 	}
 

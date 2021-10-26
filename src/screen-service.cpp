@@ -254,7 +254,7 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 	return result;
 }
 
-std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene, const std::set<std::string>& allowedScreens)
+std::vector<ip_gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene, const std::set<std::string>& allowedScreens)
 {
 	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
 	if (gi == m_transcripts.end())
@@ -263,7 +263,7 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 	size_t ti = gi - m_transcripts.begin();
 	size_t N = m_transcripts.size();
 
-	std::vector<gene_finder_data_point> result;
+	std::vector<ip_gene_finder_data_point> result;
 
 	for (size_t si = 0; si < m_screens.size(); ++si)
 	{
@@ -273,7 +273,7 @@ std::vector<gene_finder_data_point> ip_screen_data_cache::find_gene(const std::s
 		{
 			size_t ix = si * N + ti;
 
-			gene_finder_data_point p{};
+			ip_gene_finder_data_point p{};
 
 			p.screen = name;
 			p.fcpv = m_data[ix].fcpv;
@@ -903,9 +903,9 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 	cr_data[2] = cr_data[1] + N;
 	cr_data[3] = cr_data[2] + N;
 
-	for (size_t i = 0; i < N; ++i)
+	for (size_t ti = 0; ti < N; ++ti)
 	{
-		auto &dp = d_data[i];
+		auto &dp = d_data[ti];
 
 		sl_data_point p{};
 
@@ -919,7 +919,7 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 		{
 			sl_data_replicate rp{};
 
-			auto &nc = r_data[j][i];
+			auto &nc = r_data[j][ti];
 
 			rp.sense = nc.sense;
 			rp.antisense = nc.antisense;
@@ -940,7 +940,7 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 			
 			for (size_t k = 0; k < 4; ++k)
 			{
-				auto &ncc = cr_data[k][i];
+				auto &ncc = cr_data[k][ti];
 
 				bool up = ((1.0f + nc.sense) / (2.0f + nc.sense + nc.antisense)) <
 						((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
@@ -972,11 +972,11 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 		for (size_t j = 0; j < 4; ++j)
 		{
-			s_wt += cr_data[j][i].sense;
-			a_wt += cr_data[j][i].antisense;
+			s_wt += cr_data[j][ti].sense;
+			a_wt += cr_data[j][ti].antisense;
 		}
 
-		p.gene = m_transcripts[i].geneName;
+		p.gene = m_transcripts[ti].geneName;
 		p.consistent = check != ConsistencyCheck::Inconsistent;
 		p.controlBinom = dp.control_binom;
 		p.oddsRatio = dp.odds_ratio;
@@ -989,9 +989,117 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 	return result;
 }
 
-std::vector<gene_finder_data_point> sl_screen_data_cache::find_gene(const std::string &gene, const std::set<std::string> &allowedScreens)
+std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std::string &gene, const std::set<std::string> &allowedScreens)
 {
-	return {};
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	if (gi == m_transcripts.end())
+		return {};
+
+	size_t ti = gi - m_transcripts.begin();
+	size_t N = m_transcripts.size();
+
+	std::vector<sl_gene_finder_data_point> result;
+
+	// reference/control data
+	std::string control = "ControlData-HAP1";
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto& si) { return si.name == control; });
+	if (si == m_screens.end() or not si->filled)
+		throw std::runtime_error("Missing control data");
+	size_t controlScreenIx = si - m_screens.begin();
+
+	data_point_replicate *cr_data[4];
+	cr_data[0] = m_replicate_data + m_screens[controlScreenIx].replicate_offset;
+	cr_data[1] = cr_data[0] + N;
+	cr_data[2] = cr_data[1] + N;
+	cr_data[3] = cr_data[2] + N;
+
+	for (size_t si = 0; si < m_screens.size(); ++si)
+	{
+		auto &screen = m_screens[si];
+		const auto& [name, filled, ignore, ignore_2, ignore_3, ignore_4] = screen;
+
+		if (filled and /*not ignore and*/ allowedScreens.count(name))
+		{
+			auto d_data = m_data + screen.data_offset;
+			auto &dp = d_data[ti];
+
+			data_point_replicate *r_data[4];
+			r_data[0] = m_replicate_data + screen.replicate_offset;
+			r_data[1] = r_data[0] + N;
+			r_data[2] = r_data[1] + N;
+			r_data[3] = r_data[2] + N;
+
+			sl_gene_finder_data_point p{};
+
+			p.screen = name;
+
+			enum class ConsistencyCheck {
+				Undefined, Up, Down, Inconsistent
+			} check = ConsistencyCheck::Undefined;
+
+			size_t s_g = 0, a_g = 0;
+
+			for (size_t j = 0; j < screen.file_count; ++j)
+			{
+				auto &nc = r_data[j][ti];
+
+				s_g += nc.sense;
+				a_g += nc.antisense;
+
+				// check consistency
+				if (check == ConsistencyCheck::Inconsistent)
+					continue;
+				
+				for (size_t k = 0; k < 4; ++k)
+				{
+					auto &ncc = cr_data[k][ti];
+
+					bool up = ((1.0f + nc.sense) / (2.0f + nc.sense + nc.antisense)) <
+							((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
+					
+					if (up)
+					{
+						if (check == ConsistencyCheck::Down)
+						{
+							check = ConsistencyCheck::Inconsistent;
+							break;
+						}
+						else
+							check = ConsistencyCheck::Up;
+					}
+					else
+					{
+						if (check == ConsistencyCheck::Up)
+						{
+							check = ConsistencyCheck::Inconsistent;
+							break;
+						}
+						else
+							check = ConsistencyCheck::Down;
+					}
+				}
+			}
+
+			// size_t s_wt = 0, a_wt = 0;
+
+			// for (size_t j = 0; j < 4; ++j)
+			// {
+			// 	s_wt += cr_data[j][ti].sense;
+			// 	a_wt += cr_data[j][ti].antisense;
+			// }
+
+			// p.controlBinom = dp.control_binom;
+			// p.controlSenseRatio = (1.0f + s_wt) / (2.0f + s_wt + a_wt);
+
+			p.senseRatio = (1.0f + s_g) / (2.0f + s_g + a_g);
+			p.oddsRatio = dp.odds_ratio;
+			p.consistent = check != ConsistencyCheck::Inconsistent;
+
+			result.push_back(std::move(p));
+		}
+	}
+
+	return result;
 }
 
 // --------------------------------------------------------------------

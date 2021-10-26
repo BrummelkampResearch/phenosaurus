@@ -136,7 +136,7 @@ if(USE_RSRC STREQUAL "ON")
 	set(USE_RSRC 1)
 
 	message("Using resources compiled with ${MRC}")
-	add_compile_definitions(USE_RSRC)
+	add_compile_definitions(USE_RSRC WEBAPP_USES_RESOURCES)
 
 	mrc_write_header(${CMAKE_BINARY_DIR}/mrsrc.hpp)
 endif()
@@ -162,6 +162,57 @@ pkg_check_modules(CRYPTO libcrypto)
 pkg_check_modules(ZLIB zlib)
 # pkg_check_modules(BZIP2 libbz2)
 find_library(BZIP2_LIBRARIES bz2)
+
+find_program(YARN yarn REQUIRED)
+
+# yarn rules for javascripts
+
+set(webpack_input
+	webapp/context-menu.js
+	webapp/dot.js
+	webapp/genome-viewer.js
+	webapp/index.js
+	webapp/multidot.js
+	webapp/screenColorMap.js
+	webapp/screenData.js
+	webapp/script.js
+	webapp/tooltip.js
+	webapp/admin-group.js
+	webapp/admin-user.js
+	webapp/gene-selection.js
+	webapp/gene-finder.js
+	webapp/finder.js
+	webapp/similar-finder.js
+	webapp/cluster-finder.js
+	webapp/compare-3.js
+	webapp/genome-browser.js
+	webapp/qc.js
+	webapp/create-screen.js
+	webapp/dot-context-menu.js
+	webapp/edit-screen.js
+	webapp/list-screen.js
+	webapp/screen.js
+	webapp/geneInfo.js
+	webapp/screenPlot.js
+	webapp/sortable.js
+	webapp/pvformat.js
+	webapp/sl-dot.js
+	webapp/sl-screen.js
+	scss/contextMenu.css
+	scss/sa-style.scss
+	scss/signin.css
+	scss/styles.css)
+
+set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/scripts/index.js)
+
+add_custom_command(
+	OUTPUT ${webpack_output}
+	BYPRODUCTS 
+	DEPENDS ${webpack_input}
+	COMMAND ${YARN} run build
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+add_custom_target(webpack DEPENDS ${webpack_output})
 
 add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/refseq.cpp
@@ -196,14 +247,15 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-qc.hpp
 	${CMAKE_SOURCE_DIR}/src/binom.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-server.hpp
-	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c
-	)
+	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c)
 
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
 	${PQXX_LIBRARIES} ${PQ_LIBRARIES} ${MAILIO_LINK_LIBRARIES} ${SSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} std::filesystem
 	${CMAKE_THREAD_LIBS_INIT})
+
+add_dependencies(screen-analyzer webpack)
 
 if(USE_RSRC)
 	mrc_target_resources(screen-analyzer ${CMAKE_SOURCE_DIR}/docroot/ ${CMAKE_SOURCE_DIR}/rsrc/)

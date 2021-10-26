@@ -107,6 +107,10 @@ class IPGeneDataTraits
 	static getDomain(data) {
 		return [-6, 6, ...d3.extent(data, d => d.y)];
 	}
+
+	static getColor(d) {
+		return d.fcpv >= pvCutOff ? neutral : d.mi < 1 ? negative : positive;
+	}
 }
 
 class SLGeneDataTraits
@@ -117,22 +121,25 @@ class SLGeneDataTraits
 	static label(d, gene) {
 		return "gene: " + gene + "\n" +
 			"screen: " + d.screen + "\n" +
-			"sense ratio: " + d3.format(".2f")(d.mi) + "\n" +
-			"replicate: " + d.replicate;
+			"sense ratio: " + d3.format(".2f")(d.sense_ratio);
 	}
 
-	static clickGene(screen, gene, replicate) {
-		window.open(`screen?screen=${screen}&gene=${gene}&replicate=${replicate}`, "_blank");
+	static clickGene(screen, gene) {
+		window.open(`screen?screen=${screen}&gene=${gene}`, "_blank");
 	}
 
 	static preProcessData(data) {
 		data.forEach(d => {
-			d.y = d.mi;
+			d.y = d.sense_ratio;
 		});
 	}
 
 	static getDomain() {
 		return [0, 1];
+	}
+
+	static getColor(d) {
+		return (d.consistent && d.odds_ratio < 0.7) ? positive : neutral;
 	}
 }
 
@@ -241,6 +248,8 @@ export class DotPlot extends Plot {
 	recreateSVG() {
 		super.recreateSVG("dotplot show-gridlines");
 
+		this.gridWidth = Math.floor(this.width / Screens.instance().count);
+
 		// this.margin.left += 25;
 		this.margin.top += 2 * radius;
 		// this.width -= 25;
@@ -293,11 +302,9 @@ export class DotPlot extends Plot {
 			.on("mouseout", () => tooltip.hide())
 			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
 			.merge(dots)
-			.attr("cx", d => this.x(xScale(d.screen)))
+			.attr("cx", d => this.x(xScale(d.screen)) + this.gridWidth / 2)
 			.attr("cy", d => this.y(d.y))
-			.style("fill", d => {
-				return d.fcpv >= pvCutOff ? neutral : d.mi < 1 ? negative : positive;
-			});
+			.style("fill", d => Plot.getColor(d));
 	}
 	
 	rearrange() {
@@ -409,9 +416,11 @@ function selectPlotType(type) {
 }
 
 window.addEventListener('load', () => {
-	document.getElementById("heatmap").onchange = () => selectPlotType('heatmap');
-	document.getElementById("dotplot").onchange = () => selectPlotType('dotplot');
-	// document.getElementById("fishtail").onchange = () => selectPlotType('fishtail');
+	const hb = document.getElementById("heatmap");
+	if (hb) hb.onchange = () => selectPlotType('heatmap');
+
+	const db = document.getElementById("dotplot");
+	if (db) db.onchange = () => selectPlotType('dotplot');
 
 	// labels
 	LabelPlot.init(d3.select("td.label-container"));
