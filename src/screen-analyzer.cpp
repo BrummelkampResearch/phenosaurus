@@ -894,11 +894,6 @@ Command should be either:
 	if (vm.count("context"))
 		context_name = vm["context"].as<std::string>();
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
-	{
-		return createServer(docroot, screenDir, cacheDir, secret, context_name);
-	}, "screen-analyzer");
-
 	std::string user = "www-data";
 	if (vm.count("user") != 0)
 		user = vm["user"].as<std::string>();
@@ -910,6 +905,25 @@ Command should be either:
 	uint16_t port = 10338;
 	if (vm.count("port"))
 		port = vm["port"].as<uint16_t>();
+
+	std::string access_log = "/var/log/screen-analyzer/access";
+	std::string error_log = "/var/log/screen-analyzer/error";
+
+	if (not context_name.empty())
+	{
+		access_log += "-" + context_name + ".log";
+		error_log += "-" + context_name + ".log";
+	}
+	else
+	{
+		access_log += ".log";
+		error_log += ".log";
+	}
+
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
+	{
+		return createServer(docroot, screenDir, cacheDir, secret, context_name);
+	}, "/var/run/screen-analyzer", access_log, error_log);
 
 	if (command == "start")
 	{

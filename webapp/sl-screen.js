@@ -594,7 +594,7 @@ window.addEventListener('load', () => {
 	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
 	const selectedControl = params["control"] || 'ControlData-HAP1';
-	const selectedReplicate = params["replicate"] || 1;
+	const selectedReplicate = params["replicate"] || 0;
 
 	const screenList = document.getElementById("screenList");
 
