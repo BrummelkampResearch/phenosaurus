@@ -17,7 +17,7 @@
 #include <zeep/streambuf.hpp>
 
 #include "utils.hpp"
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 
 const auto kProcessorCount = std::thread::hardware_concurrency();
 

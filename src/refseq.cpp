@@ -9,7 +9,7 @@
 #include <boost/program_options.hpp>
 #include <zeep/value-serializer.hpp>
 
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 #include "refseq.hpp"
 
 namespace po = boost::program_options;

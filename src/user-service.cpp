@@ -12,7 +12,7 @@
 #include <mailio/smtp.hpp>
 #include <mailio/message.hpp>
 
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 
 #include "user-service.hpp"
 #include "screen-service.hpp"
