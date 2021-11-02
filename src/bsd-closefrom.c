@@ -16,8 +16,6 @@
 
 //#include "includes.hpp"
 
-#include "config.hpp"
-
 #ifndef HAVE_CLOSEFROM
 
 #include <sys/types.h>

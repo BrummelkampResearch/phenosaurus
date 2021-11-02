@@ -1,7 +1,5 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
-#include "config.hpp"
-
 #include <numeric>
 #include <filesystem>
 
@@ -10,7 +8,7 @@
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 
 #include "screen-qc.hpp"
 #include "screen-service.hpp"

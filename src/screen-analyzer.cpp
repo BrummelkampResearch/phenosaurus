@@ -1,7 +1,5 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
-#include "config.hpp"
-
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -66,7 +64,7 @@ int usage()
 
 po::options_description get_config_options()
 {
-	po::options_description config(PACKAGE_NAME R"( config file options)");
+	po::options_description config("screen-analyzer config file options");
 	
 	config.add_options()
 		( "bowtie",				po::value<std::string>(),	"Bowtie executable")
@@ -118,7 +116,7 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 	}
 
 	visible.add_options()
-		("config", po::value<std::string>(),	"Name of config file to use, default is " PACKAGE_NAME ".conf located in current of home directory")
+		("config", po::value<std::string>(),	"Name of config file to use, default is " "screen-analyzer" ".conf located in current of home directory")
 		("verbose,v",							"Verbose output")
 		;
 
@@ -138,9 +136,9 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 	po::variables_map vm;
 	po::store(po::command_line_parser(argc, argv).options(cmdline_options).positional(p).run(), vm);
 
-	fs::path configFile = PACKAGE_NAME ".conf";
+	fs::path configFile = "screen-analyzer" ".conf";
 	if (not fs::exists(configFile) and getenv("HOME") != nullptr)
-		configFile = fs::path(getenv("HOME")) / ".config" / PACKAGE_NAME ".conf";
+		configFile = fs::path(getenv("HOME")) / ".config" / "screen-analyzer" ".conf";
 	
 	if (vm.count("config") != 0)
 	{
@@ -203,7 +201,7 @@ int main_map(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( map screen-name assembly [options])",
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( map screen-name assembly [options])",
 		{
 			{ "screen-name",	po::value<std::string>(),		"The screen to map" },
 			{ "bowtie-index",	po::value<std::string>(),		"Bowtie index filename stem for the assembly" },
@@ -518,7 +516,7 @@ or txEnd to have the start at the cdsEnd e.g.
 // {
 // 	int result = 0;
 
-// 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
+// 	auto vm = load_options(argc, argv, "screen-analyzer" R"( analyze screen-name assembly [options])",
 // 		{
 // 			{ "screen-name",	po::value<std::string>(),					"The screen to analyze" },
 
@@ -704,7 +702,7 @@ int main_analyze(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( analyze screen-name assembly [options])",
 		{
 			{ "screen-name",	po::value<std::string>(),		"The screen to analyze" },
 
@@ -790,7 +788,7 @@ int main_server(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( command [options])",
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( command [options])",
 		{
 			{ "command", 		po::value<std::string>(),		"Server command" },
 		}, { "smtp-server", "smtp-port" }, { "command" });
@@ -896,11 +894,6 @@ Command should be either:
 	if (vm.count("context"))
 		context_name = vm["context"].as<std::string>();
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
-	{
-		return createServer(docroot, screenDir, cacheDir, secret, context_name);
-	}, "screen-analyzer");
-
 	std::string user = "www-data";
 	if (vm.count("user") != 0)
 		user = vm["user"].as<std::string>();
@@ -912,6 +905,25 @@ Command should be either:
 	uint16_t port = 10338;
 	if (vm.count("port"))
 		port = vm["port"].as<uint16_t>();
+
+	std::string access_log = "/var/log/screen-analyzer/access";
+	std::string error_log = "/var/log/screen-analyzer/error";
+
+	if (not context_name.empty())
+	{
+		access_log += "-" + context_name + ".log";
+		error_log += "-" + context_name + ".log";
+	}
+	else
+	{
+		access_log += ".log";
+		error_log += ".log";
+	}
+
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
+	{
+		return createServer(docroot, screenDir, cacheDir, secret, context_name);
+	}, "/var/run/screen-analyzer", access_log, error_log);
 
 	if (command == "start")
 	{
@@ -942,7 +954,7 @@ Command should be either:
 
 int main_refseq(int argc, char* const argv[])
 {
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( refseq [options])",
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( refseq [options])",
 		{
 			{ "mode",		po::value<std::string>()->default_value("longest-transcript"),	"Mode, should be either collapse, longest-transcript or longest-exon" },
 			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
@@ -1027,7 +1039,7 @@ int main_dump(int argc, char* const argv[])
 {
 	int result = 0;
 
-	auto vm = load_options(argc, argv, PACKAGE_NAME R"( dump screen-name assembly file [options])",
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( dump screen-name assembly file [options])",
 		{
 			{ "screen-name",	po::value<std::string>(),	"The screen to dump" },
 			{ "file",			po::value<std::string>(),	"The file to dump" }

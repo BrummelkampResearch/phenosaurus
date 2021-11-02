@@ -1,7 +1,5 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
-#include "config.hpp"
-
 #include <pwd.h>
 
 #include <filesystem>
@@ -96,7 +94,7 @@ std::string askPasswordSimple()
 // {
 // 	int result = 0;
 
-// 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( create screen-name --type <screen-type> [options])",
+// 	auto vm = load_options(argc, argv, "screen-analyzer" R"( create screen-name --type <screen-type> [options])",
 // 		{
 // 			{ "scientist", po::value<std::string>(),		"The scientist who did the experiment" },
 
@@ -236,7 +234,7 @@ std::string askPasswordSimple()
 // {
 // 	int result = 0;
 
-// 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( map screen-name assembly [options])",
+// 	auto vm = load_options(argc, argv, "screen-analyzer" R"( map screen-name assembly [options])",
 // 		{
 // 			{ "bowtie-index", po::value<std::string>(),	"Bowtie index filename stem for the assembly" },
 // 			{ "force",	new po::untyped_value(true),	"By default a screen is only mapped if it was not mapped already, use this flag to force creating a new mapping." }
@@ -516,7 +514,7 @@ std::string askPasswordSimple()
 // {
 // 	int result = 0;
 
-// 	auto vm = load_options(argc, argv, PACKAGE_NAME R"( analyze screen-name assembly [options])",
+// 	auto vm = load_options(argc, argv, "screen-analyzer" R"( analyze screen-name assembly [options])",
 // 		{
 // 			{ "mode",		po::value<std::string>()->default_value("longest-exon"),	"Mode, should be either collapse, longest-exon or longest-transcript" },
 // 			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },

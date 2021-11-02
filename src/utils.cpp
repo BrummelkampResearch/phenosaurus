@@ -1,7 +1,5 @@
 // copyright 2020 M.L. Hekkelman, NKI/AVL
 
-#include "config.hpp"
-
 #include <pwd.h>
 #include <termios.h>
 #include <sys/ioctl.h>
@@ -17,7 +15,7 @@
 #include <zeep/streambuf.hpp>
 
 #include "utils.hpp"
-#include "mrsrc.h"
+#include "mrsrc.hpp"
 
 const auto kProcessorCount = std::thread::hardware_concurrency();
 
