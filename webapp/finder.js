@@ -131,6 +131,7 @@ class SLGeneDataTraits
 	static preProcessData(data) {
 		data.forEach(d => {
 			d.y = d.sense_ratio;
+			d.yl = d.sense_ratio_list;
 		});
 	}
 
@@ -259,7 +260,7 @@ export class DotPlot extends Plot {
 
 		this.x = d3.scaleLinear()
 			.domain([0, Screens.instance().count])
-			.range([0, this.width]);
+			.range([0, this.gridWidth * Screens.instance().count]);
 
 		this.y = d3.scaleLinear()
 			.range([this.height, 0]);
@@ -275,6 +276,17 @@ export class DotPlot extends Plot {
 
 		this.gY = this.svg.append("g")
 			.attr("class", "axis axis--y");
+
+		if (screenType === 'sl') {
+			const xScale = Screens.instance().scale();
+			this.controlLine = this.svg.append("rect")
+				.attr("class", "control")
+				.attr("x", this.x(xScale('ControlData-HAP1')))
+				.attr("y", 0)
+				.attr("width", this.gridWidth)
+				.attr("height", this.height)
+				.attr("opacity", 0.1);
+		}
 	}
 
 	processData(data, gene) {
@@ -288,9 +300,29 @@ export class DotPlot extends Plot {
 
 		this.gY.call(yAxis);
 
-		const dots = this.svg.selectAll("circle.dot")
-			.data(data, d => d.screen);
+		let dots;
 
+		if (typeof data[0].yl !== 'undefined') {
+			const d2 = [];
+
+			data.forEach(d => {
+				let r = 1;
+				d.yl.forEach(dl => {
+					const dd = { ...d };
+					dd.y = dl;
+					dd.repl = r++;
+					d2.push(dd);
+				})
+			});
+
+			dots = this.svg.selectAll("circle.dot")
+				.data(d2, d => `${d.screen}-${d.repl}`);
+		}
+		else {
+			dots = this.svg.selectAll("circle.dot")
+				.data(data, d => d.screen);
+		}
+	
 		dots.exit()
 			.remove();
 
@@ -313,7 +345,12 @@ export class DotPlot extends Plot {
 		this.svg.selectAll(".dot")
 			.transition()
 			.duration(500)
-			.attr("cx", d => this.x(xScale(d.screen)));
+			.attr("cx", d => this.x(xScale(d.screen)) + this.gridWidth / 2);
+		
+		this.svg.selectAll("rect.control")
+			.transition()
+			.duration(500)
+			.attr("x", this.x(xScale("ControlData-HAP1")));
 	}
 }
 

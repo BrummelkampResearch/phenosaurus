@@ -241,6 +241,7 @@ struct sl_gene_finder_data_point
 {
 	std::string screen;
 	float senseRatio;
+	std::vector<float> senseRatioPerReplicate;
 	bool consistent;
 	float oddsRatio;
 
@@ -249,6 +250,7 @@ struct sl_gene_finder_data_point
 	{
 		ar & zeep::make_nvp("screen", screen)
 		   & zeep::make_nvp("sense_ratio", senseRatio)
+		   & zeep::make_nvp("sense_ratio_list", senseRatioPerReplicate)
 		   & zeep::make_nvp("odds_ratio", oddsRatio)
 		   & zeep::make_nvp("consistent", consistent);
 	}

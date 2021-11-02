@@ -1043,6 +1043,8 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 			{
 				auto &nc = r_data[j][ti];
 
+				p.senseRatioPerReplicate.push_back((1.0f + nc.sense) / (2 + nc.sense + nc.antisense));
+
 				s_g += nc.sense;
 				a_g += nc.antisense;
 
