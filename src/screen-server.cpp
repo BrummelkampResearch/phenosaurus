@@ -134,7 +134,8 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 	auto result = dp->data_points(screen);
 	if (result.empty() and mType == ScreenType::IntracellularPhenotypeActivation)
 	{
-		dp = screen_service::instance().get_screen_data(ScreenType::IntracellularPhenotype, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+		dp = screen_service::instance().get_screen_data(ScreenType::IntracellularPhenotype, assembly, 50,
+			Mode::Collapse, true, "txStart", "cdsEnd", Direction::Sense);
 		result = dp->data_points(screen);
 	}
 
