@@ -130,6 +130,12 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 
 	// return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+	if (not dp and mType == ScreenType::IntracellularPhenotypeActivation)
+		dp = screen_service::instance().get_screen_data(ScreenType::IntracellularPhenotype, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+
+	if (not dp)
+		throw zh::not_found;
+
 	return dp->data_points(screen);
 }
 
@@ -299,18 +305,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 	
 	void init_scope(zh::scope& scope)
 	{
-		auto credentials = get_credentials();
-
-		using json = zeep::json::element;
-		json screens;
-
-		auto s = has_role("ADMIN") ?
-			screen_service::instance().get_all_screens_for_type(mType) :
-			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
-
-		// s.erase(std::remove_if(s.begin(), s.end(), [](screen_info& si) { return si.ignore; }), s.end());
-
-		std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
+		auto sort_screen = [](auto& sa, auto& sb) -> bool
 		{
 			std::string& a = sa.name;
 			std::string& b = sb.name;
@@ -326,10 +321,36 @@ class ScreenHtmlControllerBase : public zh::html_controller
 			else
 				result = std::tolower(*r.first) < std::tolower(*r.second);
 			return result;
-		});
+		};
+
+		auto credentials = get_credentials();
+
+		using json = zeep::json::element;
+		json screens;
+
+		auto s = has_role("ADMIN") ?
+			screen_service::instance().get_all_screens_for_type(mType) :
+			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
+
+		std::sort(s.begin(), s.end(), sort_screen);
 
 		to_element(screens, s);
 		scope.put("screens", screens);
+
+		if (mType == ScreenType::IntracellularPhenotypeActivation)
+		{
+			// let's make abdel happy
+
+			s = has_role("ADMIN") ?
+				screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype) :
+				screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), ScreenType::IntracellularPhenotype);
+
+			std::sort(s.begin(), s.end(), sort_screen);
+
+			json paScreens;
+			to_element(paScreens, s);
+			scope.put("pa-screens", paScreens);
+		}
 
 		json screenInfo;
 		for (auto& si: s)

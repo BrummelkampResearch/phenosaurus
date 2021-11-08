@@ -78,6 +78,8 @@
 							<option value=""></option>
 							<option z2:each="screen: ${screens}" z2:attr="data-screen=${screen.name}"
 								z2:text="${screen.name}"></option>
+							<option z2:each="screen: ${pa-screens}" z2:attr="data-screen=${screen.name}"
+								z2:text="${screen.name}"></option>
 						</select>
 						<div class="plot-container"><svg width="100%" height="100%" id="plot-2"></svg></div>
 					</div>
