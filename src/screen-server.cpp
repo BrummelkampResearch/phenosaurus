@@ -130,13 +130,15 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 
 	// return screen_service::instance().get_data_points(mType, screen, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
-	if (not dp and mType == ScreenType::IntracellularPhenotypeActivation)
+
+	auto result = dp->data_points(screen);
+	if (result.empty() and mType == ScreenType::IntracellularPhenotypeActivation)
+	{
 		dp = screen_service::instance().get_screen_data(ScreenType::IntracellularPhenotype, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
+		result = dp->data_points(screen);
+	}
 
-	if (not dp)
-		throw zh::not_found;
-
-	return dp->data_points(screen);
+	return result;
 }
 
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,

@@ -177,7 +177,7 @@ window.addEventListener('load', () => {
 	const svg2 = d3.select("#plot-2");
 	const plot2 = new ScreenPlotCompareSBSSecondary(svg2, plot1);
 
-	$("select").chosen().on('change', () => {
+	$("select").chosen().on('change', function() {
 		const selected = this.selectedOptions;
 		if (selected.length == 1) {
 			const screen = selected.item(0).dataset.screen;
