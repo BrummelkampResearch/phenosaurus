@@ -380,9 +380,10 @@ export class LabelPlot extends Plot {
 	}
 
 	rearrange_() {
+		const gridWidth = Math.floor(this.width / Screens.instance().count);
 		this.x = d3.scaleBand()
 			.domain([...Screens.instance()])
-			.range([0, this.width]);
+			.range([0, gridWidth * Screens.instance().count]);
 
 		const xAxis = d3.axisBottom(this.x);
 		
