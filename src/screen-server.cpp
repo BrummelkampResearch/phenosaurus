@@ -344,14 +344,14 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		{
 			// let's make abdel happy
 
-			s = has_role("ADMIN") ?
+			auto s2 = has_role("ADMIN") ?
 				screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype) :
 				screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), ScreenType::IntracellularPhenotype);
 
-			std::sort(s.begin(), s.end(), sort_screen);
+			std::sort(s2.begin(), s2.end(), sort_screen);
 
 			json paScreens;
-			to_element(paScreens, s);
+			to_element(paScreens, s2);
 			scope.put("pa-screens", paScreens);
 		}
 
