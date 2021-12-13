@@ -10,7 +10,7 @@ export default class DotContextMenu extends ContextMenu {
 
 		this.plot = plot;
 		this.svg = plot.svg.node();
-        this.uniqueScaleIndex = 1;
+        this.uniqueScaleIndex = 0;
 	}
 
 	clickIsInsideTarget(e) {
@@ -74,11 +74,11 @@ export default class DotContextMenu extends ContextMenu {
 					switch (this.uniqueScaleIndex)
 					{
 						case 0:
-							uniqueScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
-							break;
-	
-						case 1:
 							uniqueScale = d3.scaleSequential(d3.interpolatePiYG).domain([0, 9]);
+							break;
+							
+						case 1:
+							uniqueScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
 							break;
 	
 						case 2:

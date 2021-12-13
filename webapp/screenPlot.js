@@ -23,7 +23,7 @@ export default class ScreenPlot {
 		this.patterns = new Set();
 		this.presentationMode = false;
 		this.showAllLabels = false;
-		this.uniqueScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
+		this.uniqueScale = d3.scaleSequential(d3.interpolatePiYG).domain([0, 9]);
 
 		this.svg.node().addEventListener('wheel', (evt) => {
 			evt.stopPropagation();
@@ -197,7 +197,7 @@ export default class ScreenPlot {
 	}
 
 	recolorGenes(uniqueScale) {
-		this.uniqueScale = uniqueScale || d3.scaleSequential(d3.interpolateViridis).domain([0, 9]);
+		this.uniqueScale = uniqueScale || d3.scaleSequential(d3.interpolatePiYG).domain([0, 9]);
 
 		[...this.screens.keys()].forEach(sn => {
 			const screenPlotData = this.plotData.select(`#plot-${sn}`);
