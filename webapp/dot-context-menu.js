@@ -10,7 +10,7 @@ export default class DotContextMenu extends ContextMenu {
 
 		this.plot = plot;
 		this.svg = plot.svg.node();
-        this.uniqueScaleIndex = 0;
+        this.uniqueScaleIndex = 1;
 	}
 
 	clickIsInsideTarget(e) {
