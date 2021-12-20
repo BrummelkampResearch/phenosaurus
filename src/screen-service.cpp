@@ -210,7 +210,7 @@ std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& 
 	return result;
 }
 
-std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string& screen, float pvCutOff)
+std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string& screen, float pvCutOff, bool singlesided)
 {
 	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
 	if (si == m_screens.end() or si->filled == false)
@@ -222,7 +222,8 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 
 	std::vector<gene_uniqueness> result;
 
-	double r = std::pow(m_screens.size(), 0.001) - 1;
+	// double r = std::pow(m_screens.size(), 0.001) - 1;
+	double r = std::pow(std::count_if(m_screens.begin(), m_screens.end(), [](auto const &s) { return not s.ignore; }), 0.001) - 1;
 
 	for (size_t ti = 0; ti < N; ++ti)
 	{
@@ -238,8 +239,14 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 				continue;
 
 			auto& sp = m_data[si * N + ti];
-			if (sp.fcpv <= pvCutOff and (dp.mi < 1) == (sp.mi < 1))
-				++c;
+
+			if (sp.fcpv > pvCutOff)
+				continue;
+
+			if (singlesided and (dp.mi < 1) != (sp.mi < 1))
+				continue;
+
+			++c;
 		}
 
 		double cd = std::pow(c, 0.001) - 1;

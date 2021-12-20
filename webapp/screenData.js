@@ -1,13 +1,12 @@
 import * as d3 from "d3";
 import Dot from "./dot";
 
-/* global context_name */
-
 export default class ScreenData {
 
 	constructor(screen) {
 		this.screen = screen;
-		this.geneColours = null;
+		this.uniqueColours = null;
+		this.totallyUniqueColours = null;
 	}
 
 	load(options) {
@@ -74,7 +73,19 @@ export default class ScreenData {
 
 	loadUnique(options) {
 		return new Promise((resolve, reject) => {
-			if (this.geneColours != null) {
+
+			const totallyUnique = options.has('single-sided') && options.get('single-sided') === "false";
+
+			if (totallyUnique && this.totallyUniqueColours != null)
+			{
+				this.data.forEach(d => d.unique = this.totallyUniqueColours.get(d.gene));
+				resolve(null);
+				return;
+			}
+
+			if (! totallyUnique && this.uniqueColours != null)
+			{
+				this.data.forEach(d => d.unique = this.uniqueColours.get(d.gene));
 				resolve(null);
 				return;
 			}
@@ -95,8 +106,14 @@ export default class ScreenData {
 				if (data.error != null)
 					throw data.error;
 
-				this.geneColours = new Map(data.map(d => [d.gene, d.colour]));
-				this.data.forEach(d => d.unique = this.geneColours.get(d.gene));
+				const mappedData = new Map(data.map(d => [d.gene, d.colour]));
+
+				if (totallyUnique)
+					this.totallyUniqueColours = mappedData;
+				else
+					this.uniqueColours = mappedData;
+
+				this.data.forEach(d => d.unique = mappedData.get(d.gene));
 				resolve(null);
 			}).catch(err => {
 				return reject(err);

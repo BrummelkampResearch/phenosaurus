@@ -32,10 +32,11 @@ class ScreenPlotRegular extends ScreenPlot {
 	add(data, screenNr) {
 		const result = super.add(data, screenNr);
 
-		if (this.graphType === 'unique')
+		if (this.graphType === 'unique' || this.graphType === 'total-unique')
 		{
 			const options = this.getOptions();
 			options.append("pv-cut-off", pvCutOff);
+			options.append("single-sided", this.graphType === 'unique')
 			data.loadUnique(options)
 				.then(() => {
 					this.recolorGenes(this.uniqueScale);
@@ -62,6 +63,7 @@ class ScreenPlotRegular extends ScreenPlot {
 						case 'low':
 							return d.rank <= /*this.rankRange[0] +*/ cutOff ? low : (d.fcpv >= pvCutOff ? neutral : notHighLow);
 						case 'unique':
+						case 'total-unique':
 							return d.fcpv >= pvCutOff ? neutral : this.uniqueScale(d.unique);
 					}
 				})
@@ -81,11 +83,12 @@ class ScreenPlotRegular extends ScreenPlot {
 	async selectColouring(type) {
 		this.graphType = type;
 
-		if (type === "unique") {
+		if (type === "unique" || type === "total-unique") {
 			const data = this.screens.values().next().value;
 
 			const options = this.getOptions();
 			options.append("pv-cut-off", pvCutOff);
+			options.append("single-sided", type === "unique");
 			await data.loadUnique(options);
 		}
 

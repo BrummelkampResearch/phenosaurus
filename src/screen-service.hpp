@@ -170,7 +170,7 @@ class ip_screen_data_cache : public screen_data_cache
 	}
 
 	std::vector<ip_data_point> data_points(const std::string &screen);
-	std::vector<gene_uniqueness> uniqueness(const std::string &screen, float pvCutOff);
+	std::vector<gene_uniqueness> uniqueness(const std::string &screen, float pvCutOff, bool singlesided);
 
 	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene, const std::set<std::string> &allowedScreens);
 	std::vector<similar_data_point> find_similar(const std::string &gene, float pvCutOff, float zscoreCutOff);

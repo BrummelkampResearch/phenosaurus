@@ -22,10 +22,11 @@ const colorMap = new class ScreenColorMapSBS {
 			data.data
 				.filter(d => d.fcpv <= pvCutOff)
 				.map(d => [d.gene, d]));
-		if (this.colorType === 'unique')
+		if (this.colorType === 'unique' || this.colorType === 'total-unique')
 		{
 			const options = geneSelectionEditor.getOptions();
 			options.append("pv-cut-off", pvCutOff);
+			options.append("single-sided", this.colorType === 'unique');
 			await data.loadUnique(options);
 		}
 	}
@@ -43,6 +44,7 @@ const colorMap = new class ScreenColorMapSBS {
 							return this.miScale(d.log2mi);
 
 						case "unique":
+						case 'total-unique':
 							return this.uniqueScale(d.unique);
 					}
 				})
@@ -77,7 +79,8 @@ const colorMap = new class ScreenColorMapSBS {
 				}
 
 				case "unique":
-				{
+				case "total-unique":
+						{
 					const u = d3.extent(g.map(d => d.unique));
 					return plot.getPattern(this.uniqueScale(u[0]), this.uniqueScale(u[1]));
 				}
@@ -104,10 +107,12 @@ const colorMap = new class ScreenColorMapSBS {
 				this.colorType = 'gradient';
 				break;
 			case 'unique':
+			case 'total-unique':
 			{
 				this.colorType = 'unique';
 				const options = geneSelectionEditor.getOptions();
 				options.append("pv-cut-off", pvCutOff);
+				options.append("single-sided", colorType === 'unique');
 				await this.data.loadUnique(options);
 				break;
 			}

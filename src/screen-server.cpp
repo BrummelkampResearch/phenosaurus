@@ -85,7 +85,7 @@ class IPScreenRestController : public zh::rest_controller
 			"assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cutoff", "minPts", "eps", "NNs");
 
 		map_post_request("unique/{id}", &IPScreenRestController::uniqueness,
-			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off");
+			"id", "assembly", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "pv-cut-off", "single-sided");
 
 		map_post_request("gene-info/{id}", &IPScreenRestController::geneInfo, "id", "screen", "assembly", "mode", "cut-overlap", "gene-start", "gene-end");
 
@@ -111,7 +111,7 @@ class IPScreenRestController : public zh::rest_controller
 
 	std::vector<gene_uniqueness> uniqueness(const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
-		Direction direction, float pvCutOff);
+		Direction direction, float pvCutOff, bool singlesided);
 
 	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly,
 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
@@ -143,13 +143,14 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 }
 
 std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen, const std::string& assembly,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff)
+	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff,
+	bool singlesided)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
 
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, mode, cutOverlap, geneStart, geneEnd, direction);
-	return dp->uniqueness(screen, pvCutOff);
+	return dp->uniqueness(screen, pvCutOff, singlesided);
 }
 
 std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene, const std::string& assembly,
