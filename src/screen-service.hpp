@@ -81,13 +81,15 @@ struct ip_data_point
 struct gene_uniqueness
 {
 	std::string gene;
-	int color;
+	int colour;
+	size_t count;
 
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
 		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("colour", color);
+		   & zeep::make_nvp("colour", colour)
+		   & zeep::make_nvp("count", count);
 	}
 };
 

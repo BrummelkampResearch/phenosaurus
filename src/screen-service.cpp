@@ -105,25 +105,40 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 	auto screens = screen_service::instance().get_all_screens_for_type(type);
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
 
-	for (auto& screen: screens)
-		m_screens.push_back({ screen.name, false, screen.ignore });
-
+	uint32_t data_offset = 0;
 	size_t N = m_transcripts.size();
-	size_t M = m_screens.size();
+	size_t M = screens.size();
 	
+	for (auto& screen: screens)
+	{
+		m_screens.push_back({ screen.name, false, screen.ignore, 0, data_offset });
+		data_offset += N;
+	}
+
 	m_data = new data_point[N * M];
 	memset(m_data, 0, N * M * sizeof(data_point));
 
 	// for (size_t si = 0; si < m_screens.size(); ++si)
-	parallel_for(m_screens.size(), [&](size_t si)
+	for (auto &screen : m_screens)
 	{
 		try
 		{
-			auto sd = m_data + si * N;
-
-			fs::path screenDir = screenDataDir / m_screens[si].name;
+			fs::path screenDir = screenDataDir / screen.name;
 			auto data = IPPAScreenData::load(screenDir);
-			
+
+			auto d_data = m_data + screen.data_offset;
+
+			auto cf = get_cache_file_path(screen.name);
+			if (fs::exists(cf) and fs::file_size(cf) == N * sizeof(data_point))
+			{
+				std::ifstream fcf(cf, std::ios::binary);
+
+				fcf.read(reinterpret_cast<char*>(d_data), N * sizeof(data_point));
+
+				screen.filled = true;
+				continue;
+			}
+
 			std::vector<Insertions> lowInsertions, highInsertions;
 
 			data->analyze(m_assembly, m_trim_length, m_transcripts, lowInsertions, highInsertions);
@@ -132,7 +147,7 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 
 			for (size_t ti = 0; ti < N; ++ti)
 			{
-				auto& d = sd[ti];
+				auto& d = d_data[ti];
 				auto& p = dp[ti];
 
 				d.pv = p.pv;
@@ -142,13 +157,23 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 				d.high = p.high;
 			}
 
-			m_screens[si].filled = true;
+			screen.filled = true;
+
+			if (not fs::exists(screen_service::instance().get_screen_cache_dir()))
+				continue;
+
+			if (fs::exists(cf))
+				fs::remove(cf);
+			
+			std::ofstream fcf(cf, std::ios::binary);
+
+			fcf.write(reinterpret_cast<char*>(d_data), N * sizeof(data_point));
 		}
 		catch (const std::exception& ex)
 		{
 			std::cerr << ex.what() << std::endl;
 		}
-	});
+	}
 }
 
 ip_screen_data_cache::~ip_screen_data_cache()
@@ -223,7 +248,8 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 	std::vector<gene_uniqueness> result;
 
 	// double r = std::pow(m_screens.size(), 0.001) - 1;
-	double r = std::pow(std::count_if(m_screens.begin(), m_screens.end(), [](auto const &s) { return not s.ignore; }), 0.001) - 1;
+	size_t screenCount = std::count_if(m_screens.begin(), m_screens.end(), [](auto const &s) { return not s.ignore; });
+	size_t minCount = screenCount, maxCount = 0;
 
 	for (size_t ti = 0; ti < N; ++ti)
 	{
@@ -232,7 +258,7 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 		if (dp.fcpv > pvCutOff)
 			continue;
 		
-		size_t c = 0;
+		size_t geneCount = 0;
 		for (size_t si = 0; si < m_screens.size(); ++si)
 		{
 			if (m_screens[si].ignore)
@@ -246,14 +272,24 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 			if (singlesided and (dp.mi < 1) != (sp.mi < 1))
 				continue;
 
-			++c;
+			++geneCount;
 		}
 
+		if (minCount > geneCount)
+			minCount = geneCount;
+		
+		if (maxCount < geneCount)
+			maxCount = geneCount;
+
+		result.push_back(gene_uniqueness{m_transcripts[ti].geneName, 0, geneCount});
+	}
+
+	double r = std::pow(maxCount - minCount, 0.001) - 1;
+	for (auto &unique : result)
+	{
+		auto c = unique.count - minCount;
 		double cd = std::pow(c, 0.001) - 1;
-
-		int colour = static_cast<int>(std::ceil(10 * cd / r));
-
-		result.push_back(gene_uniqueness{m_transcripts[ti].geneName, colour});
+		unique.colour = static_cast<int>(std::ceil(10 * cd / r));
 	}
 
 	return result;
