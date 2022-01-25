@@ -17,6 +17,8 @@
 #include "db-connection.hpp"
 #include "user-service.hpp"
 
+#include "revision.hpp"
+
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -161,7 +163,7 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 
 	if (vm.count("version"))
 	{
-		showVersionInfo();
+		write_version_string(std::cout, vm.count("verbose"));
 		exit(0);
 	}
 
@@ -1154,7 +1156,7 @@ int main(int argc, char* const argv[])
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
 			usage();
 		else if (command == "version" or command == "-v" or command == "--version")
-			showVersionInfo();
+			write_version_string(std::cout, false);
 		else
 			result = usage();
 	}

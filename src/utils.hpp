@@ -11,7 +11,4 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f);
 // --------------------------------------------------------------------
 
 int get_terminal_width();
-void showVersionInfo();
 std::string get_user_name();
-
-
