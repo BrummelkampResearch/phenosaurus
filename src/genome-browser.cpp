@@ -35,7 +35,6 @@ void genome_browser_html_controller::jbrowse_conf_json(const zeep::http::request
 	reply.set_content(zeep::json::element::object());
 }
 
-
 // --------------------------------------------------------------------
 
 genome_browser_rest_controller::genome_browser_rest_controller()

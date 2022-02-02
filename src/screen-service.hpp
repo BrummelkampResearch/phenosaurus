@@ -315,7 +315,6 @@ class screen_service
 	static screen_service &instance();
 
 	const std::filesystem::path &get_screen_data_dir() const { return m_screen_data_dir; }
-	const std::filesystem::path &get_screen_cache_dir() const { return m_screen_cache_dir; }
 
 	std::vector<screen_info> get_all_screens() const;
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;

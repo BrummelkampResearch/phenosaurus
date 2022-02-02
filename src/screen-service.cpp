@@ -159,9 +159,6 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 
 			screen.filled = true;
 
-			if (not fs::exists(screen_service::instance().get_screen_cache_dir()))
-				continue;
-
 			if (fs::exists(cf))
 				fs::remove(cf);
 			
@@ -184,16 +181,14 @@ ip_screen_data_cache::~ip_screen_data_cache()
 fs::path ip_screen_data_cache::get_cache_file_path(const std::string &screen_name) const
 {
 	std::stringstream ss;
-	ss << screen_name
-	   << '-' << m_assembly
-	   << '-' << std::to_string(m_trim_length)
+	ss << "cache"
 	   << '-' << zeep::value_serializer<Mode>::to_string(m_mode)
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
 	   << '-' << m_geneEnd
 	   << '-' << zeep::value_serializer<Direction>::to_string(m_direction);
 
-	return screen_service::instance().get_screen_cache_dir() / ss.str();
+	return screen_service::instance().get_screen_data_dir() / screen_name / m_assembly / std::to_string(m_trim_length) / ss.str();
 }
 
 std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& screen)
@@ -873,9 +868,6 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 			screen.filled = true;
 
-			if (not fs::exists(screen_service::instance().get_screen_cache_dir()))
-				continue;
-
 			if (fs::exists(cf))
 				fs::remove(cf);
 			
@@ -900,15 +892,13 @@ sl_screen_data_cache::~sl_screen_data_cache()
 fs::path sl_screen_data_cache::get_cache_file_path(const std::string &screen_name) const
 {
 	std::stringstream ss;
-	ss << screen_name
-	   << '-' << m_assembly
-	   << '-' << std::to_string(m_trim_length)
+	ss << "cache"
 	   << '-' << zeep::value_serializer<Mode>::to_string(m_mode)
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
 	   << '-' << m_geneEnd;
 
-	return screen_service::instance().get_screen_cache_dir() / ss.str();
+	return screen_service::instance().get_screen_data_dir() / screen_name / m_assembly / std::to_string(m_trim_length) / ss.str();
 }
 
 std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &screen)
@@ -1446,50 +1436,6 @@ std::shared_ptr<sl_screen_data_cache> screen_service::get_screen_data(const std:
 	return result;
 }
 
-// std::vector<ip_data_point> screen_service::get_data_points(const ScreenType type, const std::string& screen, const std::string& assembly, short trim_length,
-// 		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
-// {
-// 	auto i = std::find_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
-// 		std::bind(&ip_screen_data_cache::is_for, std::placeholders::_1, type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd, direction));
-
-// 	if (i != m_ip_data_cache.end() and (*i)->contains_data_for_screen(screen) and (*i)->is_up_to_date())
-// 		return (*i)->data_points(screen);
-
-// 	fs::path screenDir = m_screen_data_dir / screen;
-
-// 	if (not fs::is_directory(screenDir))
-// 		throw std::runtime_error("No such screen: " + screen);
-
-// 	auto data = IPPAScreenData::load(screenDir);
-	
-// 	std::vector<ip_data_point> result;
-
-// 	auto& rank = gene_ranking::instance();
-
-// 	for (auto& dp: data->dataPoints(assembly, mode, cutOverlap, geneStart, geneEnd, direction))
-// 	{
-// 		if (dp.low == 0 and dp.high == 0)
-// 			continue;
-
-// 		ip_data_point p{};
-
-// 		p.gene = dp.gene;
-// 		p.pv = dp.pv;
-// 		p.fcpv = dp.fcpv;
-// 		p.mi = dp.mi;
-// 		p.high = dp.high;
-// 		p.low = dp.low;
-
-// 		auto r = rank(p.gene);
-// 		if (r >= 0)
-// 			p.rank.emplace(r);
-
-// 		result.push_back(std::move(p));
-// 	}
-	
-// 	return result;
-// }
-
 void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 {
 	std::unique_lock lock(m_mutex);
@@ -1497,6 +1443,10 @@ void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 	m_ip_data_cache.erase(
 		std::remove_if(m_ip_data_cache.begin(), m_ip_data_cache.end(), [name=screen->name()](auto i) { return i->contains_data_for_screen(name); }),
 		m_ip_data_cache.end());
+
+	m_sl_data_cache.erase(
+		std::remove_if(m_sl_data_cache.begin(), m_sl_data_cache.end(), [name=screen->name()](auto i) { return i->contains_data_for_screen(name); }),
+		m_sl_data_cache.end());
 }
 
 // --------------------------------------------------------------------
