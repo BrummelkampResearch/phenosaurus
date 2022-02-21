@@ -731,7 +731,7 @@ void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& 
 // --------------------------------------------------------------------
 
 zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
-	const fs::path& screenCacheDir, const std::string& secret, const std::string& context_name)
+	const std::string& secret, const std::string& context_name)
 {
 	std::set_terminate([]()
 	{
@@ -740,7 +740,7 @@ zh::server* createServer(const fs::path& docroot, const fs::path& screenDir,
 	});
 
 	// init screen_service
-	screen_service::init(screenDir, screenCacheDir);
+	screen_service::init(screenDir);
 
 	auto sc = new zh::security_context(secret, user_service::instance());
 	sc->add_rule("/admin", { "ADMIN" });

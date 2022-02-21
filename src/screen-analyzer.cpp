@@ -74,7 +74,6 @@ po::options_description get_config_options()
 		( "trim-length",		po::value<unsigned>(),		"Trim reads to this length, default is 50")
 		( "threads",			po::value<unsigned>(),		"Nr of threads to use")
 		( "screen-dir",			po::value<std::string>(),	"Directory containing the screen data")
-		( "cache-dir",			po::value<std::string>(),	"Directory containing cached screen data")
 		( "bowtie-index-hg19",	po::value<std::string>(),	"Bowtie index parameter for HG19")
 		( "bowtie-index-hg38",	po::value<std::string>(),	"Bowtie index parameter for HG38")
 		( "control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
@@ -185,7 +184,9 @@ po::variables_map load_options(int argc, char* const argv[], const char* descrip
 	{
 		if (vm.count(r) == 0)
 		{
-			std::cerr << visible << std::endl;
+			std::cerr << "Missing required argument " << r << std::endl
+					  << std::endl
+					  << visible << std::endl;
 			exit(-1);
 		}
 	}
@@ -922,9 +923,9 @@ Command should be either:
 		error_log += ".log";
 	}
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),cacheDir=vm["cache-dir"].as<std::string>(),context_name]()
+	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),context_name]()
 	{
-		return createServer(docroot, screenDir, cacheDir, secret, context_name);
+		return createServer(docroot, screenDir, secret, context_name);
 	}, "/var/run/screen-analyzer", access_log, error_log);
 
 	if (command == "start")
@@ -1159,6 +1160,16 @@ int main(int argc, char* const argv[])
 			write_version_string(std::cout, false);
 		else
 			result = usage();
+	}
+	catch (const po::error &ex)
+	{
+		std::cerr << std::endl
+				  << "Fatal error in parsing arguments" << std::endl
+				  << ex.what() << std::endl;
+
+		print_what(ex);
+		result = 1;
+
 	}
 	catch (const std::exception& ex)
 	{
