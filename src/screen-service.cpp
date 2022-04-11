@@ -1139,10 +1139,10 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 
 std::unique_ptr<screen_service> screen_service::s_instance;
 
-void screen_service::init(const std::string& screen_data_dir, const std::string &screen_cache_dir)
+void screen_service::init(const std::string& screen_data_dir)
 {
 	assert(not s_instance);
-	s_instance.reset(new screen_service(screen_data_dir, screen_cache_dir));
+	s_instance.reset(new screen_service(screen_data_dir));
 }
 
 screen_service& screen_service::instance()
@@ -1151,14 +1151,11 @@ screen_service& screen_service::instance()
 	return *s_instance;
 }
 
-screen_service::screen_service(const std::string& screen_data_dir, const std::string &screen_cache_dir)
+screen_service::screen_service(const std::string& screen_data_dir)
 	: m_screen_data_dir(screen_data_dir)
-	, m_screen_cache_dir(screen_cache_dir)
 {
 	if (not fs::exists(m_screen_data_dir))
 		throw std::runtime_error("Screen data directory " + screen_data_dir + " does not exist");
-	if (not fs::exists(m_screen_cache_dir))
-		std::cerr << "Screen cache directory " << screen_cache_dir << " does not exist" << std::endl;
 }
 
 std::vector<screen_info> screen_service::get_all_screens() const

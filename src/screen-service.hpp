@@ -311,7 +311,7 @@ struct user;
 class screen_service
 {
   public:
-	static void init(const std::string &screen_data_dir, const std::string &screen_cache_dir);
+	static void init(const std::string &screen_data_dir);
 
 	static screen_service &instance();
 
@@ -358,9 +358,9 @@ class screen_service
 	void screen_mapped(const std::unique_ptr<ScreenData> &screen);
 
   private:
-	screen_service(const std::string &screen_data_dir, const std::string &screen_cache_dir);
+	screen_service(const std::string &screen_data_dir);
 
-	std::filesystem::path m_screen_data_dir, m_screen_cache_dir;
+	std::filesystem::path m_screen_data_dir;
 	std::mutex m_mutex;
 	std::list<std::shared_ptr<ip_screen_data_cache>> m_ip_data_cache;
 	std::list<std::shared_ptr<sl_screen_data_cache>> m_sl_data_cache;
