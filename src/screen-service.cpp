@@ -1441,12 +1441,22 @@ void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 	std::unique_lock lock(m_mutex);
 
 	m_ip_data_cache.erase(
-		std::remove_if(m_ip_data_cache.begin(), m_ip_data_cache.end(), [name=screen->name()](auto i) { return i->contains_data_for_screen(name); }),
-		m_ip_data_cache.end());
+		std::remove_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
+			[name=screen->name()]
+			(std::shared_ptr<screen_data_cache> i)
+			{
+				return i->contains_data_for_screen(name);
+			}),
+			m_ip_data_cache.end());
 
 	m_sl_data_cache.erase(
-		std::remove_if(m_sl_data_cache.begin(), m_sl_data_cache.end(), [name=screen->name()](auto i) { return i->contains_data_for_screen(name); }),
-		m_sl_data_cache.end());
+		std::remove_if(m_sl_data_cache.begin(), m_sl_data_cache.end(),
+			[name=screen->name()]
+			(std::shared_ptr<screen_data_cache> i)
+			{
+				return i->contains_data_for_screen(name);
+			}),
+			m_sl_data_cache.end());
 }
 
 // --------------------------------------------------------------------

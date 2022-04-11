@@ -32,6 +32,7 @@ class screen_data_cache
 	bool is_up_to_date() const;
 
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const = 0;
+	virtual bool contains_data_for_screen(const std::string &screen) const = 0;
 
   protected:
 	struct cached_screen
@@ -164,11 +165,11 @@ class ip_screen_data_cache : public screen_data_cache
 		return screen_data_cache::is_for(type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
 	}
 
-	bool contains_data_for_screen(const std::string &screen) const
+	bool contains_data_for_screen(const std::string &screen) const override
 	{
 		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
 			{ return si.name == screen; });
-		return si != m_screens.end() and si->filled;
+		return si != m_screens.end();
 	}
 
 	std::vector<ip_data_point> data_points(const std::string &screen);
@@ -268,11 +269,11 @@ class sl_screen_data_cache : public screen_data_cache
 
 	~sl_screen_data_cache();
 
-	bool contains_data_for_screen(const std::string &screen) const
+	bool contains_data_for_screen(const std::string &screen) const override
 	{
 		auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
 			{ return si.name == screen; });
-		return si != m_screens.end() and si->filled;
+		return si != m_screens.end();
 	}
 
 	std::vector<sl_data_point> data_points(const std::string &screen);
