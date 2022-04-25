@@ -7,7 +7,8 @@ class GroupEditor {
 	constructor() {
 		this.dialog = document.getElementById("group-dialog");
 		this.form = document.getElementById("group-edit-form");
-		this.csrf = this.form.elements['_csrf'].value;
+		this.csrf =
+			this.form.elements['_csrf'].value || document.logoutForm.elements['_csrf'].value;
 
 		this.form.addEventListener("submit", (evt) => this.saveGroup(evt));
 
@@ -64,7 +65,9 @@ class GroupEditor {
 			members.add(input.name);
 		}
 
-		this.group.id = +this.group.id;
+		this.group = {
+			id: +this.group.id
+		};
 		this.group.name = this.form.elements['name'].value;
 		this.group.members = Array.from(members.values());
 
