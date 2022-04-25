@@ -138,14 +138,12 @@ find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options regex iostreams)
 find_package(squeeze 1.0.0 REQUIRED)
 
-pkg_check_modules(PQ libpq REQUIRED)
-pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED)
-pkg_check_modules(MAILIO mailio REQUIRED)
-pkg_check_modules(SSL libssl)
-pkg_check_modules(CRYPTO libcrypto)
-pkg_check_modules(ZLIB zlib)
-# pkg_check_modules(BZIP2 libbz2)
-find_library(BZIP2_LIBRARIES bz2)
+pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
+pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
+pkg_check_modules(MAILIO mailio REQUIRED IMPORTED_TARGET)
+pkg_check_modules(SSL libssl IMPORTED_TARGET)
+pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
+pkg_check_modules(ZLIB zlib IMPORTED_TARGET)
 
 find_program(YARN yarn REQUIRED)
 
@@ -236,8 +234,8 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
-	${PQXX_LIBRARIES} ${PQ_LIBRARIES} ${MAILIO_LINK_LIBRARIES} ${SSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${ZLIB_LIBRARIES} ${BZIP2_LIBRARIES} std::filesystem
-	${CMAKE_THREAD_LIBS_INIT})
+	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO PkgConfig::ZLIB
+	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
 

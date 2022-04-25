@@ -9,6 +9,7 @@
 
 #include "mrsrc.hpp"
 #include "refseq.hpp"
+#include "screen-service.hpp"
 
 namespace po = boost::program_options;
 
@@ -363,7 +364,7 @@ std::vector<Transcript> loadGenes(std::istream& in, bool completeOnly, bool know
 	return transcripts;
 }
 
-std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly)
+std::vector<Transcript> loadGenes(const std::string& assembly, const std::string &transcript_selection, bool completeOnly, bool knownOnly)
 {
 	if (not gRefSeqFile.empty())
 	{
@@ -373,7 +374,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 		std::ifstream in(gRefSeqFile);
 		return loadGenes(in, completeOnly, knownOnly);
 	}
-	else
+	else if (transcript_selection.empty() or transcript_selection == "default")
 	{
 		if (VERBOSE > 1)
 			std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
@@ -384,6 +385,15 @@ std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly
 			throw std::runtime_error("Invalid assembly specified, could not find genes");
 
 		mrsrc::istream in(refseq);
+		
+		return loadGenes(in, completeOnly, knownOnly);
+	}
+	else
+	{
+		if (VERBOSE > 1)
+			std::cerr << "Loading genes from " << transcript_selection << std::endl;
+
+		std::ifstream in(screen_service::instance().get_transcripts_dir() / (transcript_selection + ".tsv"));
 		
 		return loadGenes(in, completeOnly, knownOnly);
 	}
@@ -698,10 +708,10 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 // --------------------------------------------------------------------
 
-std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
+std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string &transcript_selection, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap)
 {
-	auto transcripts = loadGenes(assembly, true, true);
+	auto transcripts = loadGenes(assembly, transcript_selection, true, true);
 
 	if (VERBOSE)
 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
@@ -909,9 +919,10 @@ void cutOverlappingRegions(std::vector<Transcript> &transcripts)
 
 // --------------------------------------------------------------------
 
-std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene, int window)
+std::vector<Transcript> loadTranscripts(const std::string& assembly,
+	const std::string &transcript_selection, const std::string& gene, int window)
 {
-	auto transcripts = loadGenes(assembly, true, true);
+	auto transcripts = loadGenes(assembly, transcript_selection, true, true);
 
 	std::vector<Transcript> result;
 	int minOffset = std::numeric_limits<int>::max();
@@ -950,20 +961,7 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 	return result;
 }
 
-// // --------------------------------------------------------------------
-
-// std::vector<Transcript> loadTranscriptsNoExons(const std::string& assembly,
-// 	const std::string& startPos, const std::string& endPos)
-// {
-// 	auto transcripts = loadGenes(assembly, true);
-
-// 	if (VERBOSE)
-// 		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
-
-// 	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
-
-// 	return transcripts;
-// }
+// --------------------------------------------------------------------
 
 std::ostream &operator<<(std::ostream &os, const Range &r)
 {

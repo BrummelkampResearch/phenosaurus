@@ -74,6 +74,7 @@ po::options_description get_config_options()
 		( "trim-length",		po::value<unsigned>(),		"Trim reads to this length, default is 50")
 		( "threads",			po::value<unsigned>(),		"Nr of threads to use")
 		( "screen-dir",			po::value<std::string>(),	"Directory containing the screen data")
+		( "transcripts-dir",	po::value<std::string>(),	"Directory containing the transcript files")
 		( "bowtie-index-hg19",	po::value<std::string>(),	"Bowtie index parameter for HG19")
 		( "bowtie-index-hg38",	po::value<std::string>(),	"Bowtie index parameter for HG38")
 		( "control",			po::value<std::string>(),	"Name of the screen that contains the four control data replicates for synthetic lethal analysis")
@@ -304,7 +305,7 @@ Examples:
 	
 	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
 
-	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+	auto transcripts = loadTranscripts(assembly, "default", mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 
 	// -----------------------------------------------------------------------
 
@@ -406,7 +407,7 @@ or txEnd to have the start at the cdsEnd e.g.
 		if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 			cutOverlap = false;
 
-		transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+		transcripts = loadTranscripts(assembly, "default", mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 		filterOutExons(transcripts);
 	}
 
@@ -923,9 +924,13 @@ Command should be either:
 		error_log += ".log";
 	}
 
-	zh::daemon server([secret,docroot,screenDir=vm["screen-dir"].as<std::string>(),context_name]()
+	zh::daemon server([
+		secret, docroot,
+		screenDir=vm["screen-dir"].as<std::string>(),
+		transcriptsDir=vm["transcripts-dir"].as<std::string>(),
+		context_name]()
 	{
-		return createServer(docroot, screenDir, secret, context_name);
+		return createServer(docroot, screenDir, transcriptsDir, secret, context_name);
 	}, "/var/run/screen-analyzer", access_log, error_log);
 
 	if (command == "start")
@@ -1005,7 +1010,7 @@ the parts with overlap will be left out.
 
 	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
 
-	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
+	auto transcripts = loadTranscripts(assembly, "default", mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
 	if (vm.count("no-exons"))
 		filterOutExons(transcripts);
 	

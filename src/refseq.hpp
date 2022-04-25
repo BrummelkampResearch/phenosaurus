@@ -126,21 +126,24 @@ void cutOverlap(Transcript& a, Transcript& b);
 
 void init_refseq(const std::string& file);
 
-std::vector<Transcript> loadGenes(const std::string& assembly, bool completeOnly, bool knownOnly);
+std::vector<Transcript> loadGenes(const std::string& assembly,
+	const std::string &transcript_selection, bool completeOnly, bool knownOnly);
 
 void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mode mode);
 
-std::vector<Transcript> loadTranscripts(const std::string& assembly, Mode mode,
+std::vector<Transcript> loadTranscripts(const std::string& assembly,
+	const std::string &transcript_selection, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap);
 
 void filterTranscripts(std::vector<Transcript>& transcripts, Mode mode,
 	const std::string& startPos, const std::string& endPos, bool cutOverlap);
 
 // second form of loadTranscripts loads the transcripts in a window around a specified gene
-std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::string& gene,
+std::vector<Transcript> loadTranscripts(const std::string& assembly,
+	const std::string &transcript_selection, const std::string& gene,
 	int window = 500);
 
-// loadTranscripts variant that read the transcripts from a BED file
+// loadTranscripts variant that reads the transcripts from a BED file
 std::vector<Transcript> loadTranscripts(const std::string& bedFile);
 
 // --------------------------------------------------------------------
@@ -148,14 +151,4 @@ std::vector<Transcript> loadTranscripts(const std::string& bedFile);
 
 void filterOutExons(std::vector<Transcript>& transcripts);
 
-
 void cutOverlappingRegions(std::vector<Transcript>& transcripts);
-
-// void filterTranscriptsNoExons(std::vector<Transcript>& transcripts,
-// 	const std::string& startPos, const std::string& endPos);
-
-// std::vector<Transcript> loadTranscriptsNoExons(const std::string& assembly,
-// 	const std::string& startPos, const std::string& endPos);
-
-// void filterTranscriptsNoExons(std::vector<Transcript>& transcripts, Mode mode,
-// 	const std::string& startPos, const std::string& endPos, bool cutOverlap);

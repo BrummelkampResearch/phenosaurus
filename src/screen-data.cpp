@@ -7,7 +7,6 @@
 #include <regex>
 #include <stdexcept>
 
-#include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
@@ -44,12 +43,7 @@ void checkIsFastQ(fs::path infile)
 	io::filtering_stream<io::input> in;
 	std::string ext = p.extension().string();
 
-	if (p.extension() == ".bz2")
-	{
-		in.push(io::bzip2_decompressor());
-		ext = p.stem().extension().string();
-	}
-	else if (p.extension() == ".gz")
+	if (p.extension() == ".gz")
 	{
 		in.push(io::gzip_decompressor());
 		ext = p.stem().extension().string();
@@ -717,13 +711,13 @@ IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t st
 
 // --------------------------------------------------------------------
 
-std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string &assembly,
+std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::string &assembly, const std::string &transcript_selection,
 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 	Direction direction)
 {
 	const unsigned readLength = 50;
 
-	auto transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+	auto transcripts = loadTranscripts(assembly, transcript_selection, mode, geneStart, geneEnd, cutOverlap);
 
 	// -----------------------------------------------------------------------
 

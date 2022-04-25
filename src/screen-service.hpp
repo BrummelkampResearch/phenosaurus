@@ -17,15 +17,16 @@
 class screen_data_cache
 {
   public:
-	screen_data_cache(ScreenType type, const std::string &assembly, short trim_length,
+	screen_data_cache(ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
 	virtual ~screen_data_cache();
 
-	bool is_for(ScreenType type, const std::string &assembly, short trim_length,
+	bool is_for(ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd) const
 	{
 		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
+			   m_transcript_selection == transcript_selection and
 		       m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
 	}
 
@@ -48,6 +49,7 @@ class screen_data_cache
 	ScreenType m_type;
 	std::string m_assembly;
 	short m_trim_length;
+	std::string m_transcript_selection;
 	Mode m_mode;
 	bool m_cutOverlap;
 	std::string m_geneStart;
@@ -152,17 +154,17 @@ struct cluster
 class ip_screen_data_cache : public screen_data_cache
 {
   public:
-	ip_screen_data_cache(ScreenType type, const std::string &assembly, short trim_length,
+	ip_screen_data_cache(ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
 	~ip_screen_data_cache();
 
-	bool is_for(ScreenType type, std::string &assembly, short trim_length,
-		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+	bool is_for(ScreenType type, std::string &assembly, short trim_length, const std::string &transcript_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction) const
 	{
-		return screen_data_cache::is_for(type, assembly, trim_length, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
+		return screen_data_cache::is_for(type, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd) and m_direction == direction;
 	}
 
 	bool contains_data_for_screen(const std::string &screen) const override
@@ -264,7 +266,7 @@ struct sl_gene_finder_data_point
 class sl_screen_data_cache : public screen_data_cache
 {
   public:
-	sl_screen_data_cache(const std::string &assembly, short trim_length,
+	sl_screen_data_cache(const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
 	~sl_screen_data_cache();
@@ -311,11 +313,12 @@ struct user;
 class screen_service
 {
   public:
-	static void init(const std::string &screen_data_dir);
+	static void init(const std::string &screen_data_dir, const std::string &transcripts_dir);
 
 	static screen_service &instance();
 
 	const std::filesystem::path &get_screen_data_dir() const { return m_screen_data_dir; }
+	const std::filesystem::path &get_transcripts_dir() const { return m_transcripts_dir; }
 
 	std::vector<screen_info> get_all_screens() const;
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
@@ -342,25 +345,30 @@ class screen_service
 		return std::make_unique<ScreenDataType>(m_screen_data_dir / screen);
 	}
 
-	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type, const std::string &assembly, short trim_length,
+	std::shared_ptr<ip_screen_data_cache> get_screen_data(ScreenType type,
+		const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	std::shared_ptr<sl_screen_data_cache> get_screen_data(const std::string &assembly, short trim_length,
+	std::shared_ptr<sl_screen_data_cache> get_screen_data(
+		const std::string &assembly, short trim_length, const std::string &transcript_selection,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
-	// std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string &screen, const std::string &assembly, short trim_length,
+	// std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string &screen, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 	// 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
 
-	// std::vector<sl_data_point> get_data_points(const std::string &screen, std::string control, const std::string &assembly, short trim_length,
+	// std::vector<sl_data_point> get_data_points(const std::string &screen, std::string control, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 	// 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
 	void screen_mapped(const std::unique_ptr<ScreenData> &screen);
 
-  private:
-	screen_service(const std::string &screen_data_dir);
+	// configurable transcripts
+	std::vector<std::string> get_all_transcripts() const;
 
-	std::filesystem::path m_screen_data_dir;
+  private:
+	screen_service(const std::string &screen_data_dir, const std::string &transcripts_dir);
+
+	std::filesystem::path m_screen_data_dir, m_transcripts_dir;
 	std::mutex m_mutex;
 	std::list<std::shared_ptr<ip_screen_data_cache>> m_ip_data_cache;
 	std::list<std::shared_ptr<sl_screen_data_cache>> m_sl_data_cache;

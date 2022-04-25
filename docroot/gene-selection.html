@@ -35,7 +35,18 @@
 												<option value="hg38" selected="selected">HG38</option>
 											</select>
 										</div>
+
+										<div class="input-group input-group-sm mb-3">
+											<div class="input-group-prepend">
+												<span class="input-group-text" style="min-width: 4em;">Transcript</span>
+											</div>
 							
+											<select class="custom-select custom-select-sm" name="transcripts">
+												<option value="default">Default</option>
+												<option z:each="transcript: ${transcripts}" z:value="${transcript.id}" z:text="${transcript.name}"></option>
+											</select>
+										</div>
+
 										<div class="input-group input-group-sm mb-3">
 											<div class="input-group-prepend">
 												<span class="input-group-text">Mode</span>

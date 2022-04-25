@@ -63,7 +63,6 @@ export class ScreenEditor {
 	}
 
 	mapScreen(assembly, btn) {
-		let wasOK;
 		fetch(`screen/${this.form['screen-name'].value}/map/${assembly}`, {
 			credentials: "include",
 			method: 'GET',

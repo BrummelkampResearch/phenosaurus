@@ -301,8 +301,8 @@ class IPPAScreenData : public ScreenData
 	std::tuple<std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>, std::vector<uint32_t>>
 		insertions(const std::string& assembly, CHROM chrom, uint32_t start, uint32_t end);
 
-	std::vector<IPDataPoint> dataPoints(const std::string& assembly,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::vector<IPDataPoint> dataPoints(const std::string& assembly, const std::string &transcripts, Mode mode,
+		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
 		Direction direction);
 
 	std::vector<IPDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
