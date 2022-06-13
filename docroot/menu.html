@@ -30,7 +30,7 @@
 			</div>
 		</li>
 
-		<li class="nav-item dropdown">
+		<li class="nav-item dropdown" z:if="${not public}">
 			<a aria-expanded="false" aria-haspopup="false" class="dropdown-toggle nav-link" data-toggle="dropdown"
 			   href="#">Intracellular Phenotype Activation</a>
 			<div class="dropdown-menu">
@@ -55,23 +55,15 @@
 			</div>
 		</li>
 		
-		<!-- <li class="nav-item">
-			<a class="nav-link" href="/sl/screen" z:href="@{/sl/screen}">Synthetic Lethal</a>
-		</li> -->
-
-		<li class="nav-item">
+		<li class="nav-item" z:if="${not public}">
 			<a class="nav-link" href="/qc" z:href="@{/qc}">QC</a>
 		</li>
 
-		<!-- <li class="nav-item">
-			<a class="nav-link" href="/browse" z:href="@{/browse}">Genome Browser</a>
-		</li> -->
-
-		<li class="nav-item">
+		<li class="nav-item" z:if="${not public}">
 			<a class="nav-link" href="/screens" z:href="@{/screens}">Screens</a>
 		</li>
 
-		<li class="nav-item dropdown" z:if="${#security.hasRole('ADMIN')}">
+		<li class="nav-item dropdown" z:if="${not public and #security.hasRole('ADMIN')}">
 			<a aria-expanded="false" aria-haspopup="false" class="nav-link dropdown-toggle" data-toggle="dropdown"
 			   href="#">Admin</a>
 			<div class="dropdown-menu" id="admin-menu">
@@ -80,7 +72,7 @@
 			</div>
 		</li>
 
-		<li z:if="${not #security.authorized()}" class="nav-item">
+		<li z:if="${not (public or #security.authorized())}" class="nav-item">
 			<a class="item-content" href="/login" z:href="@{/login}">
 				<span class="nav-link">login</span>
 			</a>

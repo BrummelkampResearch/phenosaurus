@@ -313,9 +313,10 @@ zeep::http::reply IPScreenRestController::getBED(const std::string& screen, cons
 class ScreenHtmlControllerBase : public zh::html_controller
 {
   protected:
-	ScreenHtmlControllerBase(ScreenType type)
+	ScreenHtmlControllerBase(ScreenType type, bool is_public)
 		: zh::html_controller(zeep::value_serializer<ScreenType>::to_string(type))
-		, mType(type) {}
+		, mType(type)
+		, m_is_public(is_public) {}
 	
 	void init_scope(zh::scope& scope)
 	{
@@ -342,9 +343,13 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		using json = zeep::json::element;
 		json screens;
 
-		auto s = has_role("ADMIN") ?
-			screen_service::instance().get_all_screens_for_type(mType) :
-			screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
+		scope.put("public", m_is_public);
+
+		auto s = m_is_public ?
+				screen_service::instance().get_all_public_screens_for_type(mType) :
+				has_role("ADMIN") ?
+					screen_service::instance().get_all_screens_for_type(mType) :
+					screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
 
 		std::sort(s.begin(), s.end(), sort_screen);
 
@@ -384,6 +389,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 	}
 
 	ScreenType mType;
+	bool m_is_public = false;
 };
 
 // --------------------------------------------------------------------
@@ -391,8 +397,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 class IPScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	IPScreenHtmlController(const fs::path& screenDir, ScreenType type)
-		: ScreenHtmlControllerBase(type)
+	IPScreenHtmlController(const fs::path& screenDir, ScreenType type, bool is_public = false)
+		: ScreenHtmlControllerBase(type, is_public)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &IPScreenHtmlController::fishtail);
@@ -697,8 +703,8 @@ std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const s
 class SLScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	SLScreenHtmlController(const fs::path& screenDir)
-		: ScreenHtmlControllerBase(ScreenType::SyntheticLethal)
+	SLScreenHtmlController(const fs::path& screenDir, bool is_public = false)
+		: ScreenHtmlControllerBase(ScreenType::SyntheticLethal, is_public)
 		, mScreenDir(screenDir)
 	{
 		mount("screen", &SLScreenHtmlController::screen);
@@ -727,7 +733,8 @@ void SLScreenHtmlController::finder(const zh::request& request, const zh::scope&
 class ScreenHtmlController : public zh::html_controller
 {
   public:
-	ScreenHtmlController()
+	ScreenHtmlController(bool is_public = false)
+		: m_is_public(is_public)
 	{
 		mount("{,index,index.html}", &ScreenHtmlController::welcome);
 		mount("{css,scripts,fonts,images}/", &ScreenHtmlController::handle_file);
@@ -736,11 +743,17 @@ class ScreenHtmlController : public zh::html_controller
 
 	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
 	void genome_browser(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+
+	bool m_is_public;
 };
 
 void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply)
 {
-	return get_template_processor().create_reply_from_template("index", scope, reply);
+	zh::scope sub(scope);
+	
+	sub.put("public", m_is_public);
+
+	return get_template_processor().create_reply_from_template("index", sub, reply);
 }
 
 // --------------------------------------------------------------------
@@ -797,6 +810,39 @@ zh::server* createServer(const fs::path& docroot,
 	// admin
 	server->add_controller(new user_admin_rest_controller());
 	server->add_controller(new user_admin_html_controller());
+
+	return server;
+}
+
+// --------------------------------------------------------------------
+
+zh::server* createPublicServer(const fs::path& docroot,
+	const fs::path& screenDir, const fs::path& transcriptDir,
+	const std::string& context_name)
+{
+	std::set_terminate([]()
+	{
+		std::cerr << "Unhandled exception in server" << std::endl;
+		std::abort();
+	});
+
+	// init screen_service
+	screen_service::init(screenDir, transcriptDir);
+
+	auto server = new zh::server(docroot);
+
+	server->add_error_handler(new db_error_handler());
+
+	server->set_context_name(context_name);
+
+	server->add_controller(new ScreenHtmlController(true));
+	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotype));
+	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotypeActivation));
+	server->add_controller(new IPScreenHtmlController(screenDir, ScreenType::IntracellularPhenotype, true));
+	server->add_controller(new IPScreenHtmlController(screenDir, ScreenType::IntracellularPhenotypeActivation, true));
+
+	server->add_controller(new SLScreenRestController(screenDir));
+	server->add_controller(new SLScreenHtmlController(screenDir, true));
 
 	return server;
 }

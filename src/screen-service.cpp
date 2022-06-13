@@ -1240,6 +1240,19 @@ std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const
 	return screens;
 }
 
+std::vector<screen_info> screen_service::get_all_public_screens_for_type(ScreenType type) const
+{
+	auto screens = get_all_screens();
+
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& screen) {
+
+		return screen.type != type or
+			std::find(screen.groups.begin(), screen.groups.end(), "public") == screen.groups.end();
+	}), screens.end());
+	
+	return screens;
+}
+
 std::set<std::string> screen_service::get_allowed_screens_for_user(const user& user) const
 {
 	std::set<std::string> result;
@@ -1319,16 +1332,19 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 {
 	bool result = false;
 
-	auto user = user_service::instance().retrieve_user(username);
-	if (user.admin)
-		result = true;
-	else
+	try
 	{
-		try
-		{
-			auto manifest = ScreenData::loadManifest(m_screen_data_dir / screenname);
+		auto manifest = ScreenData::loadManifest(m_screen_data_dir / screenname);
 
-			if (manifest.scientist == username)
+		if (manifest.scientist == username)
+			result = true;
+		else
+			result = std::find(manifest.groups.begin(), manifest.groups.end(), "public") != manifest.groups.end();
+
+		if (not result)
+		{
+			auto user = user_service::instance().retrieve_user(username);
+			if (user.admin)
 				result = true;
 			else
 			{
@@ -1342,12 +1358,13 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 				}
 			}
 		}
-		catch (const std::exception& ex)
-		{
-			std::cerr << ex.what() << std::endl;
-		}
 	}
-	
+	catch (const std::exception& ex)
+	{
+		std::cerr << ex.what() << std::endl;
+		result = false;
+	}
+
 	return result;
 }
 

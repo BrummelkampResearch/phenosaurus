@@ -93,6 +93,7 @@ po::options_description get_config_options()
 		( "smtp-port",			po::value<uint16_t>(),		"SMTP server port for sending out new passwords" )
 		( "smtp-user",			po::value<std::string>(),	"SMTP server user name for sending out new passwords" )
 		( "smtp-password",		po::value<std::string>(),	"SMTP server password name for sending out new passwords" )
+		( "public",											"Public version (limited functionality)" )
 		;
 
 
@@ -794,7 +795,7 @@ int main_server(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, "screen-analyzer" R"( command [options])",
 		{
-			{ "command", 		po::value<std::string>(),		"Server command" },
+			{ "command", 		po::value<std::string>(),		"Server command" }
 		}, { "smtp-server", "smtp-port" }, { "command" });
 
 	// --------------------------------------------------------------------
@@ -928,9 +929,13 @@ Command should be either:
 		secret, docroot,
 		screenDir=vm["screen-dir"].as<std::string>(),
 		transcriptsDir=vm["transcripts-dir"].as<std::string>(),
+		is_public=vm.count("public"),
 		context_name]()
 	{
-		return createServer(docroot, screenDir, transcriptsDir, secret, context_name);
+		if (is_public)
+			return createPublicServer(docroot, screenDir, transcriptsDir, context_name);
+		else
+			return createServer(docroot, screenDir, transcriptsDir, secret, context_name);
 	}, "/var/run/screen-analyzer", access_log, error_log);
 
 	if (command == "start")

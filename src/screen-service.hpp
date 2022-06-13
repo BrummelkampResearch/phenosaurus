@@ -324,7 +324,8 @@ class screen_service
 	std::vector<screen_info> get_all_screens_for_type(ScreenType type) const;
 	std::vector<screen_info> get_all_screens_for_user(const std::string &user) const;
 	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string &user, ScreenType type) const;
-
+	std::vector<screen_info> get_all_public_screens_for_type(ScreenType type) const;
+	
 	// return list of allowed screens based on user info (name, groups)
 	std::set<std::string> get_allowed_screens_for_user(const user &user) const;
 
