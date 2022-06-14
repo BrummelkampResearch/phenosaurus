@@ -208,7 +208,6 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-data.cpp
 	${CMAKE_SOURCE_DIR}/src/fisher.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-server.cpp
-	${CMAKE_SOURCE_DIR}/src/config.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-analyzer.cpp
 	${CMAKE_SOURCE_DIR}/src/job-scheduler.hpp
 	${CMAKE_SOURCE_DIR}/src/user-service.hpp

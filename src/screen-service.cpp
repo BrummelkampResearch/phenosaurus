@@ -1492,8 +1492,11 @@ void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
 std::vector<std::string> screen_service::get_all_transcripts() const
 {
 	std::vector<std::string> result;
-	for (fs::directory_iterator di(m_transcripts_dir); di != fs::directory_iterator(); ++di)
-		result.push_back(di->path().filename().stem().string());
+	if (fs::is_directory(m_transcripts_dir))
+	{
+		for (fs::directory_iterator di(m_transcripts_dir); di != fs::directory_iterator(); ++di)
+			result.push_back(di->path().filename().stem().string());
+	}
 	return result;
 }
 
@@ -1725,7 +1728,9 @@ screen_info screen_rest_controller::retrieve_screen(const std::string& name)
 
 void screen_rest_controller::update_screen(const std::string& name, const screen_info& screen)
 {
-	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
+	auto username = get_credentials()["username"].as<std::string>();
+
+	if (not screen_service::instance().is_allowed(name, username))
 		throw zeep::http::forbidden;
 
 	auto info = screen_service::instance().retrieve_screen(name);
@@ -1735,6 +1740,16 @@ void screen_rest_controller::update_screen(const std::string& name, const screen
 	info.cell_line = screen.cell_line;
 	info.description = screen.description;
 	info.ignore = screen.ignore;
+
+	// only allow admin to set the public group:
+	if ((std::find(screen.groups.begin(), screen.groups.end(), "public") == screen.groups.end()) !=
+		(std::find(info.groups.begin(), info.groups.end(), "public") == info.groups.end()))
+	{
+		auto user = user_service::instance().retrieve_user(username);
+		if (not user.admin)
+			throw std::runtime_error("Only admin is allowed to set the public group");
+	}
+
 	info.groups = screen.groups;
 
 	screen_service::instance().update_screen(name, info);

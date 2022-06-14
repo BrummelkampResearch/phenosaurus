@@ -913,6 +913,14 @@ Command should be either:
 
 	std::string access_log = "/var/log/screen-analyzer/access";
 	std::string error_log = "/var/log/screen-analyzer/error";
+	std::string pid_file = "/var/run/screen-analyzer";
+
+	if (vm.count("public"))
+	{
+		access_log += "-public";
+		error_log += "-public";
+		pid_file += "-public";
+	}
 
 	if (not context_name.empty())
 	{
@@ -936,7 +944,7 @@ Command should be either:
 			return createPublicServer(docroot, screenDir, transcriptsDir, context_name);
 		else
 			return createServer(docroot, screenDir, transcriptsDir, secret, context_name);
-	}, "/var/run/screen-analyzer", access_log, error_log);
+	}, pid_file, access_log, error_log);
 
 	if (command == "start")
 	{

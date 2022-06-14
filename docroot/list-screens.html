@@ -34,6 +34,7 @@
 						<th>HG19</th>
 						<th>HG38</th>
 						<th style="text-align: center">Ignored</th>
+						<th style="text-align: center">Public</th>
 						<th colspan="2">Action</th>
 					</tr>
 				</thead>
@@ -60,6 +61,7 @@
 						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg19' and m.trim-length == 50}" class="fa fa-check"></i></span></td>
 						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg38' and m.trim-length == 50}" class="fa fa-check"></i></span></td>
 						<td style="text-align: center"><i z:if="${screen.ignore}" class="fa fa-check"></i></td>
+						<td style="text-align: center"><i z:if="${#list.contains(screen.groups, 'public')}" class="fa fa-check"></i></td>
 						<td class="edit-screen-btn" z:attr="data-id=${screen.name}">
 							<i class="fa fa-edit"></i></td>
 						<td><span class="delete-screen-btn" z:attr="data-id=${screen.name}"

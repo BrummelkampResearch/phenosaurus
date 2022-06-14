@@ -63,6 +63,40 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 	
 } s_post_expression_instance;
 
+class sa_list_object : public zh::expression_utility_object<sa_list_object>
+{
+  public:
+
+	static constexpr const char* name() { return "list"; }
+
+	virtual zh::object evaluate(const zh::scope& scope, const std::string& methodName,
+		const std::vector<zh::object>& parameters) const
+	{
+		zh::object result = false;
+
+		if (methodName == "contains" and parameters.size() == 2)
+		{
+			auto list = parameters[0];
+			auto query = parameters[1].as<std::string>();
+
+			if (list.is_array())
+			{
+				for (auto &e : list)
+				{
+					if (e != query)
+						continue;
+					
+					result = true;
+					break;
+				}
+			}
+		}
+
+		return result;
+	}
+	
+} s_list_expression_instance;
+
 // -----------------------------------------------------------------------
 
 class IPScreenRestController : public zh::rest_controller
