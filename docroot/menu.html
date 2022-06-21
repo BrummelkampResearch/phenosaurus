@@ -19,14 +19,14 @@
 			   href="#">Intracellular Phenotype</a>
 			<div class="dropdown-menu">
 				<a class="dropdown-item" href="/simpleplot" z:href="@{/ip/screen}">Fishtail Plot</a>
-				<a class="dropdown-item" href="/finder" z:href="@{/ip/finder}">Gene Search</a>
-				<a class="dropdown-item" href="/similar" z:href="@{/ip/similar}">Find Similar</a>
-				<a class="dropdown-item" href="/cluster" z:href="@{/ip/cluster}">Find Clusters</a>
-				<div class="dropdown-divider"></div>
+				<a z:if="${not public}" class="dropdown-item" href="/finder" z:href="@{/ip/finder}">Gene Search</a>
+				<a z:if="${not public}" class="dropdown-item" href="/similar" z:href="@{/ip/similar}">Find Similar</a>
+				<a z:if="${not public}" class="dropdown-item" href="/cluster" z:href="@{/ip/cluster}">Find Clusters</a>
+				<div z:if="${not public}" class="dropdown-divider"></div>
 				<!-- <a class="dropdown-item" href="/ip/compare-1" z:href="@{/ip/compare-1}">Compare Screens I</a>
 				<a class="dropdown-item" href="/ip/compare-2" z:href="@{/ip/compare-2}">Compare Screens II</a>
 				<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens III</a> -->
-				<a class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens</a>
+				<a z:if="${not public}" class="dropdown-item" href="/ip/compare-3" z:href="@{/ip/compare-3}">Compare Screens</a>
 			</div>
 		</li>
 

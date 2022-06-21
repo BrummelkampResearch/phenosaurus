@@ -16,7 +16,7 @@
 					<select id="screenList" data-placeholder="Choose a Screen...">
 						<option value=""></option>
 						<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
-							z:text="${screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
+							z:text="${public ? screen.published_name ?: screen.name : screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
 					</select>
 				</div>
 			</div>
