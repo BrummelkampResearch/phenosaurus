@@ -23,7 +23,7 @@
 
 			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="option-col">
+			<div class="option-col" z:if="${not public}">
 				<div class="input-group input-group-sm">
 
 					<form name="graphTypeForm">
