@@ -3,20 +3,20 @@
 #include <iostream>
 #include <numeric>
 
-#include <zeep/http/server.hpp>
 #include <zeep/http/html-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 #include <zeep/http/login-controller.hpp>
+#include <zeep/http/rest-controller.hpp>
+#include <zeep/http/server.hpp>
 
-#include "screen-server.hpp"
-#include "screen-data.hpp"
-#include "screen-service.hpp"
-#include "screen-qc.hpp"
-#include "fisher.hpp"
-#include "utils.hpp"
-#include "user-service.hpp"
 #include "db-connection.hpp"
+#include "fisher.hpp"
 #include "genome-browser.hpp"
+#include "screen-data.hpp"
+#include "screen-qc.hpp"
+#include "screen-server.hpp"
+#include "screen-service.hpp"
+#include "user-service.hpp"
+#include "utils.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -27,11 +27,10 @@ namespace zh = zeep::http;
 class sa_strings_object : public zh::expression_utility_object<sa_strings_object>
 {
   public:
+	static constexpr const char *name() { return "strings"; }
 
-	static constexpr const char* name() { return "strings"; }
-
-	virtual zh::object evaluate(const zh::scope& scope, const std::string& methodName,
-		const std::vector<zh::object>& parameters) const
+	virtual zh::object evaluate(const zh::scope &scope, const std::string &methodName,
+		const std::vector<zh::object> &parameters) const
 	{
 		zh::object result;
 
@@ -45,7 +44,7 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 			if (list.is_array())
 			{
 				auto n = list.size();
-				for (auto& e: list)
+				for (auto &e : list)
 				{
 					s << e.as<std::string>();
 					if (--n > 0)
@@ -54,23 +53,22 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 			}
 			else
 				s << list;
-			
+
 			result = s.str();
 		}
 
 		return result;
 	}
-	
+
 } s_post_expression_instance;
 
 class sa_list_object : public zh::expression_utility_object<sa_list_object>
 {
   public:
+	static constexpr const char *name() { return "list"; }
 
-	static constexpr const char* name() { return "list"; }
-
-	virtual zh::object evaluate(const zh::scope& scope, const std::string& methodName,
-		const std::vector<zh::object>& parameters) const
+	virtual zh::object evaluate(const zh::scope &scope, const std::string &methodName,
+		const std::vector<zh::object> &parameters) const
 	{
 		zh::object result = false;
 
@@ -85,7 +83,7 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 				{
 					if (e != query)
 						continue;
-					
+
 					result = true;
 					break;
 				}
@@ -94,7 +92,7 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 
 		return result;
 	}
-	
+
 } s_list_expression_instance;
 
 // -----------------------------------------------------------------------
@@ -102,9 +100,10 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 class IPScreenRestController : public zh::rest_controller
 {
   public:
-	IPScreenRestController(const fs::path& screenDir, ScreenType type)
+	IPScreenRestController(const fs::path &screenDir, ScreenType type)
 		: zh::rest_controller(zeep::value_serializer<ScreenType>::to_string(type))
-		, mScreenDir(screenDir), mType(type)
+		, mScreenDir(screenDir)
+		, mType(type)
 	{
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
@@ -127,43 +126,43 @@ class IPScreenRestController : public zh::rest_controller
 		map_get_request("screen/{id}/bed/{channel}", &IPScreenRestController::getBED, "id", "channel", "assembly");
 	}
 
-	std::vector<ip_data_point> screenData(const std::string& screen,
-		const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::vector<ip_data_point> screenData(const std::string &screen,
+		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	std::vector<ip_gene_finder_data_point> find_gene(const std::string& gene,
-		const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene,
+		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	std::vector<similar_data_point> find_similar(const std::string& gene,
-		const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+	std::vector<similar_data_point> find_similar(const std::string &gene,
+		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 		float pvCutOff, float zscoreCutOff);
 
-	std::vector<cluster> find_clusters(const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+	std::vector<cluster> find_clusters(const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 		float pvCutOff, size_t minPts, float eps, size_t NNs);
 
-	std::vector<gene_uniqueness> uniqueness(const std::string& screen,
-		const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::vector<gene_uniqueness> uniqueness(const std::string &screen,
+		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction, float pvCutOff, bool singlesided);
 
-	Region geneInfo(const std::string& gene, const std::string& screen,
-		const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+	Region geneInfo(const std::string &gene, const std::string &screen,
+		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
-	zeep::http::reply getBED(const std::string& screen, const std::string& channel, const std::string &assembly);
+	zeep::http::reply getBED(const std::string &screen, const std::string &channel, const std::string &assembly);
 
 	fs::path mScreenDir;
 	ScreenType mType;
 };
 
-std::vector<ip_data_point> IPScreenRestController::screenData(const std::string& screen,
-	const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+std::vector<ip_data_point> IPScreenRestController::screenData(const std::string &screen,
+	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -182,9 +181,9 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string&
 	return result;
 }
 
-std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string& screen,
-	const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction, float pvCutOff,
+std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string &screen,
+	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction, float pvCutOff,
 	bool singlesided)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
@@ -194,35 +193,35 @@ std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::strin
 	return dp->uniqueness(screen, pvCutOff, singlesided);
 }
 
-std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const std::string& gene,
-	const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const std::string &gene,
+	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
 	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }
 
-std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string& gene,
-	const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string &gene,
+	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 	float pvCutOff, float zscoreCutOff)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_similar(gene, pvCutOff, zscoreCutOff);
 }
 
-std::vector<cluster> IPScreenRestController::find_clusters(const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction,
+std::vector<cluster> IPScreenRestController::find_clusters(const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 	float pvCutOff, size_t minPts, float eps, size_t NNs)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->find_clusters(pvCutOff, minPts, eps, NNs);
 }
 
-Region IPScreenRestController::geneInfo(const std::string& gene, const std::string& screen,
-	const std::string& assembly, const std::string &transcripts_selection, Mode mode,
-	bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+Region IPScreenRestController::geneInfo(const std::string &gene, const std::string &screen,
+	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -236,10 +235,10 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 	result.chrom = transcripts.front().chrom;
 	result.start = std::numeric_limits<int>::max();
 
-	for (auto& t: transcripts)
+	for (auto &t : transcripts)
 	{
-		auto& tn = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
-		for (auto e: t.exons)
+		auto &tn = result.genes.emplace_back(Gene{t.geneName, {t.strand}, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		for (auto e : t.exons)
 		{
 			if (e.start >= t.cds.start and e.end <= t.cds.end)
 			{
@@ -252,12 +251,12 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 				auto u = e;
 				if (u.end > t.cds.start)
 					u.end = t.cds.start;
-				
+
 				if (t.strand == '+')
-					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+					tn.utr3.emplace_back(GeneExon{u.start, u.end});
 				else
-					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
-				
+					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+
 				e.start = t.cds.start;
 				if (e.start >= e.end)
 					continue;
@@ -268,20 +267,20 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 				auto u = e;
 				if (u.start < t.cds.end)
 					u.start = t.cds.end;
-				
+
 				if (t.strand == '+')
-					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+					tn.utr5.emplace_back(GeneExon{u.start, u.end});
 				else
-					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
-				
+					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+
 				e.end = t.cds.end;
 				if (e.start >= e.end)
 					continue;
 			}
 
-			tn.exons.emplace_back(GeneExon{ e.start, e.end });
+			tn.exons.emplace_back(GeneExon{e.start, e.end});
 		}
-		
+
 		if (t.geneName != gene)
 			continue;
 
@@ -302,37 +301,35 @@ Region IPScreenRestController::geneInfo(const std::string& gene, const std::stri
 		throw std::runtime_error("No such screen: " + screen);
 
 	auto data = IPPAScreenData::load(screenDir);
-	
-	result.insertions.assign({
-		{ "+", "high" },
-		{ "-", "high" },
-		{ "+", "low" },
-		{ "-", "low" }		
-	});
 
-	std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) = 
+	result.insertions.assign({{"+", "high"},
+		{"-", "high"},
+		{"+", "low"},
+		{"-", "low"}});
+
+	std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) =
 		data->insertions(assembly, result.chrom, result.start, result.end);
 
 	// filter
 	filterTranscripts(transcripts, mode, geneStart, geneEnd, cutOverlap);
 
-	for (auto& t: transcripts)
+	for (auto &t : transcripts)
 	{
 		if (t.geneName != gene)
 			continue;
-		
-		result.geneStrand = { t.strand };
 
-		for (auto& r: t.ranges)
+		result.geneStrand = {t.strand};
+
+		for (auto &r : t.ranges)
 			result.area.emplace_back(GeneExon{r.start, r.end});
 	}
 
 	return result;
 }
 
-zeep::http::reply IPScreenRestController::getBED(const std::string& screen, const std::string& channel, const std::string &assembly)
+zeep::http::reply IPScreenRestController::getBED(const std::string &screen, const std::string &channel, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
+	zeep::http::reply rep(zeep::http::ok, {1, 1});
 
 	auto data = IPPAScreenData::load(mScreenDir / screen);
 
@@ -350,16 +347,19 @@ class ScreenHtmlControllerBase : public zh::html_controller
 	ScreenHtmlControllerBase(ScreenType type, bool is_public)
 		: zh::html_controller(zeep::value_serializer<ScreenType>::to_string(type))
 		, mType(type)
-		, m_is_public(is_public) {}
-	
-	void init_scope(zh::scope& scope)
+		, m_is_public(is_public)
 	{
-		auto sort_screen = [](auto& sa, auto& sb) -> bool
-		{
-			std::string& a = sa.name;
-			std::string& b = sb.name;
+	}
 
-			auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb) { return std::tolower(ca) == std::tolower(cb); });
+	void init_scope(zh::scope &scope)
+	{
+		auto sort_screen = [this](screen_info &sa, screen_info &sb) -> bool
+		{
+			const std::string &a = m_is_public ? sa.published_name.value_or(sa.name) : sa.name;
+			const std::string &b = m_is_public ? sb.published_name.value_or(sb.name) : sb.name;
+
+			auto r = std::mismatch(a.begin(), a.end(), b.begin(), b.end(), [](char ca, char cb)
+				{ return std::tolower(ca) == std::tolower(cb); });
 			bool result;
 			if (r.first == a.end() and r.second == b.end())
 				result = false;
@@ -379,11 +379,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 
 		scope.put("public", m_is_public);
 
-		auto s = m_is_public ?
-				screen_service::instance().get_all_public_screens_for_type(mType) :
-				has_role("ADMIN") ?
-					screen_service::instance().get_all_screens_for_type(mType) :
-					screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
+		auto s = m_is_public ? screen_service::instance().get_all_public_screens_for_type(mType) : has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(mType)
+		                                                                                                             : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
 
 		std::sort(s.begin(), s.end(), sort_screen);
 
@@ -394,9 +391,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		{
 			// let's make abdel happy
 
-			auto s2 = has_role("ADMIN") ?
-				screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype) :
-				screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), ScreenType::IntracellularPhenotype);
+			auto s2 = has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype) : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), ScreenType::IntracellularPhenotype);
 
 			std::sort(s2.begin(), s2.end(), sort_screen);
 
@@ -406,8 +401,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		}
 
 		json screenInfo;
-		for (auto& si: s)
-			screenInfo.push_back({ { "name", si.name }, { "ignore", si.ignore }});
+		for (auto &si : s)
+			screenInfo.push_back({{"name", si.name}, {"ignore", si.ignore}});
 		scope.put("screenInfo", screenInfo);
 
 		scope.put("screenType", mType);
@@ -415,10 +410,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		// New, list the available transcripts
 		json transcripts;
 		for (auto t : screen_service::instance().get_all_transcripts())
-			transcripts.push_back({
-				{ "id", t },
-				{ "name", t }
-			});
+			transcripts.push_back({{"id", t},
+				{"name", t}});
 		scope.put("transcripts", transcripts);
 	}
 
@@ -431,7 +424,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 class IPScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	IPScreenHtmlController(const fs::path& screenDir, ScreenType type, bool is_public = false)
+	IPScreenHtmlController(const fs::path &screenDir, ScreenType type, bool is_public = false)
 		: ScreenHtmlControllerBase(type, is_public)
 		, mScreenDir(screenDir)
 	{
@@ -444,51 +437,51 @@ class IPScreenHtmlController : public ScreenHtmlControllerBase
 		mount("compare-3", &IPScreenHtmlController::compare_3);
 	}
 
-	void fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void similar(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void compare_1(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void compare_2(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void compare_3(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void fishtail(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void finder(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void similar(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void cluster(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void compare_1(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void compare_2(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void compare_3(const zh::request &request, const zh::scope &scope, zh::reply &reply);
 
   private:
 	fs::path mScreenDir;
 };
 
-void IPScreenHtmlController::fishtail(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::fishtail(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	zh::scope sub(scope);
 	sub.put("page", "fishtail");
 	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
 }
 
-void IPScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::finder(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
 }
 
-void IPScreenHtmlController::similar(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::similar(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("find-similar.html", scope, reply);
 }
 
-void IPScreenHtmlController::cluster(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::cluster(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("find-clusters.html", scope, reply);
 }
 
-void IPScreenHtmlController::compare_1(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::compare_1(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("compare-1.html", scope, reply);
 }
 
-void IPScreenHtmlController::compare_2(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::compare_2(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("compare-2.html", scope, reply);
 }
 
-void IPScreenHtmlController::compare_3(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void IPScreenHtmlController::compare_3(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("compare-3.html", scope, reply);
 }
@@ -498,7 +491,7 @@ void IPScreenHtmlController::compare_3(const zh::request& request, const zh::sco
 class SLScreenRestController : public zh::rest_controller
 {
   public:
-	SLScreenRestController(const fs::path& screenDir)
+	SLScreenRestController(const fs::path &screenDir)
 		: zh::rest_controller("sl")
 		, mScreenDir(screenDir)
 	{
@@ -518,68 +511,67 @@ class SLScreenRestController : public zh::rest_controller
 			"gene", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 	}
 
-	std::vector<sl_data_point> screenData(const std::string& screen, const std::string& assembly, const std::string &transcript_selection, const std::string &control,
-		Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction);
+	std::vector<sl_data_point> screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
 
-	Region geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd);
+	Region geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
-	zeep::http::reply getBED(const std::string& screen, const std::string& replicate, const std::string &assembly);
+	zeep::http::reply getBED(const std::string &screen, const std::string &replicate, const std::string &assembly);
 
 	std::vector<std::string> getReplicates(const std::string &screen);
 
-	std::vector<sl_gene_finder_data_point> find_gene(const std::string& gene, const std::string& assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd,
+	std::vector<sl_gene_finder_data_point> find_gene(const std::string &gene, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
 	fs::path mScreenDir;
 };
 
-std::vector<sl_data_point> SLScreenRestController::screenData(const std::string& screen, const std::string& assembly, const std::string &transcript_selection, const std::string &control,
-	Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+std::vector<sl_data_point> SLScreenRestController::screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcript_selection, mode, cutOverlap, geneStart, geneEnd);
 	return dp->data_points(screen);
 
+	// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
+	// 		throw zeep::http::forbidden;
 
-// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-// 		throw zeep::http::forbidden;
+	// 	fs::path screenDir = mScreenDir / screen;
 
-// 	fs::path screenDir = mScreenDir / screen;
+	// 	if (not fs::is_directory(screenDir))
+	// 		throw std::runtime_error("No such screen: " + screen);
 
-// 	if (not fs::is_directory(screenDir))
-// 		throw std::runtime_error("No such screen: " + screen);
+	// 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
 
-// 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
+	// 	if (control.empty())
+	// 		control = "ControlData-HAP1";
 
-// 	if (control.empty())
-// 		control = "ControlData-HAP1";
+	// 	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
 
-// 	std::unique_ptr<SLScreenData> controlData(new SLScreenData(mScreenDir / control));
-	
-// 	// -----------------------------------------------------------------------
+	// 	// -----------------------------------------------------------------------
 
-// 	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
-// 	filterOutExons(transcripts);
+	// 	std::vector<Transcript> transcripts = loadTranscripts(assembly, mode, geneStart, geneEnd, cutOverlap);
+	// 	filterOutExons(transcripts);
 
-// 	// reorder transcripts based on chr > end-position, makes code easier and faster
-// 	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-// 	{
-// 		int d = a.chrom - b.chrom;
-// 		if (d == 0)
-// 			d = a.start() - b.start();
-// 		return d < 0;
-// 	});
+	// 	// reorder transcripts based on chr > end-position, makes code easier and faster
+	// 	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
+	// 	{
+	// 		int d = a.chrom - b.chrom;
+	// 		if (d == 0)
+	// 			d = a.start() - b.start();
+	// 		return d < 0;
+	// 	});
 
-// 	// --------------------------------------------------------------------
-	
-// // #warning "make groupSize a parameter"
-// 	// unsigned groupSize = 500;
-// 	unsigned groupSize = 200;
-// // #warning "make trimLength a parameter"
-// 	unsigned trimLength = 50;
+	// 	// --------------------------------------------------------------------
 
-// 	// -----------------------------------------------------------------------
+	// // #warning "make groupSize a parameter"
+	// 	// unsigned groupSize = 500;
+	// 	unsigned groupSize = 200;
+	// // #warning "make trimLength a parameter"
+	// 	unsigned trimLength = 50;
 
-// 	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize);
+	// 	// -----------------------------------------------------------------------
+
+	// 	return data->dataPoints(assembly, trimLength, transcripts, *controlData, groupSize);
 }
 
 // std::vector<SLDataPoint> SLScreenRestController::screenData(const std::string& screen)
@@ -587,7 +579,7 @@ std::vector<sl_data_point> SLScreenRestController::screenData(const std::string&
 // 	return screenData(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
 // }
 
-Region SLScreenRestController::geneInfo(const std::string& gene, const std::string& screen, const std::string& assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
+Region SLScreenRestController::geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
 {
 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -599,23 +591,22 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 	filterOutExons(transcripts);
 
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-	{
+	std::sort(transcripts.begin(), transcripts.end(), [](auto &a, auto &b)
+		{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
 			d = a.start() - b.start();
-		return d < 0;
-	});
+		return d < 0; });
 
 	Region result = {};
 
 	result.chrom = transcripts.front().chrom;
 	result.start = std::numeric_limits<int>::max();
 
-	for (auto& t: transcripts)
+	for (auto &t : transcripts)
 	{
-		auto& tn = result.genes.emplace_back(Gene{t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
-		for (auto e: t.exons)
+		auto &tn = result.genes.emplace_back(Gene{t.geneName, {t.strand}, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		for (auto e : t.exons)
 		{
 			if (e.start >= t.cds.start and e.end <= t.cds.end)
 			{
@@ -628,12 +619,12 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 				auto u = e;
 				if (u.end > t.cds.start)
 					u.end = t.cds.start;
-				
+
 				if (t.strand == '+')
-					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
+					tn.utr3.emplace_back(GeneExon{u.start, u.end});
 				else
-					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
-				
+					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+
 				e.start = t.cds.start;
 				if (e.start >= e.end)
 					continue;
@@ -644,20 +635,20 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 				auto u = e;
 				if (u.start < t.cds.end)
 					u.start = t.cds.end;
-				
+
 				if (t.strand == '+')
-					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
+					tn.utr5.emplace_back(GeneExon{u.start, u.end});
 				else
-					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
-				
+					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+
 				e.end = t.cds.end;
 				if (e.start >= e.end)
 					continue;
 			}
 
-			tn.exons.emplace_back(GeneExon{ e.start, e.end });
+			tn.exons.emplace_back(GeneExon{e.start, e.end});
 		}
-		
+
 		if (t.geneName != gene)
 			continue;
 
@@ -679,7 +670,7 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 
 	std::unique_ptr<SLScreenData> data(new SLScreenData(screenDir));
 
-	for (auto r: data->getReplicateNames())
+	for (auto r : data->getReplicateNames())
 	{
 		std::vector<uint32_t> pos_p, pos_m;
 		std::tie(pos_p, pos_m) = data->getInsertionsForReplicate(r, assembly, result.chrom, result.start, result.end);
@@ -693,23 +684,23 @@ Region SLScreenRestController::geneInfo(const std::string& gene, const std::stri
 	if (cutOverlap)
 		cutOverlappingRegions(transcripts);
 
-	for (auto& t: transcripts)
+	for (auto &t : transcripts)
 	{
 		if (t.geneName != gene)
 			continue;
-		
-		result.geneStrand = { t.strand };
 
-		for (auto& r: t.ranges)
+		result.geneStrand = {t.strand};
+
+		for (auto &r : t.ranges)
 			result.area.emplace_back(GeneExon{r.start, r.end});
 	}
 
 	return result;
 }
 
-zeep::http::reply SLScreenRestController::getBED(const std::string& screen, const std::string& replicate, const std::string &assembly)
+zeep::http::reply SLScreenRestController::getBED(const std::string &screen, const std::string &replicate, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
+	zeep::http::reply rep(zeep::http::ok, {1, 1});
 
 	auto data = SLScreenData::load(mScreenDir / screen);
 
@@ -722,10 +713,10 @@ zeep::http::reply SLScreenRestController::getBED(const std::string& screen, cons
 std::vector<std::string> SLScreenRestController::getReplicates(const std::string &screen)
 {
 	auto data = SLScreenData::load(mScreenDir / screen);
-	return static_cast<SLScreenData*>(data.get())->getReplicateNames();
+	return static_cast<SLScreenData *>(data.get())->getReplicateNames();
 }
 
-std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string& gene, const std::string& assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string &gene, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd);
 	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
@@ -737,7 +728,7 @@ std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const s
 class SLScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	SLScreenHtmlController(const fs::path& screenDir, bool is_public = false)
+	SLScreenHtmlController(const fs::path &screenDir, bool is_public = false)
 		: ScreenHtmlControllerBase(ScreenType::SyntheticLethal, is_public)
 		, mScreenDir(screenDir)
 	{
@@ -745,19 +736,19 @@ class SLScreenHtmlController : public ScreenHtmlControllerBase
 		mount("finder", &SLScreenHtmlController::finder);
 	}
 
-	void screen(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void finder(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void screen(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void finder(const zh::request &request, const zh::scope &scope, zh::reply &reply);
 
   private:
 	fs::path mScreenDir;
 };
 
-void SLScreenHtmlController::screen(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void SLScreenHtmlController::screen(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("sl-screen.html", scope, reply);
 }
 
-void SLScreenHtmlController::finder(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void SLScreenHtmlController::finder(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
 }
@@ -775,16 +766,16 @@ class ScreenHtmlController : public zh::html_controller
 		mount("favicon.ico", &ScreenHtmlController::handle_file);
 	}
 
-	void welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply);
-	void genome_browser(const zh::request& request, const zh::scope& scope, zh::reply& reply);
+	void welcome(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	void genome_browser(const zh::request &request, const zh::scope &scope, zh::reply &reply);
 
 	bool m_is_public;
 };
 
-void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& scope, zh::reply& reply)
+void ScreenHtmlController::welcome(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
 	zh::scope sub(scope);
-	
+
 	sub.put("public", m_is_public);
 
 	return get_template_processor().create_reply_from_template("index", sub, reply);
@@ -792,24 +783,23 @@ void ScreenHtmlController::welcome(const zh::request& request, const zh::scope& 
 
 // --------------------------------------------------------------------
 
-zh::server* createServer(const fs::path& docroot,
-	const fs::path& screenDir, const fs::path& transcriptDir,
-	const std::string& secret, const std::string& context_name)
+zh::server *createServer(const fs::path &docroot,
+	const fs::path &screenDir, const fs::path &transcriptDir,
+	const std::string &secret, const std::string &context_name)
 {
 	std::set_terminate([]()
-	{
+		{
 		std::cerr << "Unhandled exception in server" << std::endl;
-		std::abort();
-	});
+		std::abort(); });
 
 	// init screen_service
 	screen_service::init(screenDir, transcriptDir);
 
 	auto sc = new zh::security_context(secret, user_service::instance());
-	sc->add_rule("/admin", { "ADMIN" });
-	sc->add_rule("/admin/**", { "ADMIN" });
-	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
-	sc->add_rule("/{qc,screens}", { "USER" });
+	sc->add_rule("/admin", {"ADMIN"});
+	sc->add_rule("/admin/**", {"ADMIN"});
+	sc->add_rule("/{ip,pa,sl,screen}/", {"USER"});
+	sc->add_rule("/{qc,screens}", {"USER"});
 	sc->add_rule("/", {});
 
 	sc->set_validate_csrf(true);
@@ -850,15 +840,14 @@ zh::server* createServer(const fs::path& docroot,
 
 // --------------------------------------------------------------------
 
-zh::server* createPublicServer(const fs::path& docroot,
-	const fs::path& screenDir, const fs::path& transcriptDir,
-	const std::string& context_name)
+zh::server *createPublicServer(const fs::path &docroot,
+	const fs::path &screenDir, const fs::path &transcriptDir,
+	const std::string &context_name)
 {
 	std::set_terminate([]()
-	{
+		{
 		std::cerr << "Unhandled exception in server" << std::endl;
-		std::abort();
-	});
+		std::abort(); });
 
 	// init screen_service
 	screen_service::init(screenDir, transcriptDir);
