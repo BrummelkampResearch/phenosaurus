@@ -68,6 +68,7 @@ struct mapped_info
 struct screen_info
 {
 	std::string name;
+	std::optional<std::string> published_name;
 	std::string scientist;
 	ScreenType type;
 	std::string detected_signal;
@@ -87,6 +88,7 @@ struct screen_info
 	void serialize(Archive& ar, unsigned long version)
 	{
 		ar & zeep::name_value_pair("name", name)
+		   & zeep::name_value_pair("published_name", published_name)
 		   & zeep::name_value_pair("scientist", scientist)
 		   & zeep::name_value_pair("type", type)
 		   & zeep::name_value_pair("detected_signal", detected_signal)

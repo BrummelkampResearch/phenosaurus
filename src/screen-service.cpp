@@ -1736,6 +1736,7 @@ void screen_rest_controller::update_screen(const std::string& name, const screen
 	auto info = screen_service::instance().retrieve_screen(name);
 
 	// replace only the editable fields:
+	info.published_name = screen.published_name;	// TODO: perhaps check for user.admin?
 	info.treatment_details = screen.treatment_details;
 	info.cell_line = screen.cell_line;
 	info.description = screen.description;

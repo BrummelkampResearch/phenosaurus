@@ -74,6 +74,12 @@
 					<input type="text" disabled="disabled" class="form-control" id="screen-name"
 						aria-describedby="screenName" name="screen-name" z:value="${screen.name}" />
 				</div>
+
+				<div class="mb-3">
+					<label for="screen-published-name" class="form-label">Published screen name</label>
+					<input type="text" z:disabled="${not #security.hasRole('ADMIN')}" class="form-control" id="screen-published-name"
+						aria-describedby="screenPublishedName" name="screen-published-name" z:value="${screen.published_name}" />
+				</div>
 		
 				<div class="mb-3" z:classappend="${screen.treatment?:'d-none'}">
 					<label for="treatment-details" class="form-label">Treatment details</label>
