@@ -128,7 +128,7 @@ class ScreenCreator {
 		
 				const screen = {
 					name: this.form['screen-name'].value,
-					published_name: this.form['screen-published-name'].value,
+					published_name: (this.form['screen-published-name'] || this.form['screen-name']).value,
 					scientist: this.form['scientist'].value,
 					type: this.form['screen-type'].value,
 					detected_signal: this.form['detected-signal'].value,
