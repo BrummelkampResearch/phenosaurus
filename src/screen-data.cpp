@@ -254,16 +254,16 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 		{
 			// plus and minus are stored separatedly, but we don't want to sort everything, so be smart
 
-			std::vector<uint32_t> pos_plus, pos_negative;
+			std::vector<uint32_t> pos, neg;
 
 			if (ibs())
-				pos_plus = sq::read_array(ibs);
+				pos = sq::read_array(ibs);
 
 			if (ibs())
-				pos_negative = sq::read_array(ibs);
+				neg = sq::read_array(ibs);
 
-			auto pi = pos_plus.begin(), epi = pos_plus.end();
-			auto ni = pos_negative.begin(), eni = pos_negative.end();
+			auto pi = pos.begin(), epi = pos.end();
+			auto ni = neg.begin(), eni = neg.end();
 
 			while (pi != epi or ni != eni)
 			{
@@ -579,7 +579,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 	std::vector<Insertions> &lowInsertions, std::vector<Insertions> &highInsertions)
 {
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-#if DEBUG
+#ifndef NDEBUG
 	auto tc = transcripts;
 	std::stable_sort(tc.begin(), tc.end());
 	assert(tc == transcripts);
@@ -590,7 +590,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 
 	for (std::string s : {"low", "high"})
 	{
-#ifndef DEBUG
+#ifdef NDEBUG
 		t.emplace_back([&, lh = s]() {
 #else
 		auto lh = s;
@@ -643,7 +643,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 			{
 				eptr = std::current_exception();
 			}
-#ifndef DEBUG
+#ifdef NDEBUG
 		});
 #endif
 	}
@@ -771,28 +771,29 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 
 		std::tie(p.low, p.high) = countLowHigh(i);
 
-		double miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
-		if (p.low == 0)
+		int miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
+
+		if (miL == 0)
 		{
 			miL = 1;
 			miLT -= 1;
 		}
 
-		if (p.high == 0)
+		if (miH == 0)
 		{
 			miH = 1;
 			miHT -= 1;
 		}
 
 		long v[2][2] = {
-			{p.low, p.high},
-			{lowCount - p.low, highCount - p.high}};
+			{miL, miH},
+			{lowCount - miL, highCount - miH}};
 
 		pvalues[i] = fisherTest2x2(v);
 
 		p.gene = t.geneName;
 		p.pv = pvalues[i];
-		p.mi = ((miH / miHT) / (miL / miLT));
+		p.mi = ((static_cast<float>(miH) / miHT) / (static_cast<float>(miL) / miLT));
 	});
 
 	auto fcpv = adjustFDR_BH(pvalues);

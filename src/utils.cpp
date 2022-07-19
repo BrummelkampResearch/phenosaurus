@@ -24,7 +24,7 @@ const auto kProcessorCount = std::thread::hardware_concurrency();
 void parallel_for(size_t N, std::function<void(size_t)>&& f)
 {
 
-#if DEBUG
+#ifndef NDEBUG
 	if (getenv("NO_PARALLEL"))
 	{
 		for (size_t i = 0; i < N; ++i)

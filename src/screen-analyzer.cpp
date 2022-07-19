@@ -375,6 +375,218 @@ Examples:
 	return 0;
 }
 
+// --------------------------------------------------------------------
+
+int analyze_pa(po::variables_map& vm, IPPAScreenData& screenData)
+{
+	if (vm.count("assembly") == 0 or
+		vm.count("start") == 0 or vm.count("end") == 0 or
+		(vm.count("overlap") != 0 and vm["overlap"].as<std::string>() != "both" and vm["overlap"].as<std::string>() != "neither"))
+	{
+		std::cerr << R"(
+Mode longest-transcript means take the longest transcript for each gene,
+
+Mode longest-exon means the longest expression region, which can be
+different from the longest-transcript.
+
+Mode collapse means, for each gene take the region between the first 
+start and last end.
+
+Start and end should be either 'cds' or 'tx' with an optional offset 
+appended. Optionally you can also specify cdsStart, cdsEnd, txStart
+or txEnd to have the start at the cdsEnd e.g.
+
+Overlap: in case of both, all genes will be added, in case of neither
+the parts with overlap will be left out.
+
+Examples:
+
+	--mode=longest-transcript --start=cds-100 --end=cds
+
+		For each gene take the longest transcript. For these we take the 
+		cdsStart minus 100 basepairs as start and cdsEnd as end. This means
+		no  3' UTR and whatever fits in the 100 basepairs of the 5' UTR.
+
+	--mode=collapse --start=tx --end=tx+1000
+
+		For each gene take the minimum txStart of all transcripts as start
+		and the maximum txEnd plus 1000 basepairs as end. This obviously
+		includes both 5' UTR and 3' UTR.
+
+)"				<< std::endl;
+		exit(vm.count("help") ? 0 : 1);
+	}
+
+	std::string assembly = vm["assembly"].as<std::string>();
+
+	unsigned trimLength = 0;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
+	
+	// -----------------------------------------------------------------------
+
+	// bool cutOverlap = true;
+	// if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
+	// 	cutOverlap = false;
+	bool cutOverlap = false;
+	
+	Mode mode = vm.count("mode") ?
+		zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>()) :
+		Mode::LongestTranscript;
+
+	std::string pStart = vm.count("start") ? vm["start"].as<std::string>() : "txStart-5000";
+	std::string pEnd = vm.count("end") ? vm["end"].as<std::string>() : "cdsStart";
+
+	auto transcripts_p = loadTranscripts(assembly, "default", mode, pStart, pEnd, cutOverlap);
+	auto transcripts_g = loadTranscripts(assembly, "default", mode, "cdsStart", "cdsEnd", cutOverlap);
+
+	assert(transcripts_p.size() == transcripts_g.size());
+
+	// -----------------------------------------------------------------------
+
+	std::vector<Insertions> lowInsertionsP, highInsertionsP;
+	std::vector<Insertions> lowInsertionsG, highInsertionsG;
+
+	std::list<std::thread> ta;
+	ta.emplace_back([&]() { screenData.analyze(assembly, trimLength, transcripts_p, lowInsertionsP, highInsertionsP); });
+	ta.emplace_back([&]() { screenData.analyze(assembly, trimLength, transcripts_g, lowInsertionsG, highInsertionsG); });
+	
+	for (auto &t : ta) t.join();
+
+	long lowSenseCountP = 0, lowAntiSenseCountP = 0;
+	for (auto& i: lowInsertionsP)
+	{
+		lowSenseCountP += i.sense.size();
+		lowAntiSenseCountP += i.antiSense.size();
+	}
+
+	long highSenseCountP = 0, highAntiSenseCountP = 0;
+	for (auto& i: highInsertionsP)
+	{
+		highSenseCountP += i.sense.size();
+		highAntiSenseCountP += i.antiSense.size();
+	}
+
+	long lowSenseCountG = 0, lowAntiSenseCountG = 0;
+	for (auto& i: lowInsertionsG)
+	{
+		lowSenseCountG += i.sense.size();
+		lowAntiSenseCountG += i.antiSense.size();
+	}
+
+	long highSenseCountG = 0, highAntiSenseCountG = 0;
+	for (auto& i: highInsertionsG)
+	{
+		highSenseCountG += i.sense.size();
+		highAntiSenseCountG += i.antiSense.size();
+	}
+
+	// -----------------------------------------------------------------------
+	
+	std::cerr << std::endl
+			<< std::string(get_terminal_width(), '-') << std::endl
+			<< "Low: " << std::endl
+			<< " sense      : " << std::setw(10) << lowSenseCountP << std::endl
+			<< " anti sense : " << std::setw(10) << lowAntiSenseCountP << std::endl
+			<< "High: " << std::endl
+			<< " sense      : " << std::setw(10) << highSenseCountP << std::endl
+			<< " anti sense : " << std::setw(10) << highAntiSenseCountP << std::endl
+			<< std::endl
+			<< "Low: " << std::endl
+			<< " sense      : " << std::setw(10) << lowSenseCountG << std::endl
+			<< " anti sense : " << std::setw(10) << lowAntiSenseCountG << std::endl
+			<< "High: " << std::endl
+			<< " sense      : " << std::setw(10) << highSenseCountG << std::endl
+			<< " anti sense : " << std::setw(10) << highAntiSenseCountG << std::endl;
+
+
+	Direction direction = Direction::Sense;
+	if (vm.count("direction"))
+	{
+		if (vm["direction"].as<std::string>() == "sense")
+			direction = Direction::Sense;
+		else if (vm["direction"].as<std::string>() == "antisense" or vm["direction"].as<std::string>() == "anti-sense")
+			direction = Direction::AntiSense;
+		else if (vm["direction"].as<std::string>() == "both")
+			direction = Direction::Both;
+		else
+		{
+			std::cerr << "invalid direction" << std::endl;
+			exit(1);
+		}
+	}
+
+	std::cout << "gene" << '\t'
+			  << "low" << '\t'
+			  << "high" << '\t'
+			  << "pv" << '\t'
+			  << "fcpv" << '\t'
+			  << "log2(mi)" << std::endl;
+
+	std::array<std::vector<IPDataPoint>,3> dps;
+
+	ta.clear();
+	ta.emplace_back([&]() { dps[0] = screenData.dataPoints(transcripts_p, lowInsertionsP, highInsertionsP, direction); });
+	ta.emplace_back([&]() { dps[1] = screenData.dataPoints(transcripts_g, lowInsertionsG, highInsertionsG, direction); });
+
+	// std::vector<Insertion> lowInsertionsS, highInsertionsS;
+	// for (size_t i = 0; i < trans)
+
+	// ta.emplace_back([&]() { dps[2] = screenData.dataPoints(transcripts_p, lowInsertionsP, highInsertionsP, direction); });
+
+	for (auto &t : ta) t.join();
+
+	std::vector<size_t> ix(transcripts_p.size(), 0);
+	std::iota(ix.begin(), ix.end(), 0);
+
+	std::sort(ix.begin(), ix.end(), [&](size_t ai, size_t bi)
+	{
+		auto &dpa0 = dps[0][ai];
+		auto &dpa1 = dps[1][ai];
+		auto &dpb0 = dps[0][bi];
+		auto &dpb1 = dps[1][bi];
+
+		float ca0 = 1.0f + dpa0.low + dpa0.high;
+		float ca1 = 1.0f + dpa1.low + dpa1.high;
+		float fa = ca1 / ca0;
+
+		float cb0 = 1.0f + dpb0.low + dpb0.high;
+		float cb1 = 1.0f + dpb1.low + dpb1.high;
+		float fb = cb1 / cb0;		
+
+		float sa = dpa0.fcpv + fa * (1 - dpa1.fcpv);
+		float sb = dpb0.fcpv + fb * (1 - dpb1.fcpv);
+
+		return sa < sb;
+	});
+
+	for (size_t i : ix)
+	{
+		auto &dp0 = dps[0][i];
+		auto &dp1 = dps[1][i];
+
+		std::cout << dp0.gene << '\t'
+				  << dp0.low << '\t'
+				  << dp0.high << '\t'
+				  << dp0.pv << '\t'
+				  << dp0.fcpv << '\t'
+				  << std::log2(dp0.mi) << '\t'
+
+				  << dp1.gene << '\t'
+				  << dp1.low << '\t'
+				  << dp1.high << '\t'
+				  << dp1.pv << '\t'
+				  << dp1.fcpv << '\t'
+				  << std::log2(dp1.mi)
+
+				  << std::endl;
+	}
+
+	return 0;
+}
+
+// --------------------------------------------------------------------
+
 int analyze_sl(po::variables_map& vm, SLScreenData& screenData, SLScreenData& controlData)
 {
 	if (vm.count("assembly") == 0 or vm.count("control") == 0 or
@@ -517,192 +729,6 @@ or txEnd to have the start at the cdsEnd e.g.
 	return 0;
 }
 
-// int analyze_vb(int argc, char* const argv[])
-// {
-// 	int result = 0;
-
-// 	auto vm = load_options(argc, argv, "screen-analyzer" R"( analyze screen-name assembly [options])",
-// 		{
-// 			{ "screen-name",	po::value<std::string>(),					"The screen to analyze" },
-
-// 			{ "group-size",		po::value<unsigned short>()->default_value(500),
-// 																			"The group size to use for normalizing insertions counts in SL, default is 500"},
-// 			{ "significant",	new po::untyped_value(true),				"The significant genes only, in case of synthetic lethal"},
-
-// 			{ "pv-cut-off",		po::value<float>()->default_value(0.05f),	"P-value cut off"},
-// 			{ "binom-fdr-cut-off",
-// 								po::value<float>()->default_value(1.f),		"binom FDR cut off" },
-// 			{ "odds-ratio",
-// 								po::value<float>()->default_value(1.2f),	"Odds Ratio" },
-
-// 			{ "no-header",		new po::untyped_value(true),				"Do not print a header line" },
-
-// 			{ "output,o",		po::value<std::string>(),					"Output file" }
-// 		}, { "screen-name" }, { "screen-name" });
-
-// 	// fail early
-// 	std::ofstream out;
-// 	if (vm.count("output"))
-// 	{
-// 		out.open(vm["output"].as<std::string>());
-// 		if (not out.is_open())
-// 			throw std::runtime_error("Could not open output file");
-// 	}
-
-// 	std::streambuf* sb = nullptr;
-// 	if (out.is_open())
-// 		sb = std::cout.rdbuf(out.rdbuf());
-
-// 	std::string control = "WT";
-// 	if (vm.count("control"))
-// 		control = vm["control"].as<std::string>();
-	
-// 	// -----------------------------------------------------------------------
-
-// 	std::vector<Transcript> transcripts;
-
-// 	// if (vm.count("gene-bed-file"))
-// 	// 	transcripts = loadTranscripts(vm["gene-bed-file"].as<std::string>());
-// 	// else
-// 	// {
-// 	// 	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
-
-// 	// 	bool cutOverlap = true;
-// 	// 	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
-// 	// 		cutOverlap = false;
-
-// 	// 	transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
-// 	// 	filterOutExons(transcripts);
-// 	// }
-
-// 	// // reorder transcripts based on chr > end-position, makes code easier and faster
-// 	// std::sort(transcripts.begin(), transcripts.end(), [](auto& a, auto& b)
-// 	// {
-// 	// 	int d = a.chrom - b.chrom;
-// 	// 	if (d == 0)
-// 	// 		d = a.start() - b.start();
-// 	// 	return d < 0;
-// 	// });
-
-// 	// --------------------------------------------------------------------
-
-// 	unsigned groupSize = vm["group-size"].as<unsigned short>();
-
-// 	float pvCutOff = vm["pv-cut-off"].as<float>();
-// 	float binom_fdrCutOff = vm["binom-fdr-cut-off"].as<float>();
-// 	float oddsRatio = vm["odds-ratio"].as<float>();
-
-// 	// -----------------------------------------------------------------------
-
-// 	std::array<std::vector<InsertionCount>, 3> insertions;
-
-// 	std::ifstream file(vm["screen-name"].as<std::string>() + ".all");
-// 	if (not file.is_open())
-// 		throw std::runtime_error("Could not open file " + vm["screen-name"].as<std::string>() + ".all");
-	
-// 	std::string line;
-// 	while (std::getline(file, line))
-// 	{
-// 		auto s = line.find('\t');
-// 		transcripts.push_back({ line.substr(0, s) });
-// 		transcripts.back().geneName = transcripts.back().name;
-
-// 		char *p = const_cast<char*>(line.c_str() + s + 1);
-
-// 		for (int i = 0; i < 3; ++i)
-// 		{
-// 			size_t sense = strtol(p, &p, 10);
-// 			size_t antisense = strtol(p, &p, 10);
-
-// 			insertions[i].push_back(InsertionCount{ sense, antisense });
-// 		}
-// 	}
-// 	file.close();
-
-// 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
-
-// 	file.open(control + ".all");
-// 	if (not file.is_open())
-// 		throw std::runtime_error("Could not open file " + control + ".all");
-	
-// 	while (std::getline(file, line))
-// 	{
-// 		auto s = line.find('\t');
-		
-// 		std::string gene = line.substr(0, s);
-// 		if (transcripts[controlInsertions[0].size()].geneName != gene)
-// 			throw std::runtime_error("Gene names do not match: " + gene + " != " + transcripts[controlInsertions[0].size()].geneName);
-
-// 		char *p = const_cast<char*>(line.c_str() + s + 1);
-
-// 		for (int i = 0; i < 4; ++i)
-// 		{
-// 			size_t sense = strtol(p, &p, 10);
-// 			size_t antisense = strtol(p, &p, 10);
-
-// 			controlInsertions[i].push_back(InsertionCount{ sense, antisense });
-// 		}
-// 	}
-// 	file.close();
-
-// 	auto r = SLdataPoints(transcripts, insertions, controlInsertions, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
-// 	bool significantOnly = vm.count("significant");
-
-// 	if (vm.count("no-header") == 0)
-// 	{
-// 		std::cout
-// 				<< "replicate" << '\t'
-// 				<< "gene" << '\t'
-// 				<< "sense" << '\t'
-// 				<< "antisense" << '\t'
-// 				<< "binom_fdr" << '\t'
-// 				<< "sense_normalized" << '\t'
-// 				<< "antisense_normalized" << '\t'
-// 				// << "fcpv_control_1 " << '\t'
-// 				<< "pv_control_1" << '\t'
-// 				// << "fcpv_control_2" << '\t'
-// 				<< "pv_control_2" << '\t'
-// 				// << "fcpv_control_3" << '\t'
-// 				<< "pv_control_3" << '\t'
-// 				// << "fcpv_control_4" << '\t'
-// 				<< "pv_control_4" << '\t'
-// 				<< "effect"
-// 				<< std::endl;
-// 	}
-
-// 	for (const auto& replicate: r.replicate)
-// 	{
-// 		for (size_t i = 0; i < transcripts.size(); ++i)
-// 		{
-// 			auto& dp = replicate.data[i];
-
-// 			if (significantOnly and not r.significant.count(dp.gene))
-// 				continue;
-			
-// 			std::cout
-// 				<< replicate.name << '\t'
-// 				<< dp.gene << '\t'
-// 				<< dp.sense << '\t'
-// 				<< dp.antisense << '\t'
-// 				<< dp.binom_fdr << '\t'
-// 				<< dp.sense_normalized << '\t'
-// 				<< dp.antisense_normalized << '\t'
-// 				//   << dp.ref_fcpv[0] << '\t'
-// 				<< dp.ref_pv[0] << '\t'
-// 				//   << dp.ref_fcpv[1] << '\t'
-// 				<< dp.ref_pv[1] << '\t'
-// 				//   << dp.ref_fcpv[2] << '\t'
-// 				<< dp.ref_pv[2] << '\t'
-// 				//   << dp.ref_fcpv[3] << '\t'
-// 				<< dp.ref_pv[3] << '\t'
-// 				<< dp.strength
-// 				<< std::endl;
-// 		}
-// 	}
-
-// 	return 0;
-// }
-
 int main_analyze(int argc, char* const argv[])
 {
 	int result = 0;
@@ -765,8 +791,12 @@ int main_analyze(int argc, char* const argv[])
 			result = analyze_ip(vm, *static_cast<IPScreenData*>(data.get()));
 			break;
 
+		// case ScreenType::IntracellularPhenotypeActivation:
+		// 	result = analyze_ip(vm, *static_cast<PAScreenData*>(data.get()));
+		// 	break;
+
 		case ScreenType::IntracellularPhenotypeActivation:
-			result = analyze_ip(vm, *static_cast<PAScreenData*>(data.get()));
+			result = analyze_pa(vm, *static_cast<PAScreenData*>(data.get()));
 			break;
 
 		case ScreenType::SyntheticLethal:
@@ -873,7 +903,7 @@ Command should be either:
 
 	fs::path docroot;
 
-#if DEBUG
+#ifndef NDEBUG
 	char exePath[PATH_MAX + 1];
 	int r = readlink("/proc/self/exe", exePath, PATH_MAX);
 	if (r > 0)
@@ -1156,20 +1186,14 @@ int main(int argc, char* const argv[])
 		}
 
 		std::string command = argv[1];
-		// if (command == "create")
-		// 	result = main_create(argc - 1, argv + 1);
 		if (command == "map")
 		 	result = main_map(argc - 1, argv + 1);
 		else if (command == "analyze")
 			result = main_analyze(argc - 1, argv + 1);
-		// else if (command == "vb")
-		// 	result = analyze_vb(argc - 1, argv + 1);
 		else if (command == "refseq")
 			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
-		// else if (command == "compress")
-		// 	result = main_compress(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")

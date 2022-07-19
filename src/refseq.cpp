@@ -382,7 +382,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, const std::string
 		mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
 		if (not refseq)
-			throw std::runtime_error("Invalid assembly specified, could not find genes");
+			throw std::runtime_error("Invalid assembly specified, could not find genes for '" + assembly + '\'');
 
 		mrsrc::istream in(refseq);
 		
