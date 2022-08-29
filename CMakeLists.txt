@@ -83,8 +83,8 @@ if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-add_git_submodule(libconfig EXCLUDE_FROM_ALL)
 add_git_submodule(squeeze EXCLUDE_FROM_ALL)
+add_git_submodule(mailio EXCLUDE_FROM_ALL)
 
 find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options iostreams)
@@ -92,7 +92,6 @@ find_package(ZLIB REQUIRED)
 
 pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
 pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
-pkg_check_modules(MAILIO mailio REQUIRED IMPORTED_TARGET)
 pkg_check_modules(SSL libssl IMPORTED_TARGET)
 pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
 

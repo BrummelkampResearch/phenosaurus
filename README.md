@@ -12,7 +12,7 @@ Building the software
 
 This software was developed using Linux and probably will not be able to run on a non-unix like operating system.
 
-Other requirements
+Other requirements are a very recent C++ compiler capable of compiling C++17 code, and 
 
 
 

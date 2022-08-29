@@ -7,3 +7,6 @@
 [submodule "squeeze"]
 	path = squeeze
 	url = https://github.com/mhekkel/squeeze.git
+[submodule "mailio"]
+	path = mailio
+	url = https://github.com/mhekkel/mailio.git
