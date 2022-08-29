@@ -97,7 +97,7 @@ sense_ratio = (counts_in_sense + 1) / (counts_in_sense + counts_in_antisense + 2
 
 The interpretation of these counts then depends on the analysis being done.
 
-### Sythetic Lethal
+### Synthetic Lethal
 
 The first step in sythetic lethal analysis is normalisation of the insertion counts. For all transcripts, the ones with at least 20 insertions in sense and antisense direction are selected in both the requested experiment as well as a single _sense ratio_ for the four control experiments. These transcripts are then sorted on _sense ratio_ of the control experiments and then divided into groups with an average group size of 500. For each group, the median _sense ratio_ is taken for both the experiment and the control experiments. The idea is that the median in both the controls and the experiment should be the same per group and so we adjust the counts to achieve this.
 
