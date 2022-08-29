@@ -10,3 +10,7 @@
 [submodule "mailio"]
 	path = mailio
 	url = https://github.com/mhekkel/mailio.git
+[submodule "libpqxx"]
+	path = libpqxx
+	url = https://github.com/jtv/libpqxx.git
+	branch = 17e5a6c8

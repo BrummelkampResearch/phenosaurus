@@ -83,17 +83,13 @@ if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-add_git_submodule(squeeze EXCLUDE_FROM_ALL)
-add_git_submodule(mailio EXCLUDE_FROM_ALL)
-
 find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options iostreams)
 find_package(ZLIB REQUIRED)
+find_package(libpqxx 7.7.4 REQUIRED)
 
-pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
-pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
-pkg_check_modules(SSL libssl IMPORTED_TARGET)
-pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
+add_git_submodule(squeeze EXCLUDE_FROM_ALL)
+add_git_submodule(mailio EXCLUDE_FROM_ALL)
 
 find_program(YARN yarn REQUIRED)
 
@@ -183,7 +179,7 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
-	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO ZLIB::ZLIB
+	libpqxx::pqxx mailio::mailio ZLIB::ZLIB
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
