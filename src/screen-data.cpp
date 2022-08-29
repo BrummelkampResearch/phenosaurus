@@ -7,11 +7,13 @@
 #include <regex>
 #include <stdexcept>
 
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+
 #include <zeep/json/parser.hpp>
 #include <zeep/value-serializer.hpp>
 
 #include <squeeze.hpp>
-#include <gxrio.hpp>
 
 #include "binom.hpp"
 #include "bowtie.hpp"

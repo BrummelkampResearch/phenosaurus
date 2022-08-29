@@ -83,19 +83,18 @@ if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-add_git_submodule(gxrio EXCLUDE_FROM_ALL)
 add_git_submodule(libconfig EXCLUDE_FROM_ALL)
 add_git_submodule(squeeze EXCLUDE_FROM_ALL)
 
 find_package(zeep 5.1.3 REQUIRED)
-find_package(Boost COMPONENTS system date_time program_options)
+find_package(Boost COMPONENTS system date_time program_options iostreams)
+find_package(ZLIB REQUIRED)
 
 pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
 pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
 pkg_check_modules(MAILIO mailio REQUIRED IMPORTED_TARGET)
 pkg_check_modules(SSL libssl IMPORTED_TARGET)
 pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
-pkg_check_modules(ZLIB zlib IMPORTED_TARGET)
 
 find_program(YARN yarn REQUIRED)
 
@@ -182,10 +181,10 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-server.hpp
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c)
 
-target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
-	PRIVATE zeep::zeep Boost::date_time Boost::program_options
-	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO PkgConfig::ZLIB
+	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
+	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO ZLIB::ZLIB
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
