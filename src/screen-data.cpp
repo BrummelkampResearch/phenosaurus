@@ -143,7 +143,7 @@ void ScreenData::addFile(const std::string &name, fs::path file)
 
 	fs::create_symlink(file, to);
 
-	mInfo.files.push_back({name, file});
+	mInfo.files.push_back({ name, file });
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -208,7 +208,7 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 	}
 
 	if (not isSet)
-		mInfo.mappedInfo.push_back({assembly, trimLength, version, kBowtieParams, bowtieIndex});
+		mInfo.mappedInfo.push_back({ assembly, trimLength, version, kBowtieParams, bowtieIndex });
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -269,20 +269,20 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 			{
 				if (ni == eni)
 				{
-					result.push_back(Insertion{chr, '+', *pi++});
+					result.push_back(Insertion{ chr, '+', *pi++ });
 					continue;
 				}
 
 				if (pi == epi)
 				{
-					result.push_back(Insertion{chr, '-', *ni++});
+					result.push_back(Insertion{ chr, '-', *ni++ });
 					continue;
 				}
 
 				if (*pi <= *ni)
-					result.push_back(Insertion{chr, '+', *pi++});
+					result.push_back(Insertion{ chr, '+', *pi++ });
 				else
-					result.push_back(Insertion{chr, '-', *ni++});
+					result.push_back(Insertion{ chr, '-', *ni++ });
 			}
 		}
 	}
@@ -311,7 +311,7 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 	std::unique_ptr<std::stringstream> result(new std::stringstream());
 
 	auto insertions = read_insertions(assembly, readLength, file);
-	for (const auto &[ chr, strand, pos ] : insertions)
+	for (const auto &[chr, strand, pos] : insertions)
 	{
 		*result << to_string(chr) << '\t'
 				<< pos << '\t'
@@ -329,14 +329,14 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 void ScreenData::write_insertions(const std::string &assembly, unsigned readLength, const std::string &file,
 	std::vector<Insertion> &insertions)
 {
-	std::sort(insertions.begin(), insertions.end(), [](const Insertion &a, const Insertion &b) {
+	std::sort(insertions.begin(), insertions.end(), [](const Insertion &a, const Insertion &b)
+		{
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
 		if (d == 0)
 			d = a.pos - b.pos;
-		return d < 0;
-	});
+		return d < 0; });
 
 	std::vector<uint8_t> bits;
 	sq::obitstream obs(bits);
@@ -347,7 +347,7 @@ void ScreenData::write_insertions(const std::string &assembly, unsigned readLeng
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str : {'+', '-'})
+		for (char str : { '+', '-' })
 		{
 			std::vector<uint32_t> pos;
 
@@ -447,7 +447,8 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 	if (result.mappedInfo.size() > 1)
 	{
 		auto &mi = result.mappedInfo;
-		auto cmp = [](const mapped_info &a, const mapped_info &b) {
+		auto cmp = [](const mapped_info &a, const mapped_info &b)
+		{
 			int d = a.assembly.compare(b.assembly);
 			if (d == 0)
 				d = a.trimlength - b.trimlength;
@@ -507,14 +508,14 @@ void ScreenData::compress_map(const std::string &assembly, unsigned readLength, 
 	infile.read(reinterpret_cast<char *>(bwt.data()), size);
 	infile.close();
 
-	std::sort(bwt.begin(), bwt.end(), [](const Insertion &a, const Insertion &b) {
+	std::sort(bwt.begin(), bwt.end(), [](const Insertion &a, const Insertion &b)
+		{
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
 		if (d == 0)
 			d = a.pos - b.pos;
-		return d < 0;
-	});
+		return d < 0; });
 
 	std::vector<uint8_t> bits;
 	sq::obitstream obs(bits);
@@ -525,7 +526,7 @@ void ScreenData::compress_map(const std::string &assembly, unsigned readLength, 
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str : {'+', '-'})
+		for (char str : { '+', '-' })
 		{
 			std::vector<uint32_t> pos;
 
@@ -588,63 +589,64 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s : {"low", "high"})
+	for (std::string s : { "low", "high" })
 	{
 #ifdef NDEBUG
-		t.emplace_back([&, lh = s]() {
+		t.emplace_back([&, lh = s]()
+			{
 #else
 		auto lh = s;
 #endif
-			try
-			{
-				auto bwt = read_insertions(assembly, readLength, lh);
-
-				std::vector<Insertions> insertions(transcripts.size());
-
-				auto ts = transcripts.begin();
-
-				for (const auto &[chr, strand, pos] : bwt)
+				try
 				{
-					assert(chr != CHROM::INVALID);
+					auto bwt = read_insertions(assembly, readLength, lh);
 
-					// we have a valid hit at chr:pos, see if it matches a transcript
+					std::vector<Insertions> insertions(transcripts.size());
 
-					// skip all that are before the current position
-					while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
-						++ts;
+					auto ts = transcripts.begin();
 
-					auto t = ts;
-					while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
+					for (const auto &[chr, strand, pos] : bwt)
 					{
-						if (VERBOSE >= 3)
-							std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+						assert(chr != CHROM::INVALID);
 
-						for (auto &r : t->ranges)
+						// we have a valid hit at chr:pos, see if it matches a transcript
+
+						// skip all that are before the current position
+						while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
+							++ts;
+
+						auto t = ts;
+						while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 						{
-							if (pos >= r.start and pos < r.end)
+							if (VERBOSE >= 3)
+								std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+							for (auto &r : t->ranges)
 							{
-								if (strand == t->strand)
-									insertions[t - transcripts.begin()].sense.insert(pos);
-								else
-									insertions[t - transcripts.begin()].antiSense.insert(pos);
+								if (pos >= r.start and pos < r.end)
+								{
+									if (strand == t->strand)
+										insertions[t - transcripts.begin()].sense.insert(pos);
+									else
+										insertions[t - transcripts.begin()].antiSense.insert(pos);
+								}
 							}
+
+							++t;
 						}
-
-						++t;
 					}
-				}
 
-				if (lh == "low")
-					std::swap(insertions, lowInsertions);
-				else
-					std::swap(insertions, highInsertions);
-			}
-			catch (...)
-			{
-				eptr = std::current_exception();
-			}
+					if (lh == "low")
+						std::swap(insertions, lowInsertions);
+					else
+						std::swap(insertions, highInsertions);
+				}
+				catch (...)
+				{
+					eptr = std::current_exception();
+				}
 #ifdef NDEBUG
-		});
+			});
 #endif
 	}
 
@@ -670,9 +672,10 @@ IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t st
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s : {"low", "high"})
+	for (std::string s : { "low", "high" })
 	{
-		t.emplace_back([&, lh = s]() {
+		t.emplace_back([&, lh = s]()
+			{
 			try
 			{
 				std::vector<uint32_t> &insP = lh == "low" ? lowP : highP;
@@ -696,8 +699,7 @@ IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t st
 			catch (...)
 			{
 				eptr = std::current_exception();
-			}
-		});
+			} });
 	}
 
 	for (auto &ti : t)
@@ -732,7 +734,8 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	const std::vector<Insertions> &lowInsertions, const std::vector<Insertions> &highInsertions,
 	Direction direction)
 {
-	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long> {
+	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long>
+	{
 		long low = 0, high = 0;
 		switch (direction)
 		{
@@ -751,7 +754,7 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
 				break;
 		}
-		return {low, high};
+		return { low, high };
 	};
 
 	long lowCount = 0, highCount = 0;
@@ -765,7 +768,8 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	std::vector<double> pvalues(transcripts.size(), 0);
 	std::vector<IPDataPoint> result(transcripts.size());
 
-	parallel_for(transcripts.size(), [&](size_t i) {
+	parallel_for(transcripts.size(), [&](size_t i)
+		{
 		auto &t = transcripts[i];
 		auto &p = result[i];
 
@@ -793,8 +797,130 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 
 		p.gene = t.geneName;
 		p.pv = pvalues[i];
-		p.mi = ((static_cast<float>(miH) / miHT) / (static_cast<float>(miL) / miLT));
-	});
+		p.mi = ((static_cast<float>(miH) / miHT) / (static_cast<float>(miL) / miLT)); });
+
+	auto fcpv = adjustFDR_BH(pvalues);
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
+		result[i].fcpv = fcpv[i];
+
+	return result;
+}
+
+std::vector<IPDataPoint> IPPAScreenData::dataPoints_2(const std::vector<Transcript> &transcripts,
+	const std::vector<Insertions> &lowInsertionsP, const std::vector<Insertions> &highInsertionsP,
+	const std::vector<Insertions> &lowInsertionsG, const std::vector<Insertions> &highInsertionsG,
+	Direction direction)
+{
+	// auto countLowHigh = [&](size_t i, bool sum) -> std::tuple<long, long> {
+	// 	long low = 0, high = 0;
+	// 	switch (direction)
+	// 	{
+	// 		case Direction::Sense:
+	// 			low = lowInsertionsP[i].sense.size();
+	// 			high = highInsertionsP[i].sense.size();
+	// 			break;
+
+	// 		case Direction::AntiSense:
+	// 			low = lowInsertionsP[i].antiSense.size();
+	// 			high = highInsertionsP[i].antiSense.size();
+	// 			break;
+
+	// 		case Direction::Both:
+	// 			low = lowInsertionsP[i].sense.size() + lowInsertionsP[i].antiSense.size();
+	// 			high = highInsertionsP[i].sense.size() + highInsertionsP[i].antiSense.size();
+	// 			break;
+	// 	}
+
+	// 	if (sum)
+	// 	{
+	// 		switch (direction)
+	// 		{
+	// 			case Direction::Sense:
+	// 				low = lowInsertionsG[i].sense.size();
+	// 				high = highInsertionsG[i].sense.size();
+	// 				break;
+
+	// 			case Direction::AntiSense:
+	// 				low = lowInsertionsG[i].antiSense.size();
+	// 				high = highInsertionsG[i].antiSense.size();
+	// 				break;
+
+	// 			case Direction::Both:
+	// 				low = lowInsertionsG[i].sense.size() + lowInsertionsG[i].antiSense.size();
+	// 				high = highInsertionsG[i].sense.size() + highInsertionsG[i].antiSense.size();
+	// 				break;
+	// 		}
+	// 	}
+
+	// 	return {low, high};
+	// };
+
+	auto countLowHigh = [&](size_t i, bool sum) -> std::tuple<long, long>
+	{
+		long low = 0, high = 0;
+		switch (direction)
+		{
+			case Direction::Sense:
+				low = lowInsertionsP[i].sense.size() - lowInsertionsG[i].sense.size();
+				high = highInsertionsP[i].sense.size() - highInsertionsG[i].sense.size();
+				break;
+
+			case Direction::AntiSense:
+				low = lowInsertionsP[i].antiSense.size();
+				high = highInsertionsP[i].antiSense.size();
+				break;
+
+			case Direction::Both:
+				low = lowInsertionsP[i].sense.size() + lowInsertionsP[i].antiSense.size();
+				high = highInsertionsP[i].sense.size() + highInsertionsP[i].antiSense.size();
+				break;
+		}
+
+		return { low > 0 ? low : 0, high > 0 ? high : 0 };
+	};
+
+	long lowCount = 0, highCount = 0;
+	for (size_t i = 0; i < transcripts.size(); ++i)
+	{
+		auto &&[low, high] = countLowHigh(i, true);
+		lowCount += low;
+		highCount += high;
+	}
+
+	std::vector<double> pvalues(transcripts.size(), 0);
+	std::vector<IPDataPoint> result(transcripts.size());
+
+	parallel_for(transcripts.size(), [&](size_t i)
+		{
+		auto &t = transcripts[i];
+		auto &p = result[i];
+
+		std::tie(p.low, p.high) = countLowHigh(i, false);
+
+		int miL = p.low, miH = p.high, miLT = lowCount - p.low, miHT = highCount - p.high;
+
+		if (miL == 0)
+		{
+			miL = 1;
+			miLT -= 1;
+		}
+
+		if (miH == 0)
+		{
+			miH = 1;
+			miHT -= 1;
+		}
+
+		long v[2][2] = {
+			{miL, miH},
+			{lowCount - miL, highCount - miH}};
+
+		pvalues[i] = fisherTest2x2(v);
+
+		p.gene = t.geneName;
+		p.pv = pvalues[i];
+		p.mi = ((static_cast<float>(miH) / miHT) / (static_cast<float>(miL) / miLT)); });
 
 	auto fcpv = adjustFDR_BH(pvalues);
 
@@ -828,15 +954,16 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 	return result;
 }
 
-std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions(const std::string& assembly, unsigned trimLength,
-	const std::vector<Transcript>& transcripts, unsigned groupSize) const
+std::array<std::vector<InsertionCount>, 4> SLScreenData::loadNormalizedInsertions(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, unsigned groupSize) const
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
 
 	std::exception_ptr eptr;
 
-	parallel_for(4, [&](size_t i) {
+	parallel_for(4, [&](size_t i)
+		{
 		try
 		{
 			count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
@@ -844,14 +971,14 @@ std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
 
 	std::array<std::vector<InsertionCount>, 4> normalizedControlInsertions;
-	parallel_for(4, [&](size_t i) {
+	parallel_for(4, [&](size_t i)
+		{
 		try
 		{
 			normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
@@ -859,8 +986,7 @@ std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -877,16 +1003,17 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
 	const std::vector<Transcript> &transcripts,
-	const std::array<std::vector<InsertionCount>,4>& normalizedControlInsertions, unsigned groupSize)
+	const std::array<std::vector<InsertionCount>, 4> &normalizedControlInsertions, unsigned groupSize)
 {
 	std::exception_ptr eptr;
 
 	std::vector<std::tuple<std::string, std::vector<SLDataReplicate>>> replicates;
 
 	for (auto &f : mInfo.files)
-		replicates.push_back({f.name, {}});
+		replicates.push_back({ f.name, {} });
 
-	parallel_for(replicates.size(), [&](size_t i) {
+	parallel_for(replicates.size(), [&](size_t i)
+		{
 		try
 		{
 			auto &&[replicate, repl] = replicates[i];
@@ -901,8 +1028,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -910,7 +1036,8 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 	// merge data, calculate odds ratio
 
 	std::vector<SLDataPoint> result(transcripts.size());
-	parallel_for(result.size(), [&](size_t i) {
+	parallel_for(result.size(), [&](size_t i)
+		{
 		try
 		{
 			enum class ConsistencyCheck {
@@ -987,8 +1114,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -1028,7 +1154,8 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions);
 
-	parallel_for(insertions.size(), [&](size_t i) {
+	parallel_for(insertions.size(), [&](size_t i)
+		{
 		int sense = insertions[i].sense;
 		int antisense = insertions[i].antiSense;
 
@@ -1052,8 +1179,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 			senseRatio[i] = (sense + 1.0f) / (sense + antisense + 2);
 			refSenseRatio[i] = (ref_sense + 1.0f) / (ref_sense + ref_antisense + 2);
-		}
-	});
+		} });
 
 	// collect the datapoints with both counts in sample and in reference
 
@@ -1069,11 +1195,13 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 	// sort datapoints based on ref_ratio
 	std::sort(index.begin(), index.end(),
-		[&refSenseRatio](size_t a, size_t b) { return refSenseRatio[a] < refSenseRatio[b]; });
+		[&refSenseRatio](size_t a, size_t b)
+		{ return refSenseRatio[a] < refSenseRatio[b]; });
 
 	auto groups = divide(index.size(), groupSize);
 
-	parallel_for(groups.size(), [&](size_t i) {
+	parallel_for(groups.size(), [&](size_t i)
+		{
 		const auto &[b, e] = groups[i];
 		auto l = e - b;
 
@@ -1120,8 +1248,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			auto total = insertions[iix].sense + insertions[iix].antiSense;
 			result[iix].sense = static_cast<int>(std::round(f * (total)));
 			result[iix].antiSense = total - result[iix].sense;
-		}
-	});
+		} });
 
 	return result;
 }
@@ -1198,9 +1325,9 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> SLScreenData::getInsert
 // 	const std::vector<InsertionCount> &insertions,
 // 	const std::array<std::vector<InsertionCount>, 4> &controlInsertions,
 // 	unsigned groupSize)
-std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
-	const std::vector<InsertionCount>& insertions,
-	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
+std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
+	const std::vector<InsertionCount> &insertions,
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
@@ -1221,20 +1348,21 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 	std::vector<double> pvalues;
 	pvalues.resize(M);
 
-	// Calculate the minimal sense ratio per gene in the controls
-	std::vector<double> minSenseRatio(N);
-	for (auto &cdi : controlInsertions)
-	{
-		for (auto i : index)
-		{
-			auto &cd = cdi[i];
-			double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
-			if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
-				minSenseRatio[i] = r;
-		}
-	}
+	// // Calculate the minimal sense ratio per gene in the controls
+	// std::vector<double> minSenseRatio(N);
+	// for (auto &cdi : controlInsertions)
+	// {
+	// 	for (auto i : index)
+	// 	{
+	// 		auto &cd = cdi[i];
+	// 		double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
+	// 		if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
+	// 			minSenseRatio[i] = r;
+	// 	}
+	// }
 
-	parallel_for(M, [&](size_t ix) {
+	parallel_for(M, [&](size_t ix)
+		{
 		size_t i = index[ix];
 
 		SLDataReplicate &repl = result[i];
@@ -1258,16 +1386,15 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 				repl.ref_pv[j] = -1;
 			else
 				repl.ref_pv[j] = fisherTest2x2(v);
-		}
-	});
+		} });
 
 	std::vector<double> fcpv;
 	fcpv = adjustFDR_BH(pvalues);
 
-	parallel_for(M, [&](size_t ix) {
+	parallel_for(M, [&](size_t ix)
+		{
 		size_t i = index[ix];
-		result[i].binom_fdr = fcpv[ix];
-	});
+		result[i].binom_fdr = fcpv[ix]; });
 
 	return result;
 }

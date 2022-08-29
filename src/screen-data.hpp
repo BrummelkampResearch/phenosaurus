@@ -311,6 +311,11 @@ class IPPAScreenData : public ScreenData
 		const std::vector<Insertions>& lowInsertions, const std::vector<Insertions>& highInsertions,
 		Direction direction);
 
+	std::vector<IPDataPoint> dataPoints_2(const std::vector<Transcript>& transcripts,
+		const std::vector<Insertions>& lowInsertionsP, const std::vector<Insertions>& highInsertionsP,
+		const std::vector<Insertions>& lowInsertionsG, const std::vector<Insertions>& highInsertionsG,
+		Direction direction);
+
   protected:
 
 	IPPAScreenData(ScreenType type, const std::filesystem::path& dir);

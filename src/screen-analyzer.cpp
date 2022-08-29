@@ -517,11 +517,24 @@ Examples:
 	}
 
 	std::cout << "gene" << '\t'
-			  << "low" << '\t'
-			  << "high" << '\t'
-			  << "pv" << '\t'
-			  << "fcpv" << '\t'
-			  << "log2(mi)" << std::endl;
+
+			  << "low-p" << '\t'
+			  << "high-p" << '\t'
+			  << "pv-p" << '\t'
+			  << "fcpv-p" << '\t'
+			  << "log2(mi)-p" << '\t'
+
+			  << "low-g" << '\t'
+			  << "high-g" << '\t'
+			  << "pv-g" << '\t'
+			  << "fcpv-g" << '\t'
+			  << "log2(mi)-g" << '\t'
+
+			  << "low-s" << '\t'
+			  << "high-s" << '\t'
+			  << "pv-s" << '\t'
+			  << "fcpv-s" << '\t'
+			  << "log2(mi)-s" << std::endl;
 
 	std::array<std::vector<IPDataPoint>,3> dps;
 
@@ -532,7 +545,7 @@ Examples:
 	// std::vector<Insertion> lowInsertionsS, highInsertionsS;
 	// for (size_t i = 0; i < trans)
 
-	// ta.emplace_back([&]() { dps[2] = screenData.dataPoints(transcripts_p, lowInsertionsP, highInsertionsP, direction); });
+	ta.emplace_back([&]() { dps[2] = screenData.dataPoints_2(transcripts_p, lowInsertionsP, highInsertionsP, lowInsertionsG, highInsertionsG, direction); });
 
 	for (auto &t : ta) t.join();
 
@@ -564,20 +577,28 @@ Examples:
 	{
 		auto &dp0 = dps[0][i];
 		auto &dp1 = dps[1][i];
+		auto &dp2 = dps[2][i];
 
 		std::cout << dp0.gene << '\t'
+		
 				  << dp0.low << '\t'
 				  << dp0.high << '\t'
 				  << dp0.pv << '\t'
 				  << dp0.fcpv << '\t'
 				  << std::log2(dp0.mi) << '\t'
 
-				  << dp1.gene << '\t'
+				//   << dp1.gene << '\t'
 				  << dp1.low << '\t'
 				  << dp1.high << '\t'
 				  << dp1.pv << '\t'
 				  << dp1.fcpv << '\t'
-				  << std::log2(dp1.mi)
+				  << std::log2(dp1.mi) << '\t'
+
+				  << dp2.low << '\t'
+				  << dp2.high << '\t'
+				  << dp2.pv << '\t'
+				  << dp2.fcpv << '\t'
+				  << std::log2(dp2.mi)
 
 				  << std::endl;
 	}
