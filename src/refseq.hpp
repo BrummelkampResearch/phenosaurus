@@ -10,7 +10,7 @@
 
 enum class Mode
 {
-	Collapse, LongestTranscript, LongestExon
+	Collapse, LongestTranscript, LongestExon, LongestPromotor
 };
 
 // -----------------------------------------------------------------------
@@ -145,6 +145,9 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly,
 
 // loadTranscripts variant that reads the transcripts from a BED file
 std::vector<Transcript> loadTranscripts(const std::string& bedFile);
+
+// // load transcripts for a PA analysis
+// std::vector<Transcript> loadPATranscripts(const std::string &assembly, const std::string &transcript_selection, int promotorLength);
 
 // --------------------------------------------------------------------
 // Yet another selection: filter out exons

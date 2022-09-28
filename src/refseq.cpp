@@ -701,6 +701,43 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 			);			
 			break;
 
+		case Mode::LongestPromotor:
+			// Find the transcript with the longest promotor (or better, the highest CDS start) for each gene
+			for (size_t i = 0; i < transcripts.size(); ++i)
+			{
+				auto ix_a = index[i];
+				auto& a = transcripts[ix_a];
+
+				auto l = ix_a;
+
+				// auto len_a = a.end() - a.start();
+				auto start_a = a.cds.start;
+
+				for (size_t j = i + 1; j < transcripts.size(); ++j)
+				{
+					auto ix_b = index[j];
+					auto& b = transcripts[ix_b];
+
+					if (b.chrom != a.chrom or b.geneName != a.geneName or a.strand != b.strand)
+						break;
+
+					++i;
+
+					// auto len_b = b.end() - b.start();
+					auto start_b = b.cds.start;
+					if ((start_b > start_a) == (a.strand == '+'))
+						l = ix_b;
+				}
+
+				transcripts[l].longest = true;
+			}
+
+			transcripts.erase(
+				std::remove_if(transcripts.begin(), transcripts.end(), [](auto& t) { return not t.longest; }),
+				transcripts.end()
+			);			
+			break;
+
 		default:
 			break;
 	}
@@ -722,6 +759,19 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 
 	return transcripts;
 }
+
+// std::vector<Transcript> loadPATranscripts(const std::string &assembly, const std::string &transcript_selection, int promotorLength)
+// {
+// 	auto transcripts = loadGenes(assembly, transcript_selection, true, true);
+
+// 	filterTranscripts(transcripts, Mode::LongestPromotor, "txStart-" + std::to_string(promotorLength), "cdsEnd", false);
+
+
+
+	
+
+// 	return transcripts;
+// }
 
 // --------------------------------------------------------------------
 

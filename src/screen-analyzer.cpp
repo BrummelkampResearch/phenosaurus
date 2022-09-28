@@ -425,22 +425,32 @@ Examples:
 	
 	// -----------------------------------------------------------------------
 
-	// bool cutOverlap = true;
-	// if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
-	// 	cutOverlap = false;
 	bool cutOverlap = false;
-	
-	Mode mode = vm.count("mode") ?
-		zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>()) :
-		Mode::LongestTranscript;
+	auto start = "txStart-" + std::to_string(vm["promotor-length"].as<unsigned short>());
 
-	std::string pStart = vm.count("start") ? vm["start"].as<std::string>() : "txStart-5000";
-	std::string pEnd = vm.count("end") ? vm["end"].as<std::string>() : "cdsStart";
+	auto transcripts = loadTranscripts(assembly, "default", Mode::LongestPromotor, start, "cdsEnd", cutOverlap);
 
-	auto transcripts_p = loadTranscripts(assembly, "default", mode, pStart, pEnd, cutOverlap);
-	auto transcripts_g = loadTranscripts(assembly, "default", mode, "cdsStart", "cdsEnd", cutOverlap);
+	auto transcripts_p = transcripts;
+	auto transcripts_g = transcripts;
 
 	assert(transcripts_p.size() == transcripts_g.size());
+
+	for (size_t i = 0; i < transcripts_g.size(); ++i)
+	{
+		if (transcripts_p[i].strand == '+')
+		{
+			transcripts_p[i].end(transcripts_p[i].cds.start);
+			transcripts_g[i].start(transcripts_p[i].cds.start);
+		}
+		else
+		{
+			transcripts_p[i].start(transcripts_p[i].cds.end);
+			transcripts_g[i].end(transcripts_p[i].cds.end);
+		}
+	}
+
+	sort(transcripts_p.begin(), transcripts_p.end());
+	sort(transcripts_g.begin(), transcripts_g.end());
 
 	// -----------------------------------------------------------------------
 
@@ -524,17 +534,19 @@ Examples:
 			  << "fcpv-p" << '\t'
 			  << "log2(mi)-p" << '\t'
 
+			  << "gene" << '\t'
+
 			  << "low-g" << '\t'
 			  << "high-g" << '\t'
 			  << "pv-g" << '\t'
 			  << "fcpv-g" << '\t'
-			  << "log2(mi)-g" << '\t'
+			  << "log2(mi)-g" /*<< '\t'
 
 			  << "low-s" << '\t'
 			  << "high-s" << '\t'
 			  << "pv-s" << '\t'
 			  << "fcpv-s" << '\t'
-			  << "log2(mi)-s" << std::endl;
+			  << "log2(mi)-s" */<< std::endl;
 
 	std::array<std::vector<IPDataPoint>,3> dps;
 
@@ -545,60 +557,67 @@ Examples:
 	// std::vector<Insertion> lowInsertionsS, highInsertionsS;
 	// for (size_t i = 0; i < trans)
 
-	ta.emplace_back([&]() { dps[2] = screenData.dataPoints_2(transcripts_p, lowInsertionsP, highInsertionsP, lowInsertionsG, highInsertionsG, direction); });
+	// ta.emplace_back([&]() { dps[2] = screenData.dataPoints_2(transcripts_p, lowInsertionsP, highInsertionsP, lowInsertionsG, highInsertionsG, direction); });
 
 	for (auto &t : ta) t.join();
 
-	std::vector<size_t> ix(transcripts_p.size(), 0);
-	std::iota(ix.begin(), ix.end(), 0);
+	// std::vector<size_t> ix(transcripts_p.size(), 0);
+	// std::iota(ix.begin(), ix.end(), 0);
 
-	std::sort(ix.begin(), ix.end(), [&](size_t ai, size_t bi)
+	// std::sort(ix.begin(), ix.end(), [&](size_t ai, size_t bi)
+	// {
+	// 	auto &dpa0 = dps[0][ai];
+	// 	auto &dpa1 = dps[1][ai];
+	// 	auto &dpb0 = dps[0][bi];
+	// 	auto &dpb1 = dps[1][bi];
+
+	// 	float ca0 = 1.0f + dpa0.low + dpa0.high;
+	// 	float ca1 = 1.0f + dpa1.low + dpa1.high;
+	// 	float fa = ca1 / ca0;
+
+	// 	float cb0 = 1.0f + dpb0.low + dpb0.high;
+	// 	float cb1 = 1.0f + dpb1.low + dpb1.high;
+	// 	float fb = cb1 / cb0;		
+
+	// 	float sa = dpa0.fcpv + fa * (1 - dpa1.fcpv);
+	// 	float sb = dpb0.fcpv + fb * (1 - dpb1.fcpv);
+
+	// 	return sa < sb;
+	// });
+
+	std::vector<size_t> ix_p(transcripts.size(), 0), ix_g(transcripts.size(), 0);
+	std::iota(ix_p.begin(), ix_p.end(), 0);
+	std::iota(ix_g.begin(), ix_g.end(), 0);
+
+	std::sort(ix_p.begin(), ix_p.end(), [t=&transcripts_p](size_t a, size_t b) { return (*t)[a].geneName.compare((*t)[b].geneName) < 0; });
+	std::sort(ix_g.begin(), ix_g.end(), [t=&transcripts_g](size_t a, size_t b) { return (*t)[a].geneName.compare((*t)[b].geneName) < 0; });
+
+	for (size_t i = 0; i < transcripts.size(); ++i)
 	{
-		auto &dpa0 = dps[0][ai];
-		auto &dpa1 = dps[1][ai];
-		auto &dpb0 = dps[0][bi];
-		auto &dpb1 = dps[1][bi];
+		auto &dp_p = dps[0][ix_p[i]];
+		auto &dp_g = dps[1][ix_g[i]];
+		// auto &dp2 = dps[2][i];
 
-		float ca0 = 1.0f + dpa0.low + dpa0.high;
-		float ca1 = 1.0f + dpa1.low + dpa1.high;
-		float fa = ca1 / ca0;
-
-		float cb0 = 1.0f + dpb0.low + dpb0.high;
-		float cb1 = 1.0f + dpb1.low + dpb1.high;
-		float fb = cb1 / cb0;		
-
-		float sa = dpa0.fcpv + fa * (1 - dpa1.fcpv);
-		float sb = dpb0.fcpv + fb * (1 - dpb1.fcpv);
-
-		return sa < sb;
-	});
-
-	for (size_t i : ix)
-	{
-		auto &dp0 = dps[0][i];
-		auto &dp1 = dps[1][i];
-		auto &dp2 = dps[2][i];
-
-		std::cout << dp0.gene << '\t'
+		std::cout << dp_p.gene << '\t'
 		
-				  << dp0.low << '\t'
-				  << dp0.high << '\t'
-				  << dp0.pv << '\t'
-				  << dp0.fcpv << '\t'
-				  << std::log2(dp0.mi) << '\t'
+				  << dp_p.low << '\t'
+				  << dp_p.high << '\t'
+				  << dp_p.pv << '\t'
+				  << dp_p.fcpv << '\t'
+				  << std::log2(dp_p.mi) << '\t'
 
-				//   << dp1.gene << '\t'
-				  << dp1.low << '\t'
-				  << dp1.high << '\t'
-				  << dp1.pv << '\t'
-				  << dp1.fcpv << '\t'
-				  << std::log2(dp1.mi) << '\t'
+				  << dp_g.gene << '\t'
+				  << dp_g.low << '\t'
+				  << dp_g.high << '\t'
+				  << dp_g.pv << '\t'
+				  << dp_g.fcpv << '\t'
+				  << std::log2(dp_g.mi) << '\t'
 
-				  << dp2.low << '\t'
-				  << dp2.high << '\t'
-				  << dp2.pv << '\t'
-				  << dp2.fcpv << '\t'
-				  << std::log2(dp2.mi)
+				//   << dp2.low << '\t'
+				//   << dp2.high << '\t'
+				//   << dp2.pv << '\t'
+				//   << dp2.fcpv << '\t'
+				//   << std::log2(dp2.mi)
 
 				  << std::endl;
 	}
@@ -782,7 +801,11 @@ int main_analyze(int argc, char* const argv[])
 			
 			{ "no-header",	new po::untyped_value(true),	"Do not print a header line" },
 
-			{ "output,o",	po::value<std::string>(),	"Output file" }
+			{ "output,o",	po::value<std::string>(),	"Output file" },
+
+
+			{ "promotor-length",	po::value<unsigned short>()->default_value(6000),	"promotor length" },
+
 		}, { "screen-name", "assembly" }, { "screen-name", "assembly" });
 
 	// fail early
@@ -1160,7 +1183,8 @@ int main(int argc, char* const argv[])
 	zeep::value_serializer<Mode>::init("mode", {
 		{ Mode::Collapse, 			"collapse" },
 		{ Mode::LongestTranscript, 	"longest-transcript" },
-		{ Mode::LongestExon,		"longest-exon" }
+		{ Mode::LongestExon,		"longest-exon" },
+		{ Mode::LongestPromotor,	"longest-promotor" }
 	});
 
 	zeep::value_serializer<Direction>::init("direction", {
