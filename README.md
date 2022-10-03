@@ -79,9 +79,9 @@ This is a very condensed manual. I need to provide a better one, but maybe this 
 Algorithms
 ----------
 
-Here's a description on what is done in the analysis.
+Here's a description on what is done in an analysis.
 
-For all analysis, the first step is mapping the reads, provided in a FastQ file, onto the genome using bowtie version 1. The genome used is configured by the `assembly` option in the tools. At the NKI we have currently both _hg38_ and _hg19_ as option. For these assemblies, the bowtie indices are required.
+For all analyses, the first step is mapping the reads, provided in a FastQ file, onto the genome using bowtie version 1. The genome used is configured by the `assembly` option in the tools. At the NKI we have currently both _hg38_ and _hg19_ as option. For these assemblies, the bowtie indices are required.
 
 The mapping is done in two steps, first with a setting to allow only unique hits without any mismatch and a read-length of 50 (which is a configurable option). After this, the reads that did not map, are tried again with a single mismatch allowed, again only unique hits are allowed. Both these results are merged and then compressed and stored on disk together with some metadata (versions used e.g.).
 
@@ -97,16 +97,16 @@ sense_ratio = (counts_in_sense + 1) / (counts_in_sense + counts_in_antisense + 2
 
 The interpretation of these counts then depends on the analysis being done.
 
-### Sythetic Lethal
+### Synthetic Lethal
 
-The first step in sythetic lethal analysis is normalisation of the insertion counts. For all transcripts, the ones with at least 20 insertions in sense and antisense direction are selected in both the requested experiment as well as a single _sense ratio_ for the four control experiments. These transcripts are then sorted on _sense ratio_ of the control experiments and then divided into groups with an average group size of 500. For each group, the median _sense ratio_ is taken for both the experiment and the control experiments. The factor of these two values is used to correct the counts in the experiment.
+The first step in sythetic lethal analysis is normalisation of the insertion counts. For all transcripts, the ones with at least 20 insertions in sense and antisense direction are selected in both the requested experiment as well as a single, aggregated _sense ratio_ for the four control experiments. These transcripts are then sorted on _sense ratio_ of the control experiments and then divided into groups with an average group size of 500. For each group, the median _sense ratio_ is taken for both the experiment and the control experiments. The idea is that the median in both the controls and the experiment should be the same per group and so we adjust the counts to achieve this.
 
+For each experiment a _two-sided binomial test_ is calculated which gives a _p-value_ for each gene. These _p-values_ are then corrected for _False Discovery Rate_ using the _Benjamini-Hochberg Procedure_. This value is stored as `binom_fdr` in the tables and the least significant _p-value_ found is used to determine if this gene is considered to be a hit based on a user specified cut-off value.
 
+Next to this _p-value_ a _Fisher's exact test_ is calculated for the experiment versus all four control data sets.
 
-1st step: binomial FDR corrected 2-sided binomial test on each individual dataset (experimental and control). Identify genes that make the bin_FDR cutoff (based on the least significant p-value found in the replicates). This is different from Blomen at al 2015 where a 1-sided test was used.
+Then these intermediate results are combined. First, for each replicate the direction of the score compared to the controls is calculated and if it is inconsistent, the gene is not considered to be a hit. Then a _right-tailed_  _Fisher's exact test_ test is performed on the aggregated counts of the replicates in the experiment and the ones in the control data set. A side product of calculating this  _Fisher's exact test_ is a so-called _Odds Ratio_, this is stored as well.
 
-2nd step: for all genes a bi-directional fisher exact test is done to compare every gene with the control and do this for all combinations. p-value cutoff can be adjusted. Score the significance of the change and the direction of the change. If the directions are not identical in all tests the gene will not be considered a hit.
+The _Odds Ratio_ is compared to a user-supplied cut-off value, which is 0.8 by default. Genes with a value smaller than 0.8 are considered to be _sythetic lethal_ whereas values larger than 1/0.8 could be suppressors.
 
-3 rd step: aggregate the experiment and control. Apply a greater fisher test and use the ‘odds ratio’ cutoff (maximum likelihood estimate). Standard setting: smaller than 0.8 (could be a SL) AND larger than 1/0.8 (could be a suppressor)
-
-4rd step: 3 values are in browser (step 1, 2 and 3), set cutoffs, select hits. Place hits in table. Type of interaction is assigned based on: _sense ratio_ (based on aggregate) and binomial FDR (based on the least significant p-value among the replicates). Red is SL (intensity relates to odds ratio), Blue is suppressed essential. Purple is genotype-specific fitness enhancer. 
+In the web interface, the values are displayed in a Fishtail graph and the values that meet the cut-offs are displayed in tables. A colour is used to identify the various types, red is _synthetic lethal_, blue is _suppressed essential_ and purple is a _genotype-specific fitness enhancer_. The intensity of the colour is related to the _odds ratio_.

@@ -1220,18 +1220,18 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 	std::vector<double> pvalues;
 	pvalues.resize(M);
 
-	// Calculate the minimal sense ratio per gene in the controls
-	std::vector<double> minSenseRatio(N);
-	for (auto &cdi : controlInsertions)
-	{
-		for (auto i : index)
-		{
-			auto &cd = cdi[i];
-			double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
-			if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
-				minSenseRatio[i] = r;
-		}
-	}
+	// // Calculate the minimal sense ratio per gene in the controls
+	// std::vector<double> minSenseRatio(N);
+	// for (auto &cdi : controlInsertions)
+	// {
+	// 	for (auto i : index)
+	// 	{
+	// 		auto &cd = cdi[i];
+	// 		double r = (cd.sense + 1.0f) / (cd.sense + cd.antiSense + 2);
+	// 		if (minSenseRatio[i] > r or minSenseRatio[i] == 0)
+	// 			minSenseRatio[i] = r;
+	// 	}
+	// }
 
 	parallel_for(M, [&](size_t ix) {
 		size_t i = index[ix];
