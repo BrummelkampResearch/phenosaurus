@@ -139,7 +139,7 @@ find_package(Boost COMPONENTS system date_time program_options regex iostreams)
 find_package(squeeze 1.0.0 REQUIRED)
 
 pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
-find_package(libpqxx 7.2 REQUIRED)
+pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
 pkg_check_modules(MAILIO mailio REQUIRED IMPORTED_TARGET)
 pkg_check_modules(SSL libssl IMPORTED_TARGET)
 pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
@@ -233,7 +233,7 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
-	libpqxx::pqxx PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO PkgConfig::ZLIB
+	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO PkgConfig::ZLIB
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
