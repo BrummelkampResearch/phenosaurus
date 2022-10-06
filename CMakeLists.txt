@@ -25,7 +25,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # set the project name
-project(screen-analyzer VERSION 2.0.3 LANGUAGES CXX C)
+project(phenosaurus VERSION 2.0.3 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -188,7 +188,7 @@ if(USE_RSRC)
 	mrc_target_resources(screen-analyzer ${CMAKE_SOURCE_DIR}/docroot/ ${CMAKE_SOURCE_DIR}/rsrc/)
 endif()
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS screen-analyzer
     RUNTIME DESTINATION ${BIN_INSTALL_DIR}
 )
 
