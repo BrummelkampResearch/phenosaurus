@@ -1368,6 +1368,12 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 	return result;
 }
 
+std::string screen_service::get_description(const std::string &name) const
+{
+	auto manifest = ScreenData::loadManifest(m_screen_data_dir / name);
+	return manifest.description.value_or(name);
+}
+
 std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& screen)
 {
 	auto screenDir = m_screen_data_dir / screen.name;

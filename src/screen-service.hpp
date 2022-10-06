@@ -336,6 +336,8 @@ class screen_service
 	bool is_owner(const std::string &name, const std::string &username) const;
 	bool is_allowed(const std::string &screenname, const std::string &username) const;
 
+	std::string get_description(const std::string &name) const;
+
 	std::unique_ptr<ScreenData> create_screen(const screen_info &screen);
 	void update_screen(const std::string &name, const screen_info &screen);
 	void delete_screen(const std::string &name);

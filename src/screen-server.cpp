@@ -108,6 +108,8 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
+		map_get_request("screen/{id}/description", &IPScreenRestController::screenDescription, "id");
+
 		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
 			"gene", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
@@ -130,6 +132,12 @@ class IPScreenRestController : public zh::rest_controller
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
+	
+	zeep::json::element screenDescription(const std::string &screen)
+	{
+		auto desc = screen_service::instance().get_description(screen);
+		return { "description", desc };
+	}
 
 	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
