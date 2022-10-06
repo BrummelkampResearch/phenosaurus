@@ -159,6 +159,17 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			$(".screen-name").text(screen);
 
+			fetch(`screen/${screen}/description`, {
+				method: "get",
+				credentials: "include"
+			}).then(r => {
+				if (r.ok)
+					return r.json();
+			}).then(d => {
+				if (typeof(d.description) === "string")
+					$(".screen-name").text(d.description);
+			});
+
 			const screenData = new ScreenData(screen);
 
 			screenData.load(this.getOptions())

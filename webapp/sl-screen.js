@@ -218,7 +218,21 @@ class SLScreenPlot extends ScreenPlot {
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
 			[...this.parentColumn.getElementsByClassName("screen-name")]
-				.forEach(sn => sn.textContent = name);
+				.forEach(sn => {
+					sn.textContent = name;
+
+					fetch(`screen/${name}/description`, {
+						method: "get",
+						credentials: "include"
+					}).then(r => {
+						if (r.ok)
+							return r.json();
+					}).then(d => {
+						if (typeof(d.description) === "string")
+							sn.textContent = d.description;
+					});
+
+				});
 
 			const options = geneSelectionEditor.getOptions();
 
