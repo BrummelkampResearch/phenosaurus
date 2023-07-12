@@ -853,10 +853,16 @@ zh::server *createServer(const fs::path &docroot,
 	auto server = new zh::server(sc, docroot);
 
 	server->add_error_handler(new db_error_handler());
+	server->add_controller(new zh::login_controller());
+
+#ifndef NDEBUG
+	server->set_template_processor(new zeep::http::file_based_html_template_processor("docroot"));
+#else
+	server->set_template_processor(new zeep::http::rsrc_based_html_template_processor());
+#endif
 
 	server->set_context_name(context_name);
 
-	server->add_controller(new zh::login_controller());
 	server->add_controller(new user_service_html_controller());
 
 	server->add_controller(new ScreenHtmlController());

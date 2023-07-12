@@ -47,7 +47,10 @@ function getRandomInt(max) {
 export class GenomeViewerContextMenu extends ContextMenu {
 
 	constructor(viewer, menuID) {
-		super(menuID ? menuID : "genome-viewer-context-menu");
+
+		const container = document.getElementById('genome-viewer-container');
+
+		super(menuID ? menuID : "genome-viewer-context-menu", container);
 
 		this.viewer = viewer;
 	}

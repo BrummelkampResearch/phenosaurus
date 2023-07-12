@@ -30,15 +30,18 @@ let current;
 
 export default class ContextMenu {
 
-	constructor(menuID) {
+	constructor(menuID, view) {
 		this.menu = document.getElementById(menuID);
 		this.menuState = 0;
 		this.target = null;
 
-		document.addEventListener("contextmenu", (e) => this.handleContext(e));
-		document.addEventListener("click", (e) => this.handleClick(e));
+		view = view || document;
+
+		view.addEventListener("contextmenu", (e) => this.handleContext(e));
+		view.addEventListener("click", (e) => this.handleClick(e));
+
 		window.addEventListener("keyup", (e) => {
-			if (e.keyCode === 27) {
+			if (e.code === 'Escape') {
 				this.toggleMenuOff();
 			}
 		});
