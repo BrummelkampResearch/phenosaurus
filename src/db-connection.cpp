@@ -26,6 +26,8 @@
 
 #include "db-connection.hpp"
 
+#include <iostream>
+
 // --------------------------------------------------------------------
 
 std::unique_ptr<db_connection> db_connection::s_instance;

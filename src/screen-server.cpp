@@ -132,7 +132,7 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
-		map_get_request("screen/{id}/description", &IPScreenRestController::screenDescription, "id");
+		map_get_request("screen/{id}/description", &IPScreenRestController::screenDescription, "id", "assembly");
 
 		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
 			"gene", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
@@ -157,10 +157,13 @@ class IPScreenRestController : public zh::rest_controller
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 	
-	zeep::json::element screenDescription(const std::string &screen)
+	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
-		auto desc = screen_service::instance().get_description(screen);
-		return { { "description", desc } };
+		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
+
+		zeep::json::element result;
+		to_element(result, desc);
+		return result;
 	}
 
 	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene,
@@ -530,7 +533,7 @@ class SLScreenRestController : public zh::rest_controller
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
 			"id", "assembly", "transcripts", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
-		map_get_request("screen/{id}/description", &SLScreenRestController::screenDescription, "id");
+		map_get_request("screen/{id}/description", &SLScreenRestController::screenDescription, "id", "assembly");
 
 		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end");
 
@@ -548,10 +551,13 @@ class SLScreenRestController : public zh::rest_controller
 	std::vector<sl_data_point> screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
 
-	zeep::json::element screenDescription(const std::string &screen)
+	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
-		auto desc = screen_service::instance().get_description(screen);
-		return { { "description", desc } };
+		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
+
+		zeep::json::element result;
+		to_element(result, desc);
+		return result;
 	}
 
 	Region geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);

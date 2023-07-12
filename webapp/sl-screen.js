@@ -217,24 +217,35 @@ class SLScreenPlot extends ScreenPlot {
 			plotTitle.classList.add("plot-status-loading");
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
+			const options = geneSelectionEditor.getOptions();
+			const assembly = options.get("assembly");
+
 			[...this.parentColumn.getElementsByClassName("screen-name")]
 				.forEach(sn => {
 					sn.textContent = name;
 
-					fetch(`screen/${name}/description`, {
+					fetch(`screen/${name}/description?assembly=${assembly}`, {
 						method: "get",
 						credentials: "include"
 					}).then(r => {
 						if (r.ok)
 							return r.json();
 					}).then(d => {
-						if (typeof(d.description) === "string")
+						if (typeof (d.description) === "string")
 							sn.textContent = d.description;
+
+						// if (typeof (d.count) === "object") {
+						// 	let counts;
+
+						// 	for (let c of d.count) {
+						// 		counts = `${counts ? counts + '; ' : ''} ${c.file}=${c.count}`;
+						// 	}
+
+						// 	$(".screen-counts").text(`(insertion counts: ${counts})`);
+						// }
 					});
 
 				});
-
-			const options = geneSelectionEditor.getOptions();
 
 			if (this.control != null)
 				options.append("control", this.control.name);
@@ -471,31 +482,28 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	setPvCutOff(pv) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			super.setPvCutOff(+pv);
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
 
 	setBinomCutOff(binom) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			binomCutOff = +binom;
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
 
 	setOddsRatioCutOff(or) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			oddsRatioCutOff = +or;
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
@@ -516,7 +524,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				const td = document.createElement("td");
-				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${ colorMap.getColor(d) }" /></svg>`;
+				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${colorMap.getColor(d)}" /></svg>`;
 				row.appendChild(td);
 
 				col(d.odds_ratio ? format_pv(d.odds_ratio) : '');
@@ -606,7 +614,7 @@ class SLControlScreenPlot extends SLScreenPlot {
 	constructor(svg, plot, screenList) {
 		super(svg, screenList);
 
-		this.updateColorMap = () => {};
+		this.updateColorMap = () => { };
 		plot.control = this;
 	}
 
@@ -694,7 +702,7 @@ window.addEventListener('load', () => {
 			plot.loadScreen(screen);
 		}
 	});
-	
+
 
 });
 

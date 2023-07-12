@@ -24,12 +24,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <functional>
+#include "job-scheduler.hpp"
+#include "screen-service.hpp"
 
 #include <zeep/value-serializer.hpp>
 
-#include "job-scheduler.hpp"
-#include "screen-service.hpp"
+#include <functional>
+#include <iostream>
 
 // --------------------------------------------------------------------
 

@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -111,7 +111,7 @@ ScreenData::ScreenData(const fs::path &dir, const screen_info &info)
 	if (fs::exists(dir))
 		throw std::runtime_error("Screen already exists");
 
-	mInfo.created = boost::posix_time::second_clock().local_time();
+	mInfo.created = std::chrono::system_clock::now();
 
 	// always add the Brummelkamp group as allowed group
 	if (std::find(mInfo.groups.begin(), mInfo.groups.end(), "Brummelkamp-group") == mInfo.groups.end())
@@ -167,7 +167,7 @@ void ScreenData::addFile(const std::string &name, fs::path file)
 
 	fs::create_symlink(file, to);
 
-	mInfo.files.push_back({name, file});
+	mInfo.files.push_back({ name, file });
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -188,6 +188,17 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 		fs::create_directories(assemblyDataPath);
 
 	fs::path bowtieLogFile = assemblyDataPath / "bowtie.log";
+
+	std::string version = bowtieVersion(bowtie);
+	if (version.empty())
+		version = "(unknown, path is " + bowtie.string() + ')';
+
+	mapped_info mi{};
+	mi.assembly = assembly;
+	mi.trimlength = trimLength;
+	mi.bowtie_version = version;
+	mi.bowtie_index = bowtieIndex;
+	mi.bowtie_params = kBowtieParams;
 
 	for (auto fi = fs::directory_iterator(mDataDir); fi != fs::directory_iterator(); ++fi)
 	{
@@ -211,28 +222,12 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 					<< "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
 		write_insertions(assembly, trimLength, name, hits);
+
+		mi.file.emplace_back(screen_insertion_count{ name, static_cast<uint32_t>(hits.size()) });
 	}
 
-	std::string version = bowtieVersion(bowtie);
-	if (version.empty())
-		version = "(unknown, path is " + bowtie.string() + ')';
-
-	bool isSet = false;
-
-	for (auto &mi : mInfo.mappedInfo)
-	{
-		if (mi.assembly == assembly and mi.trimlength == trimLength)
-		{
-			mi.bowtie_version = version;
-			mi.bowtie_index = bowtieIndex;
-			mi.bowtie_params = kBowtieParams;
-			isSet = true;
-			break;
-		}
-	}
-
-	if (not isSet)
-		mInfo.mappedInfo.push_back({assembly, trimLength, version, kBowtieParams, bowtieIndex});
+	mInfo.mappedInfo.erase(std::remove_if(mInfo.mappedInfo.begin(), mInfo.mappedInfo.end(), [=](auto &mi) { return mi.assembly == assembly and mi.trimlength == trimLength;}), mInfo.mappedInfo.end());
+	mInfo.mappedInfo.emplace_back(std::move(mi));
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -293,20 +288,20 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 			{
 				if (ni == eni)
 				{
-					result.push_back(Insertion{chr, '+', *pi++});
+					result.push_back(Insertion{ chr, '+', *pi++ });
 					continue;
 				}
 
 				if (pi == epi)
 				{
-					result.push_back(Insertion{chr, '-', *ni++});
+					result.push_back(Insertion{ chr, '-', *ni++ });
 					continue;
 				}
 
 				if (*pi <= *ni)
-					result.push_back(Insertion{chr, '+', *pi++});
+					result.push_back(Insertion{ chr, '+', *pi++ });
 				else
-					result.push_back(Insertion{chr, '-', *ni++});
+					result.push_back(Insertion{ chr, '-', *ni++ });
 			}
 		}
 	}
@@ -317,6 +312,50 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 		result.resize(N);
 		infile.read(reinterpret_cast<char *>(result.data()), size);
 	}
+
+	infile.close();
+
+	return result;
+}
+
+uint32_t ScreenData::count_insertions(std::filesystem::path file)
+{
+	bool compressed = file.extension() == ".sq";
+	if (not compressed) // see if a compressed version exists
+	{
+		auto psq = file.parent_path() / (file.filename().string() + ".sq");
+		if (fs::exists(psq))
+		{
+			compressed = true;
+			file = psq;
+		}
+	}
+
+	if (not fs::exists(file))
+		throw std::runtime_error("File does not exist: " + file.string());
+
+	std::ifstream infile(file, std::ios::binary);
+	if (not infile.is_open())
+		throw std::runtime_error("Could not open " + file.string() + " file");
+
+	auto size = fs::file_size(file);
+
+	uint32_t result = 0;
+
+	if (compressed)
+	{
+		if (size > 32)
+			size = 32;
+
+		std::vector<uint8_t> bits(size);
+
+		infile.read(reinterpret_cast<char *>(bits.data()), size);
+
+		sq::ibitstream ibs(bits);
+		result = read_gamma(ibs);
+	}
+	else
+		result = size / sizeof(Insertion);
 
 	infile.close();
 
@@ -335,7 +374,7 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 	std::unique_ptr<std::stringstream> result(new std::stringstream());
 
 	auto insertions = read_insertions(assembly, readLength, file);
-	for (const auto &[ chr, strand, pos ] : insertions)
+	for (const auto &[chr, strand, pos] : insertions)
 	{
 		*result << to_string(chr) << '\t'
 				<< pos << '\t'
@@ -353,14 +392,14 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 void ScreenData::write_insertions(const std::string &assembly, unsigned readLength, const std::string &file,
 	std::vector<Insertion> &insertions)
 {
-	std::sort(insertions.begin(), insertions.end(), [](const Insertion &a, const Insertion &b) {
+	std::sort(insertions.begin(), insertions.end(), [](const Insertion &a, const Insertion &b)
+		{
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
 		if (d == 0)
 			d = a.pos - b.pos;
-		return d < 0;
-	});
+		return d < 0; });
 
 	std::vector<uint8_t> bits;
 	sq::obitstream obs(bits);
@@ -371,7 +410,7 @@ void ScreenData::write_insertions(const std::string &assembly, unsigned readLeng
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str : {'+', '-'})
+		for (char str : { '+', '-' })
 		{
 			std::vector<uint32_t> pos;
 
@@ -428,50 +467,80 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 
 	// Some info may be missing (old screens?)
 	if (result.mappedInfo.empty())
+		refreshManifest(result, dir);
+
+	return result;
+}
+
+void ScreenData::refreshManifest(screen_info &info, const std::filesystem::path &dir)
+{
+	// Resetting mapped info
+	bool updated = not info.mappedInfo.empty();
+
+	info.mappedInfo.clear();
+
+	try
 	{
-		try
+		// iterate assembly directories
+		for (auto &dia : fs::directory_iterator(dir))
 		{
-			// iterate assembly directories
-			for (auto &dia : fs::directory_iterator(dir))
+			if (not dia.is_directory())
+				continue;
+
+			// iterate trim length directories
+			for (auto &ditl : fs::directory_iterator(dia.path()))
 			{
-				if (not dia.is_directory())
+				if (not ditl.is_directory())
 					continue;
 
-				// iterate trim length directories
-				for (auto &ditl : fs::directory_iterator(dia.path()))
+				// should check for a string that is a number here...
+
+				mapped_info mi{};
+
+				mi.assembly = dia.path().filename().string();
+				mi.trimlength = std::stoul(ditl.path().filename());
+
+				if (info.type == ScreenType::SyntheticLethal)
 				{
-					if (not ditl.is_directory())
-						continue;
-
-					// should check for a string that is a number here...
-
 					// iterate files
 					for (auto mfi : fs::directory_iterator(ditl.path()))
 					{
-						if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
-							(result.type != ScreenType::SyntheticLethal and (mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
-																				mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
-						{
-							mapped_info mi{};
-							mi.assembly = dia.path().filename().string();
-							mi.trimlength = std::stoul(ditl.path().filename());
-							result.mappedInfo.push_back(mi);
-							break;
-						}
+						if (mfi.path().filename().string().substr(0, 10) != "replicate-")
+							continue;
+						mi.file.emplace_back(screen_insertion_count{ mfi.path().filename().string(), ScreenData::count_insertions(mfi.path()) });
 					}
+				}
+				else
+				{
+					for (std::string f : { "high", "low" })
+					{
+						auto p = ditl.path() / (f + ".sq");
+						if (not fs::exists(p))
+							p = ditl.path() / f;
+						if (fs::exists(p))
+
+						mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
+					}
+				}
+
+				if (not mi.file.empty())
+				{
+					info.mappedInfo.emplace_back(std::move(mi));
+					updated = true;
 				}
 			}
 		}
-		catch (const std::exception &ex)
-		{
-			std::cerr << "Error retrieving mapped info for screen " << result.name << ": " << ex.what() << std::endl;
-		}
+	}
+	catch (const std::exception &ex)
+	{
+		std::cerr << "Error retrieving mapped info for screen " << info.name << ": " << ex.what() << std::endl;
 	}
 
-	if (result.mappedInfo.size() > 1)
+	if (info.mappedInfo.size() > 1)
 	{
-		auto &mi = result.mappedInfo;
-		auto cmp = [](const mapped_info &a, const mapped_info &b) {
+		auto &mi = info.mappedInfo;
+		auto cmp = [](const mapped_info &a, const mapped_info &b)
+		{
 			int d = a.assembly.compare(b.assembly);
 			if (d == 0)
 				d = a.trimlength - b.trimlength;
@@ -480,7 +549,8 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 		mi.erase(std::unique(mi.begin(), mi.end(), cmp), mi.end());
 	}
 
-	return result;
+	if (updated)
+		saveManifest(info, dir);
 }
 
 // --------------------------------------------------------------------
@@ -531,14 +601,14 @@ void ScreenData::compress_map(const std::string &assembly, unsigned readLength, 
 	infile.read(reinterpret_cast<char *>(bwt.data()), size);
 	infile.close();
 
-	std::sort(bwt.begin(), bwt.end(), [](const Insertion &a, const Insertion &b) {
+	std::sort(bwt.begin(), bwt.end(), [](const Insertion &a, const Insertion &b)
+		{
 		int d = a.chr - b.chr;
 		if (d == 0)
 			d = a.strand - b.strand;
 		if (d == 0)
 			d = a.pos - b.pos;
-		return d < 0;
-	});
+		return d < 0; });
 
 	std::vector<uint8_t> bits;
 	sq::obitstream obs(bits);
@@ -549,7 +619,7 @@ void ScreenData::compress_map(const std::string &assembly, unsigned readLength, 
 
 	for (auto chr = CHROM::CHR_1; chr <= CHR_Y; chr = static_cast<CHROM>(static_cast<uint8_t>(chr) + 1))
 	{
-		for (char str : {'+', '-'})
+		for (char str : { '+', '-' })
 		{
 			std::vector<uint32_t> pos;
 
@@ -612,63 +682,64 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s : {"low", "high"})
+	for (std::string s : { "low", "high" })
 	{
 #ifndef DEBUG
-		t.emplace_back([&, lh = s]() {
+		t.emplace_back([&, lh = s]()
+			{
 #else
 		auto lh = s;
 #endif
-			try
-			{
-				auto bwt = read_insertions(assembly, readLength, lh);
-
-				std::vector<Insertions> insertions(transcripts.size());
-
-				auto ts = transcripts.begin();
-
-				for (const auto &[chr, strand, pos] : bwt)
+				try
 				{
-					assert(chr != CHROM::INVALID);
+					auto bwt = read_insertions(assembly, readLength, lh);
 
-					// we have a valid hit at chr:pos, see if it matches a transcript
+					std::vector<Insertions> insertions(transcripts.size());
 
-					// skip all that are before the current position
-					while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
-						++ts;
+					auto ts = transcripts.begin();
 
-					auto t = ts;
-					while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
+					for (const auto &[chr, strand, pos] : bwt)
 					{
-						if (VERBOSE >= 3)
-							std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+						assert(chr != CHROM::INVALID);
 
-						for (auto &r : t->ranges)
+						// we have a valid hit at chr:pos, see if it matches a transcript
+
+						// skip all that are before the current position
+						while (ts != transcripts.end() and (ts->chrom < chr or (ts->chrom == chr and ts->end() <= pos)))
+							++ts;
+
+						auto t = ts;
+						while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 						{
-							if (pos >= r.start and pos < r.end)
+							if (VERBOSE >= 3)
+								std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+
+							for (auto &r : t->ranges)
 							{
-								if (strand == t->strand)
-									insertions[t - transcripts.begin()].sense.insert(pos);
-								else
-									insertions[t - transcripts.begin()].antiSense.insert(pos);
+								if (pos >= r.start and pos < r.end)
+								{
+									if (strand == t->strand)
+										insertions[t - transcripts.begin()].sense.insert(pos);
+									else
+										insertions[t - transcripts.begin()].antiSense.insert(pos);
+								}
 							}
+
+							++t;
 						}
-
-						++t;
 					}
-				}
 
-				if (lh == "low")
-					std::swap(insertions, lowInsertions);
-				else
-					std::swap(insertions, highInsertions);
-			}
-			catch (...)
-			{
-				eptr = std::current_exception();
-			}
+					if (lh == "low")
+						std::swap(insertions, lowInsertions);
+					else
+						std::swap(insertions, highInsertions);
+				}
+				catch (...)
+				{
+					eptr = std::current_exception();
+				}
 #ifndef DEBUG
-		});
+			});
 #endif
 	}
 
@@ -694,9 +765,10 @@ IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t st
 	std::list<std::thread> t;
 	std::exception_ptr eptr;
 
-	for (std::string s : {"low", "high"})
+	for (std::string s : { "low", "high" })
 	{
-		t.emplace_back([&, lh = s]() {
+		t.emplace_back([&, lh = s]()
+			{
 			try
 			{
 				std::vector<uint32_t> &insP = lh == "low" ? lowP : highP;
@@ -720,8 +792,7 @@ IPPAScreenData::insertions(const std::string &assembly, CHROM chrom, uint32_t st
 			catch (...)
 			{
 				eptr = std::current_exception();
-			}
-		});
+			} });
 	}
 
 	for (auto &ti : t)
@@ -756,7 +827,8 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	const std::vector<Insertions> &lowInsertions, const std::vector<Insertions> &highInsertions,
 	Direction direction)
 {
-	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long> {
+	auto countLowHigh = [direction, &lowInsertions, &highInsertions](size_t i) -> std::tuple<long, long>
+	{
 		long low = 0, high = 0;
 		switch (direction)
 		{
@@ -775,7 +847,7 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 				high = highInsertions[i].sense.size() + highInsertions[i].antiSense.size();
 				break;
 		}
-		return {low, high};
+		return { low, high };
 	};
 
 	long lowCount = 0, highCount = 0;
@@ -789,7 +861,8 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 	std::vector<double> pvalues(transcripts.size(), 0);
 	std::vector<IPDataPoint> result(transcripts.size());
 
-	parallel_for(transcripts.size(), [&](size_t i) {
+	parallel_for(transcripts.size(), [&](size_t i)
+		{
 		auto &t = transcripts[i];
 		auto &p = result[i];
 
@@ -816,8 +889,7 @@ std::vector<IPDataPoint> IPPAScreenData::dataPoints(const std::vector<Transcript
 
 		p.gene = t.geneName;
 		p.pv = pvalues[i];
-		p.mi = ((miH / miHT) / (miL / miLT));
-	});
+		p.mi = ((miH / miHT) / (miL / miLT)); });
 
 	auto fcpv = adjustFDR_BH(pvalues);
 
@@ -851,15 +923,16 @@ std::vector<std::string> SLScreenData::getReplicateNames() const
 	return result;
 }
 
-std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions(const std::string& assembly, unsigned trimLength,
-	const std::vector<Transcript>& transcripts, unsigned groupSize) const
+std::array<std::vector<InsertionCount>, 4> SLScreenData::loadNormalizedInsertions(const std::string &assembly, unsigned trimLength,
+	const std::vector<Transcript> &transcripts, unsigned groupSize) const
 {
 	// First load the control data
 	std::array<std::vector<InsertionCount>, 4> controlInsertions;
 
 	std::exception_ptr eptr;
 
-	parallel_for(4, [&](size_t i) {
+	parallel_for(4, [&](size_t i)
+		{
 		try
 		{
 			count_insertions("replicate-" + std::to_string(i + 1), assembly, trimLength, transcripts, controlInsertions[i]);
@@ -867,14 +940,14 @@ std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
 
 	std::array<std::vector<InsertionCount>, 4> normalizedControlInsertions;
-	parallel_for(4, [&](size_t i) {
+	parallel_for(4, [&](size_t i)
+		{
 		try
 		{
 			normalizedControlInsertions[i] = normalize(controlInsertions[i], controlInsertions, groupSize);
@@ -882,8 +955,7 @@ std::array<std::vector<InsertionCount>,4> SLScreenData::loadNormalizedInsertions
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -900,16 +972,17 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
 	const std::vector<Transcript> &transcripts,
-	const std::array<std::vector<InsertionCount>,4>& normalizedControlInsertions, unsigned groupSize)
+	const std::array<std::vector<InsertionCount>, 4> &normalizedControlInsertions, unsigned groupSize)
 {
 	std::exception_ptr eptr;
 
 	std::vector<std::tuple<std::string, std::vector<SLDataReplicate>>> replicates;
 
 	for (auto &f : mInfo.files)
-		replicates.push_back({f.name, {}});
+		replicates.push_back({ f.name, {} });
 
-	parallel_for(replicates.size(), [&](size_t i) {
+	parallel_for(replicates.size(), [&](size_t i)
+		{
 		try
 		{
 			auto &&[replicate, repl] = replicates[i];
@@ -924,8 +997,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -933,7 +1005,8 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 	// merge data, calculate odds ratio
 
 	std::vector<SLDataPoint> result(transcripts.size());
-	parallel_for(result.size(), [&](size_t i) {
+	parallel_for(result.size(), [&](size_t i)
+		{
 		try
 		{
 			enum class ConsistencyCheck {
@@ -1010,8 +1083,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 		catch (const std::exception &e)
 		{
 			eptr = std::current_exception();
-		}
-	});
+		} });
 
 	if (eptr)
 		std::rethrow_exception(eptr);
@@ -1051,7 +1123,8 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 	std::vector<double> senseRatio(insertions.size()), refSenseRatio(insertions.size());
 	std::vector<InsertionCount> result(insertions);
 
-	parallel_for(insertions.size(), [&](size_t i) {
+	parallel_for(insertions.size(), [&](size_t i)
+		{
 		int sense = insertions[i].sense;
 		int antisense = insertions[i].antiSense;
 
@@ -1075,8 +1148,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 			senseRatio[i] = (sense + 1.0f) / (sense + antisense + 2);
 			refSenseRatio[i] = (ref_sense + 1.0f) / (ref_sense + ref_antisense + 2);
-		}
-	});
+		} });
 
 	// collect the datapoints with both counts in sample and in reference
 
@@ -1092,11 +1164,13 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 
 	// sort datapoints based on ref_ratio
 	std::sort(index.begin(), index.end(),
-		[&refSenseRatio](size_t a, size_t b) { return refSenseRatio[a] < refSenseRatio[b]; });
+		[&refSenseRatio](size_t a, size_t b)
+		{ return refSenseRatio[a] < refSenseRatio[b]; });
 
 	auto groups = divide(index.size(), groupSize);
 
-	parallel_for(groups.size(), [&](size_t i) {
+	parallel_for(groups.size(), [&](size_t i)
+		{
 		const auto &[b, e] = groups[i];
 		auto l = e - b;
 
@@ -1143,8 +1217,7 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			auto total = insertions[iix].sense + insertions[iix].antiSense;
 			result[iix].sense = static_cast<int>(std::round(f * (total)));
 			result[iix].antiSense = total - result[iix].sense;
-		}
-	});
+		} });
 
 	return result;
 }
@@ -1221,9 +1294,9 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> SLScreenData::getInsert
 // 	const std::vector<InsertionCount> &insertions,
 // 	const std::array<std::vector<InsertionCount>, 4> &controlInsertions,
 // 	unsigned groupSize)
-std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript>& transcripts,
-	const std::vector<InsertionCount>& insertions,
-	const std::array<std::vector<InsertionCount>,4>& controlInsertions, unsigned groupSize)
+std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
+	const std::vector<InsertionCount> &insertions,
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
 {
 	auto normalized = normalize(insertions, controlInsertions, groupSize);
 
@@ -1257,7 +1330,8 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 	// 	}
 	// }
 
-	parallel_for(M, [&](size_t ix) {
+	parallel_for(M, [&](size_t ix)
+		{
 		size_t i = index[ix];
 
 		SLDataReplicate &repl = result[i];
@@ -1281,16 +1355,15 @@ std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcri
 				repl.ref_pv[j] = -1;
 			else
 				repl.ref_pv[j] = fisherTest2x2(v);
-		}
-	});
+		} });
 
 	std::vector<double> fcpv;
 	fcpv = adjustFDR_BH(pvalues);
 
-	parallel_for(M, [&](size_t ix) {
+	parallel_for(M, [&](size_t ix)
+		{
 		size_t i = index[ix];
-		result[i].binom_fdr = fcpv[ix];
-	});
+		result[i].binom_fdr = fcpv[ix]; });
 
 	return result;
 }
