@@ -482,52 +482,47 @@ void ScreenData::refreshManifest(screen_info &info, const std::filesystem::path 
 	try
 	{
 		// iterate assembly directories
-		for (auto &dia : fs::directory_iterator(dir))
+		std::error_code ec;
+
+		for (std::string assembly : { "hg19", "hg38" })
 		{
-			if (not dia.is_directory())
+			auto d = dir / assembly / "50";
+
+			if (not fs::exists(d, ec))
 				continue;
 
-			// iterate trim length directories
-			for (auto &ditl : fs::directory_iterator(dia.path()))
+			mapped_info mi{};
+
+			mi.assembly = assembly;
+			mi.trimlength = std::stoul(d.filename());
+
+			if (info.type == ScreenType::SyntheticLethal)
 			{
-				if (not ditl.is_directory())
-					continue;
-
-				// should check for a string that is a number here...
-
-				mapped_info mi{};
-
-				mi.assembly = dia.path().filename().string();
-				mi.trimlength = std::stoul(ditl.path().filename());
-
-				if (info.type == ScreenType::SyntheticLethal)
+				// iterate files
+				for (auto mfi : fs::directory_iterator(d))
 				{
-					// iterate files
-					for (auto mfi : fs::directory_iterator(ditl.path()))
-					{
-						if (mfi.path().filename().string().substr(0, 10) != "replicate-")
-							continue;
-						mi.file.emplace_back(screen_insertion_count{ mfi.path().filename().string(), ScreenData::count_insertions(mfi.path()) });
-					}
+					if (mfi.path().filename().string().substr(0, 10) != "replicate-")
+						continue;
+					mi.file.emplace_back(screen_insertion_count{ mfi.path().filename().string(), ScreenData::count_insertions(mfi.path()) });
 				}
-				else
+			}
+			else
+			{
+				for (std::string f : { "high", "low" })
 				{
-					for (std::string f : { "high", "low" })
-					{
-						auto p = ditl.path() / (f + ".sq");
-						if (not fs::exists(p))
-							p = ditl.path() / f;
-						if (fs::exists(p))
+					auto p = d / (f + ".sq");
+					if (not fs::exists(p))
+						p = d / f;
+					if (fs::exists(p))
 
-						mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
-					}
+					mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
 				}
+			}
 
-				if (not mi.file.empty())
-				{
-					info.mappedInfo.emplace_back(std::move(mi));
-					updated = true;
-				}
+			if (not mi.file.empty())
+			{
+				info.mappedInfo.emplace_back(std::move(mi));
+				updated = true;
 			}
 		}
 	}
