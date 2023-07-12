@@ -93,12 +93,10 @@ div.tooltip {
 .plot-status-loading .loading,
 .plot-status-loaded .loaded,
 .plot-status-failed .failed,
-.plot-title .screen-name,
-.plot-title .screen-counts {
+.plot-title .screen-name {
 	display: unset;
 }
 
-.screen-counts,
 .insertion-counts {
 	font-size: small;
 }

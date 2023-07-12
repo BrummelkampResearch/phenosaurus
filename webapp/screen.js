@@ -173,17 +173,6 @@ class ScreenPlotRegular extends ScreenPlot {
 			}).then(d => {
 				if (typeof(d.description) === "string")
 					$(".screen-name").text(d.description);
-
-				if (typeof(d.count) === "object") {
-					let counts;
-
-					for (let c of d.count)
-					{
-						counts = `${counts ? counts + '; ' : ''} ${c.file}=${c.count}`;
-					}
-
-					$(".screen-counts").text(`(insertion counts: ${counts})`);
-				}
 			});
 
 			const screenData = new ScreenData(screen);
