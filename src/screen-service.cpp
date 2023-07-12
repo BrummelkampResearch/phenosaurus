@@ -1434,16 +1434,13 @@ screen_description screen_service::get_description(const std::string &name, cons
 	if (result.description.empty())
 		result.description = name;
 
-	for (auto &file : manifest.files)
+	for (auto &mi : manifest.mappedInfo)
 	{
-		try
-		{
-			result.counts.emplace_back(screen_insertion_count{ file.name, ScreenData::count_insertions(m_screen_data_dir / name / assembly / std::to_string(trim_length) / file.name) });
-		}
-		catch (const std::exception &ex)
-		{
-			std::cerr << ex.what() << std::endl;
-		}
+		if (mi.assembly != assembly or mi.trimlength != static_cast<unsigned>(trim_length))
+			continue;
+		
+		for (auto file : mi.file)
+			result.counts.emplace_back(file);
 	}
 
 	return result;
