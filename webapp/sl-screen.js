@@ -593,7 +593,7 @@ class SLScreenPlot extends ScreenPlot {
 		const url = window.URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `Raw_data_for_${screen}.csv`;
+		a.download = `Raw_data_for_${this.name}.csv`;
 		document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
 		a.click();
 		a.remove();
