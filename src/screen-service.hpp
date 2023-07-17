@@ -357,9 +357,16 @@ class screen_service
 	bool is_owner(const std::string &name, const std::string &username) const;
 	bool is_allowed(const std::string &screenname, const std::string &username) const;
 
+	screen_description get_description(const std::string &name, const std::string &assembly, short trim_length) const;
+	uint32_t count_insertions(const std::string &name, const std::string &assembly, short trim_length, const std::string &file) const;
+
 	std::unique_ptr<ScreenData> create_screen(const screen_info &screen);
 	void update_screen(const std::string &name, const screen_info &screen);
 	void delete_screen(const std::string &name);
+
+	// refresh manifest
+	void refresh_manifest(const std::string &name);
+	void refresh_manifest_all();
 
 	template<typename ScreenDataType>
 	std::unique_ptr<ScreenDataType> load_screen(const std::string &screen)

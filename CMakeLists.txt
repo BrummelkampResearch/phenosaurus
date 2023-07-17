@@ -57,12 +57,12 @@ include(VersionString)
 write_version_header()
 
 # Optionally use mrc to create resources
-find_package(Mrc)
+find_package(Mrc QUIET)
 
 if(MRC_FOUND)
 	option(USE_RSRC "Use mrc to create resources" ON)
 else()
-	message(WARNING "Not using resources since mrc was not found")
+	message(STATUS "Not using resources since mrc was not found")
 endif()
 
 if(USE_RSRC STREQUAL "ON")
@@ -86,7 +86,9 @@ endif()
 find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options iostreams)
 find_package(ZLIB REQUIRED)
-find_package(libpqxx 7.7.4 REQUIRED)
+# find_package(libpqxx 7.7.4 REQUIRED)
+
+pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpqxx>=7.2 libpq)
 
 add_git_submodule(squeeze EXCLUDE_FROM_ALL)
 add_git_submodule(mailio EXCLUDE_FROM_ALL)
@@ -179,7 +181,7 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
-	libpqxx::pqxx mailio::mailio ZLIB::ZLIB
+	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)

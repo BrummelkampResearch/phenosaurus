@@ -32,7 +32,7 @@ import ContextMenu from './context-menu';
 export default class DotContextMenu extends ContextMenu {
 
 	constructor(plot, menuID) {
-		super(menuID ? menuID : "plot-context-menu");
+		super(menuID ? menuID : "plot-context-menu", plot.svg.parentNode);
 
 		this.plot = plot;
 		this.svg = plot.svg.node();

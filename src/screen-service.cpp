@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -24,20 +24,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <filesystem>
+#include "screen-service.hpp"
+#include "bowtie.hpp"
+#include "db-connection.hpp"
+#include "job-scheduler.hpp"
+#include "user-service.hpp"
+#include "utils.hpp"
+
+#include "mrsrc.hpp"
 
 #include <pqxx/pqxx>
 
 #include <zeep/crypto.hpp>
 
-#include "mrsrc.hpp"
-
-#include "user-service.hpp"
-#include "screen-service.hpp"
-#include "db-connection.hpp"
-#include "job-scheduler.hpp"
-#include "bowtie.hpp"
-#include "utils.hpp"
+#include <filesystem>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -48,13 +49,13 @@ extern int VERBOSE;
 class gene_ranking
 {
   public:
-	static gene_ranking& instance()
+	static gene_ranking &instance()
 	{
 		static gene_ranking s_instance;
 		return s_instance;
 	}
 
-	int operator()(const std::string& gene) const
+	int operator()(const std::string &gene) const
 	{
 		auto i = m_ranked.find(gene);
 		return i != m_ranked.end() ? i->second : -1;
@@ -72,15 +73,21 @@ class gene_ranking
 			m_ranked[line] = nr++;
 	}
 
-	std::map<std::string,int> m_ranked;
+	std::map<std::string, int> m_ranked;
 };
 
 // --------------------------------------------------------------------
 
-screen_data_cache::screen_data_cache(ScreenType type, const std::string& assembly, short trim_length,
-		const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd)
-	: m_type(type), m_assembly(assembly), m_trim_length(trim_length), m_transcript_selection(transcript_selection)
-	, m_mode(mode), m_cutOverlap(cutOverlap), m_geneStart(geneStart), m_geneEnd(geneEnd)
+screen_data_cache::screen_data_cache(ScreenType type, const std::string &assembly, short trim_length,
+	const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
+	: m_type(type)
+	, m_assembly(assembly)
+	, m_trim_length(trim_length)
+	, m_transcript_selection(transcript_selection)
+	, m_mode(mode)
+	, m_cutOverlap(cutOverlap)
+	, m_geneStart(geneStart)
+	, m_geneEnd(geneEnd)
 {
 	m_transcripts = loadTranscripts(assembly, transcript_selection, mode, geneStart, geneEnd, cutOverlap);
 }
@@ -95,12 +102,12 @@ bool screen_data_cache::is_up_to_date() const
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
 
 	std::set<std::string> current;
-	for (auto& s: screens)
+	for (auto &s : screens)
 		current.insert(s.name);
 
 	bool result = true;
 
-	for (auto& s: m_screens)
+	for (auto &s : m_screens)
 	{
 		if (not current.count(s.name))
 		{
@@ -118,11 +125,12 @@ bool screen_data_cache::is_up_to_date() const
 
 // --------------------------------------------------------------------
 
-ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& assembly,
-		short trim_length, const std::string &transcript_selection, Mode mode,
-		bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string &assembly,
+	short trim_length, const std::string &transcript_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 	: screen_data_cache(type, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd)
-	, m_direction(direction), m_data(nullptr)
+	, m_direction(direction)
+	, m_data(nullptr)
 {
 	auto screens = screen_service::instance().get_all_screens_for_type(type);
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
@@ -130,8 +138,8 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 	uint32_t data_offset = 0;
 	size_t N = m_transcripts.size();
 	size_t M = screens.size();
-	
-	for (auto& screen: screens)
+
+	for (auto &screen : screens)
 	{
 		m_screens.push_back({ screen.name, false, screen.ignore, 0, data_offset });
 		data_offset += N;
@@ -155,7 +163,7 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 			{
 				std::ifstream fcf(cf, std::ios::binary);
 
-				fcf.read(reinterpret_cast<char*>(d_data), N * sizeof(data_point));
+				fcf.read(reinterpret_cast<char *>(d_data), N * sizeof(data_point));
 
 				screen.filled = true;
 				continue;
@@ -169,8 +177,8 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 
 			for (size_t ti = 0; ti < N; ++ti)
 			{
-				auto& d = d_data[ti];
-				auto& p = dp[ti];
+				auto &d = d_data[ti];
+				auto &p = dp[ti];
 
 				d.pv = p.pv;
 				d.fcpv = p.fcpv;
@@ -183,15 +191,15 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 
 			if (fs::exists(cf))
 				fs::remove(cf);
-			
+
 			if (not fs::exists(cf.parent_path()))
 				fs::create_directories(cf.parent_path());
 
 			std::ofstream fcf(cf, std::ios::binary);
 
-			fcf.write(reinterpret_cast<char*>(d_data), N * sizeof(data_point));
+			fcf.write(reinterpret_cast<char *>(d_data), N * sizeof(data_point));
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception &ex)
 		{
 			std::cerr << ex.what() << std::endl;
 		}
@@ -200,7 +208,7 @@ ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string& a
 
 ip_screen_data_cache::~ip_screen_data_cache()
 {
-	delete [] m_data;
+	delete[] m_data;
 }
 
 fs::path ip_screen_data_cache::get_cache_file_path(const std::string &screen_name) const
@@ -214,29 +222,30 @@ fs::path ip_screen_data_cache::get_cache_file_path(const std::string &screen_nam
 	   << '-' << zeep::value_serializer<Direction>::to_string(m_direction);
 
 	std::string assembly = m_assembly;
-	if (not (m_transcript_selection.empty() and m_transcript_selection != "default"))
+	if (not(m_transcript_selection.empty() and m_transcript_selection != "default"))
 		assembly += "-" + m_transcript_selection;
 
 	return screen_service::instance().get_screen_data_dir() / screen_name / assembly / std::to_string(m_trim_length) / ss.str();
 }
 
-std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& screen)
+std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string &screen)
 {
 	std::vector<ip_data_point> result;
 
-	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
+		{ return si.name == screen; });
 	if (si == m_screens.end() or not si->filled)
 		return {};
-	
+
 	size_t screenIx = si - m_screens.begin();
 	size_t N = m_transcripts.size();
 	auto data = m_data + screenIx * N;
 
-	auto& rank = gene_ranking::instance();
+	auto &rank = gene_ranking::instance();
 
 	for (size_t i = 0; i < N; ++i)
 	{
-		auto& dp = data[i];
+		auto &dp = data[i];
 		if (dp.low == 0 and dp.high == 0)
 			continue;
 
@@ -255,13 +264,14 @@ std::vector<ip_data_point> ip_screen_data_cache::data_points(const std::string& 
 
 		result.push_back(std::move(p));
 	}
-	
+
 	return result;
 }
 
-std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string& screen, float pvCutOff, bool singlesided)
+std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string &screen, float pvCutOff, bool singlesided)
 {
-	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
+		{ return si.name == screen; });
 	if (si == m_screens.end() or si->filled == false)
 		return {};
 
@@ -272,23 +282,24 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 	std::vector<gene_uniqueness> result;
 
 	// double r = std::pow(m_screens.size(), 0.001) - 1;
-	size_t screenCount = std::count_if(m_screens.begin(), m_screens.end(), [](auto const &s) { return not s.ignore; });
+	size_t screenCount = std::count_if(m_screens.begin(), m_screens.end(), [](auto const &s)
+		{ return not s.ignore; });
 	size_t minCount = screenCount, maxCount = 0;
 
 	for (size_t ti = 0; ti < N; ++ti)
 	{
-		auto& dp = data[ti];
+		auto &dp = data[ti];
 
 		if (dp.fcpv > pvCutOff)
 			continue;
-		
+
 		size_t geneCount = 0;
 		for (size_t si = 0; si < m_screens.size(); ++si)
 		{
 			if (m_screens[si].ignore)
 				continue;
 
-			auto& sp = m_data[si * N + ti];
+			auto &sp = m_data[si * N + ti];
 
 			if (sp.fcpv > pvCutOff)
 				continue;
@@ -301,11 +312,11 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 
 		if (minCount > geneCount)
 			minCount = geneCount;
-		
+
 		if (maxCount < geneCount)
 			maxCount = geneCount;
 
-		result.push_back(gene_uniqueness{m_transcripts[ti].geneName, 0, geneCount});
+		result.push_back(gene_uniqueness{ m_transcripts[ti].geneName, 0, geneCount });
 	}
 
 	double r = std::pow(maxCount - minCount, 0.001) - 1;
@@ -319,9 +330,10 @@ std::vector<gene_uniqueness> ip_screen_data_cache::uniqueness(const std::string&
 	return result;
 }
 
-std::vector<ip_gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string& gene, const std::set<std::string>& allowedScreens)
+std::vector<ip_gene_finder_data_point> ip_screen_data_cache::find_gene(const std::string &gene, const std::set<std::string> &allowedScreens)
 {
-	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto &t)
+		{ return t.geneName == gene; });
 	if (gi == m_transcripts.end())
 		return {};
 
@@ -332,7 +344,7 @@ std::vector<ip_gene_finder_data_point> ip_screen_data_cache::find_gene(const std
 
 	for (size_t si = 0; si < m_screens.size(); ++si)
 	{
-		const auto& [name, filled, ignore, ignore_2, ignore_3, ignore_4] = m_screens[si];
+		const auto &[name, filled, ignore, ignore_2, ignore_3, ignore_4] = m_screens[si];
 
 		if (filled and /*not ignore and*/ allowedScreens.count(name))
 		{
@@ -352,11 +364,12 @@ std::vector<ip_gene_finder_data_point> ip_screen_data_cache::find_gene(const std
 	return result;
 }
 
-std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::string& gene, float pvCutOff, float zscoreCutOff)
+std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::string &gene, float pvCutOff, float zscoreCutOff)
 {
 	size_t geneCount = m_transcripts.size(), screenCount = m_screens.size();
 
-	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto &t)
+		{ return t.geneName == gene; });
 	if (gi == m_transcripts.end())
 		return {};
 
@@ -364,11 +377,11 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 
 	std::vector<similar_data_point> result;
 
-	for (auto anti: { false, true })
+	for (auto anti : { false, true })
 	{
 		std::vector<similar_data_point> hits;
 		hits.reserve(geneCount);
-		
+
 		double distanceSum = 0;
 
 		for (size_t tg_ix = 0; tg_ix < geneCount; ++tg_ix)
@@ -380,8 +393,8 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 			{
 				float miQ, miT;
 
-				auto& a = m_data[s_ix * geneCount + tg_ix];
-				auto& b = m_data[s_ix * geneCount + qg_ix];
+				auto &a = m_data[s_ix * geneCount + tg_ix];
+				auto &b = m_data[s_ix * geneCount + qg_ix];
 
 				data = true;
 
@@ -405,14 +418,16 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 		}
 
 		double averageDistance = distanceSum / geneCount;
-		double sumSq = accumulate(hits.begin(), hits.end(), 0.0, [averageDistance](double s, auto& h) { return s + (h.distance - averageDistance) * (h.distance - averageDistance); });
+		double sumSq = accumulate(hits.begin(), hits.end(), 0.0, [averageDistance](double s, auto &h)
+			{ return s + (h.distance - averageDistance) * (h.distance - averageDistance); });
 		double stddev = sqrt(sumSq / (geneCount - 1));
 
-		for (auto& hit: hits)
+		for (auto &hit : hits)
 			hit.zscore = (averageDistance - hit.distance) / stddev;
 
 		hits.erase(remove_if(hits.begin(), hits.end(),
-			[zscoreCutOff, averageDistance](auto hit) { return hit.distance > averageDistance or hit.zscore < zscoreCutOff; }),
+					   [zscoreCutOff, averageDistance](auto hit)
+					   { return hit.distance > averageDistance or hit.zscore < zscoreCutOff; }),
 			hits.end());
 
 		sort(hits.begin(), hits.end());
@@ -427,10 +442,11 @@ class distance_map
 {
   public:
 	distance_map(size_t dim)
-		: m_dim(dim), m_data(dim * (dim - 1))
+		: m_dim(dim)
+		, m_data(dim * (dim - 1))
 	{
 	}
-	
+
 	double operator()(size_t a, size_t b) const
 	{
 		if (a == b)
@@ -438,9 +454,9 @@ class distance_map
 
 		if (b < a)
 			std::swap(a, b);
-		
+
 		size_t ix = b + a * m_dim - a * (a + 1) / 2;
-		
+
 		assert(ix < m_data.size());
 		return m_data[ix];
 	}
@@ -451,9 +467,9 @@ class distance_map
 
 		if (b < a)
 			std::swap(a, b);
-		
+
 		size_t ix = b + a * m_dim - a * (a + 1) / 2;
-		
+
 		assert(ix < m_data.size());
 		m_data[ix] = value;
 	}
@@ -477,7 +493,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	{
 		for (size_t s_ix = 0; s_ix < screenCount; ++s_ix)
 		{
-			auto& d = m_data[s_ix * geneCount + g_ix];
+			auto &d = m_data[s_ix * geneCount + g_ix];
 			if (d.mi)
 				data[g_ix * screenCount + s_ix] = std::log2(d.mi);
 		}
@@ -488,8 +504,8 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 		size_t a_ix = geneIxA * screenCount;
 		size_t b_ix = geneIxB * screenCount;
 
-		const float* a = &data[a_ix];
-		const float* b = &data[b_ix];
+		const float *a = &data[a_ix];
+		const float *b = &data[b_ix];
 
 		int na_significant = 0, nb_significant = 0, n_significant = 0;
 		int n_missing = 0, n_mismatch = 0, n_match = 0;
@@ -499,9 +515,12 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 			auto ai = a[i];
 			auto bi = b[i];
 
-			if (ai) ++na_significant;
-			if (bi) ++nb_significant;
-			if (ai and bi) ++n_significant;
+			if (ai)
+				++na_significant;
+			if (bi)
+				++nb_significant;
+			if (ai and bi)
+				++n_significant;
 
 			if (ai == 0 or bi == 0)
 			{
@@ -544,17 +563,20 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	distance_map D(geneCount);
 
 	parallel_for(geneCount, [&](size_t x)
-	{
+		{
 		for (size_t y = x + 1; y < geneCount; ++y)
-			D.set(x, y, distance(x, y));
-	});
+			D.set(x, y, distance(x, y)); });
 
 	// DBSCAN algorithm
 
-	// using secondary distance 
+	// using secondary distance
 	// https://doi.org/10.1007%2F978-3-642-13818-8_34
 
-	enum : size_t { noise = ~0UL, undefined = 0 };
+	enum : size_t
+	{
+		noise = ~0UL,
+		undefined = 0
+	};
 
 	struct gene
 	{
@@ -568,7 +590,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	{
 		// for (size_t i = 0; i < geneCount; ++i)
 		parallel_for(geneCount, [&](size_t i)
-		{
+			{
 			auto& g = genes[i];
 			g.geneID = i;
 
@@ -603,11 +625,10 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 			for (size_t k = 0; k < NNs; ++k)
 				g.nn.push_back(std::get<0>(v[k]));
 
-			std::sort(g.nn.begin(), g.nn.end());
-		});
+			std::sort(g.nn.begin(), g.nn.end()); });
 	}
 
-	auto secD = [&genes,NNs,&D](auto a, auto b) -> float
+	auto secD = [&genes, NNs, &D](auto a, auto b) -> float
 	{
 		// shortcut
 		if (NNs == 0)
@@ -643,7 +664,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 	std::vector<size_t> label(geneCount, undefined);
 
-	auto RangeQuery = [&secD,&D,eps,geneCount](size_t q)
+	auto RangeQuery = [&secD, &D, eps, geneCount](size_t q)
 	{
 		std::set<int> result;
 
@@ -652,7 +673,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 			if (p != q and secD(p, q) <= eps and D(p, q) < 1)
 				result.insert(p);
 		}
-		
+
 		return result;
 	};
 
@@ -660,7 +681,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	{
 		if (label[p] != undefined)
 			continue;
-		
+
 		auto neighbours = RangeQuery(p);
 		if (neighbours.size() < minPts)
 		{
@@ -680,13 +701,13 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 			if (label[q] != undefined and label[q] != noise)
 				continue;
-			
+
 			label[q] = clusterNr;
 
 			auto N = RangeQuery(q);
 			if (N.size() >= minPts)
 			{
-				for (size_t r: N)
+				for (size_t r : N)
 				{
 					if (label[r] != clusterNr)
 						S.insert(r);
@@ -696,7 +717,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 	}
 
 	// sort the clusters
-	std::vector<std::tuple<std::vector<int>,double>> clusters;
+	std::vector<std::tuple<std::vector<int>, double>> clusters;
 	for (size_t i = 0; i < clusterNr; ++i)
 	{
 		std::vector<int> genes;
@@ -738,33 +759,35 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 		// on overlap
 		std::vector<bool> overlap(screenCount, true);
-		for (auto gi: genes)
+		for (auto gi : genes)
 		{
-			float* gd = &data[gi * screenCount];
+			float *gd = &data[gi * screenCount];
 			for (size_t si = 0; si < screenCount; ++si)
 				if (gd[si] == 0)
 					overlap[si] = false;
 		}
 
 		size_t overlapN = 0;
-		for (bool b: overlap)
-			if (b) ++overlapN;
+		for (bool b : overlap)
+			if (b)
+				++overlapN;
 		double variance = 1 - static_cast<double>(overlapN) / screenCount;
 
 		clusters.emplace_back(move(genes), variance);
 	}
 
-	std::sort(clusters.begin(), clusters.end(), [](auto a, auto b) { return std::get<1>(a) < std::get<1>(b); });
+	std::sort(clusters.begin(), clusters.end(), [](auto a, auto b)
+		{ return std::get<1>(a) < std::get<1>(b); });
 
 	std::vector<cluster> result;
 
-	for (auto& sc: clusters)
+	for (auto &sc : clusters)
 	{
 		cluster c;
 
 		c.variance = std::get<1>(sc);
 
-		for (auto g: std::get<0>(sc))
+		for (auto g : std::get<0>(sc))
 			c.genes.push_back(m_transcripts[g].geneName);
 
 		if (not c.genes.empty())
@@ -786,17 +809,15 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 	size_t N = m_transcripts.size();
 	size_t M = screens.size();
 	size_t O = 0;
-	
+
 	uint32_t data_offset = 0;
 
-	for (auto& screen: screens)
+	for (auto &screen : screens)
 	{
-		m_screens.push_back({
-			screen.name, false, screen.ignore,
+		m_screens.push_back({ screen.name, false, screen.ignore,
 			static_cast<uint8_t>(screen.files.size()),
 			data_offset,
-			static_cast<uint32_t>(O * M * N)
-		});
+			static_cast<uint32_t>(O * M * N) });
 		data_offset += N;
 		O += screen.files.size();
 	}
@@ -809,20 +830,19 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 	std::string control = "ControlData-HAP1";
 	auto controlDataPtr = SLScreenData::load(screenDataDir / control);
-	auto controlData = static_cast<SLScreenData*>(controlDataPtr.get());
+	auto controlData = static_cast<SLScreenData *>(controlDataPtr.get());
 
 	filterOutExons(m_transcripts);
 
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(m_transcripts.begin(), m_transcripts.end(), [](auto& a, auto& b)
-	{
+	std::sort(m_transcripts.begin(), m_transcripts.end(), [](auto &a, auto &b)
+		{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
 			d = a.start() - b.start();
-		return d < 0;
-	});
+		return d < 0; });
 
-// #warning "make groupSize a parameter"
+	// #warning "make groupSize a parameter"
 	// unsigned groupSize = 500;
 	unsigned groupSize = 200;
 
@@ -838,7 +858,7 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 			fs::path screenDir = screenDataDir / screen.name;
 
 			auto dataPtr = SLScreenData::load(screenDir);
-			auto data = static_cast<SLScreenData*>(dataPtr.get());
+			auto data = static_cast<SLScreenData *>(dataPtr.get());
 
 			auto d_data = m_data + screen.data_offset;
 
@@ -848,7 +868,7 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 			r_data[2] = r_data[1] + N;
 			r_data[3] = r_data[2] + N;
 
-			auto cd_data = d_data;	// copy, for cache
+			auto cd_data = d_data; // copy, for cache
 			auto cr_data = r_data[0];
 
 			auto cf = get_cache_file_path(screen.name);
@@ -856,8 +876,8 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 			{
 				std::ifstream fcf(cf, std::ios::binary);
 
-				fcf.read(reinterpret_cast<char*>(cd_data), N * sizeof(data_point));
-				fcf.read(reinterpret_cast<char*>(cr_data), N * screen.file_count * sizeof(data_point_replicate));
+				fcf.read(reinterpret_cast<char *>(cd_data), N * sizeof(data_point));
+				fcf.read(reinterpret_cast<char *>(cr_data), N * screen.file_count * sizeof(data_point_replicate));
 
 				d_data += N;
 
@@ -899,16 +919,16 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 			if (fs::exists(cf))
 				fs::remove(cf);
-			
+
 			if (not fs::exists(cf.parent_path()))
 				fs::create_directories(cf.parent_path());
 
 			std::ofstream fcf(cf, std::ios::binary);
 
-			fcf.write(reinterpret_cast<char*>(cd_data), N * sizeof(data_point));
-			fcf.write(reinterpret_cast<char*>(cr_data), N * screen.file_count * sizeof(data_point_replicate));
+			fcf.write(reinterpret_cast<char *>(cd_data), N * sizeof(data_point));
+			fcf.write(reinterpret_cast<char *>(cr_data), N * screen.file_count * sizeof(data_point_replicate));
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception &ex)
 		{
 			std::cerr << ex.what() << std::endl;
 		}
@@ -931,7 +951,7 @@ fs::path sl_screen_data_cache::get_cache_file_path(const std::string &screen_nam
 	   << '-' << m_geneEnd;
 
 	std::string assembly = m_assembly;
-	if (not (m_transcript_selection.empty() and m_transcript_selection != "default"))
+	if (not(m_transcript_selection.empty() and m_transcript_selection != "default"))
 		assembly += "-" + m_transcript_selection;
 
 	return screen_service::instance().get_screen_data_dir() / screen_name / assembly / std::to_string(m_trim_length) / ss.str();
@@ -943,7 +963,8 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 	size_t N = m_transcripts.size();
 
-	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto& si) { return si.name == screen; });
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [screen](auto &si)
+		{ return si.name == screen; });
 	if (si == m_screens.end() or not si->filled)
 		return {};
 
@@ -959,7 +980,8 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 	// reference/control data
 	std::string control = "ControlData-HAP1";
-	si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto& si) { return si.name == control; });
+	si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto &si)
+		{ return si.name == control; });
 	if (si == m_screens.end() or not si->filled)
 		throw std::runtime_error("Missing control data");
 	size_t controlScreenIx = si - m_screens.begin();
@@ -976,8 +998,12 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 		sl_data_point p{};
 
-		enum class ConsistencyCheck {
-			Undefined, Up, Down, Inconsistent
+		enum class ConsistencyCheck
+		{
+			Undefined,
+			Up,
+			Down,
+			Inconsistent
 		} check = ConsistencyCheck::Undefined;
 
 		size_t s_g = 0, a_g = 0;
@@ -1004,14 +1030,14 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 			// check consistency
 			if (check == ConsistencyCheck::Inconsistent)
 				continue;
-			
+
 			for (size_t k = 0; k < 4; ++k)
 			{
 				auto &ncc = cr_data[k][ti];
 
 				bool up = ((1.0f + nc.sense) / (2.0f + nc.sense + nc.antisense)) <
-						((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
-				
+				          ((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
+
 				if (up)
 				{
 					if (check == ConsistencyCheck::Down)
@@ -1052,13 +1078,14 @@ std::vector<sl_data_point> sl_screen_data_cache::data_points(const std::string &
 
 		result.push_back(std::move(p));
 	}
-	
+
 	return result;
 }
 
 std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std::string &gene, const std::set<std::string> &allowedScreens)
 {
-	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto& t) { return t.geneName == gene; });
+	auto gi = std::find_if(m_transcripts.begin(), m_transcripts.end(), [gene](auto &t)
+		{ return t.geneName == gene; });
 	if (gi == m_transcripts.end())
 		return {};
 
@@ -1069,7 +1096,8 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 
 	// reference/control data
 	std::string control = "ControlData-HAP1";
-	auto si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto& si) { return si.name == control; });
+	auto si = std::find_if(m_screens.begin(), m_screens.end(), [control](auto &si)
+		{ return si.name == control; });
 	if (si == m_screens.end() or not si->filled)
 		throw std::runtime_error("Missing control data");
 	size_t controlScreenIx = si - m_screens.begin();
@@ -1083,7 +1111,7 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 	for (size_t si = 0; si < m_screens.size(); ++si)
 	{
 		auto &screen = m_screens[si];
-		const auto& [name, filled, ignore, ignore_2, ignore_3, ignore_4] = screen;
+		const auto &[name, filled, ignore, ignore_2, ignore_3, ignore_4] = screen;
 
 		if (filled and /*not ignore and*/ allowedScreens.count(name))
 		{
@@ -1100,8 +1128,12 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 
 			p.screen = name;
 
-			enum class ConsistencyCheck {
-				Undefined, Up, Down, Inconsistent
+			enum class ConsistencyCheck
+			{
+				Undefined,
+				Up,
+				Down,
+				Inconsistent
 			} check = ConsistencyCheck::Undefined;
 
 			size_t s_g = 0, a_g = 0;
@@ -1118,14 +1150,14 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 				// check consistency
 				if (check == ConsistencyCheck::Inconsistent)
 					continue;
-				
+
 				for (size_t k = 0; k < 4; ++k)
 				{
 					auto &ncc = cr_data[k][ti];
 
 					bool up = ((1.0f + nc.sense) / (2.0f + nc.sense + nc.antisense)) <
-							((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
-					
+					          ((1.0f + ncc.sense) / (2.0f + ncc.sense + ncc.antisense));
+
 					if (up)
 					{
 						if (check == ConsistencyCheck::Down)
@@ -1175,19 +1207,19 @@ std::vector<sl_gene_finder_data_point> sl_screen_data_cache::find_gene(const std
 
 std::unique_ptr<screen_service> screen_service::s_instance;
 
-void screen_service::init(const std::string& screen_data_dir, const std::string &transcripts_dir)
+void screen_service::init(const std::string &screen_data_dir, const std::string &transcripts_dir)
 {
 	assert(not s_instance);
 	s_instance.reset(new screen_service(screen_data_dir, transcripts_dir));
 }
 
-screen_service& screen_service::instance()
+screen_service &screen_service::instance()
 {
 	assert(s_instance);
 	return *s_instance;
 }
 
-screen_service::screen_service(const std::string& screen_data_dir, const std::string &transcipts_dir)
+screen_service::screen_service(const std::string &screen_data_dir, const std::string &transcipts_dir)
 	: m_screen_data_dir(screen_data_dir)
 	, m_transcripts_dir(transcipts_dir)
 {
@@ -1199,7 +1231,7 @@ std::vector<screen_info> screen_service::get_all_screens() const
 {
 	std::vector<screen_info> result;
 
-	for (auto si: fs::directory_iterator(m_screen_data_dir))
+	for (auto si : fs::directory_iterator(m_screen_data_dir))
 	{
 		if (not si.is_directory())
 			continue;
@@ -1214,7 +1246,7 @@ std::vector<screen_info> screen_service::get_all_screens() const
 			screen.status = job_scheduler::instance().get_job_status_for_screen(screen.name);
 			result.push_back(screen);
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
 		}
@@ -1226,18 +1258,21 @@ std::vector<screen_info> screen_service::get_all_screens() const
 std::vector<screen_info> screen_service::get_all_screens_for_type(ScreenType type) const
 {
 	auto screens = get_all_screens();
-	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& s) { return s.type != type; }), screens.end());
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto &s)
+					  { return s.type != type; }),
+		screens.end());
 	return screens;
 }
 
-std::vector<screen_info> screen_service::get_all_screens_for_user(const std::string& username) const
+std::vector<screen_info> screen_service::get_all_screens_for_user(const std::string &username) const
 {
 	auto screens = get_all_screens();
 
-	auto& user_service = user_service::instance();
+	auto &user_service = user_service::instance();
 	auto user = user_service.retrieve_user(username);
 
-	screens.erase(std::remove_if(screens.begin(), screens.end(), [user](auto& screen) {
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [user](auto &screen)
+					  {
 
 		if (screen.scientist == user.username)
 			return false;
@@ -1248,16 +1283,18 @@ std::vector<screen_info> screen_service::get_all_screens_for_user(const std::str
 				return false;
 		}
 
-		return true;
-	}), screens.end());
+		return true; }),
+		screens.end());
 
 	return screens;
 }
 
-std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const std::string& user, ScreenType type) const
+std::vector<screen_info> screen_service::get_all_screens_for_user_and_type(const std::string &user, ScreenType type) const
 {
 	auto screens = get_all_screens_for_user(user);
-	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& s) { return s.type != type; }), screens.end());
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto &s)
+					  { return s.type != type; }),
+		screens.end());
 	return screens;
 }
 
@@ -1265,28 +1302,27 @@ std::vector<screen_info> screen_service::get_all_public_screens_for_type(ScreenT
 {
 	auto screens = get_all_screens();
 
-	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto& screen) {
+	screens.erase(std::remove_if(screens.begin(), screens.end(), [type](auto &screen)
+					  { return screen.type != type or
+		                       std::find(screen.groups.begin(), screen.groups.end(), "public") == screen.groups.end(); }),
+		screens.end());
 
-		return screen.type != type or
-			std::find(screen.groups.begin(), screen.groups.end(), "public") == screen.groups.end();
-	}), screens.end());
-	
 	return screens;
 }
 
-std::set<std::string> screen_service::get_allowed_screens_for_user(const user& user) const
+std::set<std::string> screen_service::get_allowed_screens_for_user(const user &user) const
 {
 	std::set<std::string> result;
 
-	for (auto& si: fs::directory_iterator(m_screen_data_dir))
+	for (auto &si : fs::directory_iterator(m_screen_data_dir))
 	{
 		if (not si.is_directory())
 			continue;
-		
+
 		std::error_code ec;
 		if (not fs::exists(si.path() / "manifest.json", ec))
 			continue;
-		
+
 		try
 		{
 			auto screen = ScreenData::loadManifest(si.path());
@@ -1297,7 +1333,7 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 				continue;
 			}
 
-			for (auto& g: screen.groups)
+			for (auto &g : screen.groups)
 			{
 				if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
 					continue;
@@ -1306,33 +1342,33 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user& u
 				break;
 			}
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
 		}
 	}
 
-	return result;	
+	return result;
 }
 
-screen_info screen_service::retrieve_screen(const std::string& name) const
+screen_info screen_service::retrieve_screen(const std::string &name) const
 {
 	return ScreenData::loadManifest(m_screen_data_dir / name);
 }
 
-bool screen_service::exists(const std::string& name) const noexcept
+bool screen_service::exists(const std::string &name) const noexcept
 {
 	std::error_code ec;
 	return fs::exists(m_screen_data_dir / name / "manifest.json", ec);
 }
 
-bool screen_service::is_valid_name(const std::string& name)
+bool screen_service::is_valid_name(const std::string &name)
 {
 	const std::regex rx(R"([\n\r\t :<>|&])");
 	return not std::regex_search(name.begin(), name.end(), rx);
 }
 
-bool screen_service::is_owner(const std::string& name, const std::string& username) const
+bool screen_service::is_owner(const std::string &name, const std::string &username) const
 {
 	bool result = false;
 
@@ -1341,15 +1377,15 @@ bool screen_service::is_owner(const std::string& name, const std::string& userna
 		auto manifest = ScreenData::loadManifest(m_screen_data_dir / name);
 		result = manifest.scientist == username;
 	}
-	catch (const std::exception& ex)
+	catch (const std::exception &ex)
 	{
 		std::cerr << ex.what() << std::endl;
 	}
-	
+
 	return result;
 }
 
-bool screen_service::is_allowed(const std::string& screenname, const std::string& username) const
+bool screen_service::is_allowed(const std::string &screenname, const std::string &username) const
 {
 	bool result = false;
 
@@ -1369,7 +1405,7 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 				result = true;
 			else
 			{
-				for (auto& g: manifest.groups)
+				for (auto &g : manifest.groups)
 				{
 					if (std::find(user.groups.begin(), user.groups.end(), g) == user.groups.end())
 						continue;
@@ -1380,7 +1416,7 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 			}
 		}
 	}
-	catch (const std::exception& ex)
+	catch (const std::exception &ex)
 	{
 		std::cerr << ex.what() << std::endl;
 		result = false;
@@ -1389,7 +1425,33 @@ bool screen_service::is_allowed(const std::string& screenname, const std::string
 	return result;
 }
 
-std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& screen)
+screen_description screen_service::get_description(const std::string &name, const std::string &assembly, short trim_length) const
+{
+	auto manifest = ScreenData::loadManifest(m_screen_data_dir / name);
+
+	screen_description result;
+	result.description = manifest.description.value_or(name);
+	if (result.description.empty())
+		result.description = name;
+
+	for (auto &mi : manifest.mappedInfo)
+	{
+		if (mi.assembly != assembly or mi.trimlength != static_cast<unsigned>(trim_length))
+			continue;
+		
+		for (auto file : mi.file)
+			result.counts.emplace_back(file);
+	}
+
+	return result;
+}
+
+uint32_t screen_service::count_insertions(const std::string &name, const std::string &assembly, short trim_length, const std::string &file) const
+{
+	return ScreenData::count_insertions(m_screen_data_dir / name / assembly / std::to_string(trim_length) / file);
+}
+
+std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info &screen)
 {
 	auto screenDir = m_screen_data_dir / screen.name;
 
@@ -1423,18 +1485,47 @@ std::unique_ptr<ScreenData> screen_service::create_screen(const screen_info& scr
 	return data;
 }
 
-void screen_service::update_screen(const std::string& name, const screen_info& screen)
+void screen_service::update_screen(const std::string &name, const screen_info &screen)
 {
 	ScreenData::saveManifest(screen, m_screen_data_dir / name);
 }
 
-void screen_service::delete_screen(const std::string& name)
+void screen_service::delete_screen(const std::string &name)
 {
 	fs::remove_all(m_screen_data_dir / name);
 }
 
-std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const ScreenType type, const std::string& assembly, short trim_length,
-	const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string& geneStart, const std::string& geneEnd, Direction direction)
+void screen_service::refresh_manifest(const std::string &name)
+{
+	auto d = m_screen_data_dir / name;
+	auto info = ScreenData::loadManifest(d);
+	ScreenData::refreshManifest(info, d);
+}
+
+void screen_service::refresh_manifest_all()
+{
+	for (auto si : fs::directory_iterator(m_screen_data_dir))
+	{
+		if (not si.is_directory())
+			continue;
+
+		std::error_code ec;
+		if (not fs::exists(si.path() / "manifest.json", ec))
+			continue;
+
+		try
+		{
+			refresh_manifest(si.path().filename().string());
+		}
+		catch (const std::exception &e)
+		{
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
+		}
+	}
+}
+
+std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const ScreenType type, const std::string &assembly, short trim_length,
+	const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	std::unique_lock lock(m_mutex);
 
@@ -1450,13 +1541,13 @@ std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const Scre
 		else
 			m_ip_data_cache.erase(i);
 	}
-	
+
 	if (not result)
 	{
 		result = std::make_shared<ip_screen_data_cache>(type, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 		m_ip_data_cache.emplace_back(result);
 	}
-	
+
 	return result;
 }
 
@@ -1477,37 +1568,35 @@ std::shared_ptr<sl_screen_data_cache> screen_service::get_screen_data(const std:
 		else
 			m_sl_data_cache.erase(i);
 	}
-	
+
 	if (not result)
 	{
 		result = std::make_shared<sl_screen_data_cache>(assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd);
 		m_sl_data_cache.emplace_back(result);
 	}
-	
+
 	return result;
 }
 
-void screen_service::screen_mapped(const std::unique_ptr<ScreenData>& screen)
+void screen_service::screen_mapped(const std::unique_ptr<ScreenData> &screen)
 {
 	std::unique_lock lock(m_mutex);
 
 	m_ip_data_cache.erase(
 		std::remove_if(m_ip_data_cache.begin(), m_ip_data_cache.end(),
-			[name=screen->name()]
-			(std::shared_ptr<screen_data_cache> i)
+			[name = screen->name()](std::shared_ptr<screen_data_cache> i)
 			{
 				return i->contains_data_for_screen(name);
 			}),
-			m_ip_data_cache.end());
+		m_ip_data_cache.end());
 
 	m_sl_data_cache.erase(
 		std::remove_if(m_sl_data_cache.begin(), m_sl_data_cache.end(),
-			[name=screen->name()]
-			(std::shared_ptr<screen_data_cache> i)
+			[name = screen->name()](std::shared_ptr<screen_data_cache> i)
 			{
 				return i->contains_data_for_screen(name);
 			}),
-			m_sl_data_cache.end());
+		m_sl_data_cache.end());
 }
 
 std::vector<std::string> screen_service::get_all_transcripts() const
@@ -1526,11 +1615,10 @@ std::vector<std::string> screen_service::get_all_transcripts() const
 class screen_analyzer_list_utility_object : public zeep::http::expression_utility_object<screen_analyzer_list_utility_object>
 {
   public:
+	static constexpr const char *name() { return "list"; }
 
-	static constexpr const char* name() { return "list"; }
-
-	virtual zeep::http::object evaluate(const zeep::http::scope& scope, const std::string& methodName,
-		const std::vector<zeep::http::object>& parameters) const
+	virtual zeep::http::object evaluate(const zeep::http::scope &scope, const std::string &methodName,
+		const std::vector<zeep::http::object> &parameters) const
 	{
 		zeep::http::object result;
 
@@ -1539,11 +1627,11 @@ class screen_analyzer_list_utility_object : public zeep::http::expression_utilit
 			auto list = parameters[0];
 			auto q = parameters[1];
 
-			for (const auto& i: list)
+			for (const auto &i : list)
 			{
 				if (i != q)
 					continue;
-				
+
 				result = true;
 				break;
 			}
@@ -1551,7 +1639,7 @@ class screen_analyzer_list_utility_object : public zeep::http::expression_utilit
 
 		return result;
 	}
-	
+
 } s_screen_analyzer_list_utility_object;
 
 // --------------------------------------------------------------------
@@ -1566,7 +1654,7 @@ screen_html_controller::screen_html_controller()
 	mount("screen-table", &screen_html_controller::handle_screen_table);
 }
 
-void screen_html_controller::handle_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1587,13 +1675,14 @@ void screen_html_controller::handle_screen_user(const zeep::http::request& reque
 	json screens;
 
 	auto s = screen_service::instance().get_all_screens();
-	auto& ss = screen_service::instance();
+	auto &ss = screen_service::instance();
 
-	s.erase(std::remove_if(s.begin(), s.end(), [username,&ss](auto& si)
-		{ return not ss.is_allowed(si.name, username); }), s.end());
+	s.erase(std::remove_if(s.begin(), s.end(), [username, &ss](auto &si)
+				{ return not ss.is_allowed(si.name, username); }),
+		s.end());
 
-	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
-	{
+	std::sort(s.begin(), s.end(), [](auto &sa, auto &sb) -> bool
+		{
 		std::string& a = sa.name;
 		std::string& b = sb.name;
 
@@ -1607,8 +1696,7 @@ void screen_html_controller::handle_screen_user(const zeep::http::request& reque
 			result = false;
 		else
 			result = std::tolower(*r.first) < std::tolower(*r.second);
-		return result;
-	});
+		return result; });
 
 	to_element(screens, s);
 	sub.put("screens", screens);
@@ -1616,7 +1704,7 @@ void screen_html_controller::handle_screen_user(const zeep::http::request& reque
 	get_template_processor().create_reply_from_template("list-screens.html", sub, reply);
 }
 
-void screen_html_controller::handle_screen_table(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_screen_table(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1637,13 +1725,14 @@ void screen_html_controller::handle_screen_table(const zeep::http::request& requ
 	json screens;
 
 	auto s = screen_service::instance().get_all_screens();
-	auto& ss = screen_service::instance();
+	auto &ss = screen_service::instance();
 
-	s.erase(std::remove_if(s.begin(), s.end(), [username,&ss](auto& si)
-		{ return not ss.is_allowed(si.name, username); }), s.end());
+	s.erase(std::remove_if(s.begin(), s.end(), [username, &ss](auto &si)
+				{ return not ss.is_allowed(si.name, username); }),
+		s.end());
 
-	std::sort(s.begin(), s.end(), [](auto& sa, auto& sb) -> bool
-	{
+	std::sort(s.begin(), s.end(), [](auto &sa, auto &sb) -> bool
+		{
 		std::string& a = sa.name;
 		std::string& b = sb.name;
 
@@ -1657,8 +1746,7 @@ void screen_html_controller::handle_screen_table(const zeep::http::request& requ
 			result = false;
 		else
 			result = std::tolower(*r.first) < std::tolower(*r.second);
-		return result;
-	});
+		return result; });
 
 	to_element(screens, s);
 	sub.put("screens", screens);
@@ -1666,7 +1754,7 @@ void screen_html_controller::handle_screen_table(const zeep::http::request& requ
 	get_template_processor().create_reply_from_template("list-screens::screen-table", sub, reply);
 }
 
-void screen_html_controller::handle_create_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_create_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1683,7 +1771,7 @@ void screen_html_controller::handle_create_screen_user(const zeep::http::request
 	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
 
-void screen_html_controller::handle_edit_screen_user(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void screen_html_controller::handle_edit_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -1730,16 +1818,16 @@ screen_rest_controller::screen_rest_controller()
 	map_get_request("screen/{id}/map/{assembly}", &screen_rest_controller::map_screen, "id", "assembly");
 }
 
-std::string screen_rest_controller::create_screen(const screen_info& screen)
+std::string screen_rest_controller::create_screen(const screen_info &screen)
 {
-	const auto& params = bowtie_parameters::instance();
+	const auto &params = bowtie_parameters::instance();
 
 	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().create_screen(screen), params.assembly()));
 
 	return screen.name;
 }
 
-screen_info screen_rest_controller::retrieve_screen(const std::string& name)
+screen_info screen_rest_controller::retrieve_screen(const std::string &name)
 {
 	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -1747,7 +1835,7 @@ screen_info screen_rest_controller::retrieve_screen(const std::string& name)
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_rest_controller::update_screen(const std::string& name, const screen_info& screen)
+void screen_rest_controller::update_screen(const std::string &name, const screen_info &screen)
 {
 	auto username = get_credentials()["username"].as<std::string>();
 
@@ -1757,7 +1845,7 @@ void screen_rest_controller::update_screen(const std::string& name, const screen
 	auto info = screen_service::instance().retrieve_screen(name);
 
 	// replace only the editable fields:
-	info.published_name = screen.published_name;	// TODO: perhaps check for user.admin?
+	info.published_name = screen.published_name; // TODO: perhaps check for user.admin?
 	info.treatment_details = screen.treatment_details;
 	info.cell_line = screen.cell_line;
 	info.description = screen.description;
@@ -1777,7 +1865,7 @@ void screen_rest_controller::update_screen(const std::string& name, const screen
 	screen_service::instance().update_screen(name, info);
 }
 
-void screen_rest_controller::delete_screen(const std::string& name)
+void screen_rest_controller::delete_screen(const std::string &name)
 {
 	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
 		throw zeep::http::forbidden;
@@ -1785,19 +1873,18 @@ void screen_rest_controller::delete_screen(const std::string& name)
 	screen_service::instance().delete_screen(name);
 }
 
-bool screen_rest_controller::validateFastQFile(const std::string& filename)
+bool screen_rest_controller::validateFastQFile(const std::string &filename)
 {
 	checkIsFastQ(filename);
 	return true;
 }
 
-bool screen_rest_controller::validateScreenName(const std::string& name)
+bool screen_rest_controller::validateScreenName(const std::string &name)
 {
 	return screen_service::is_valid_name(name) and not screen_service::instance().exists(name);
 }
 
-void screen_rest_controller::map_screen(const std::string& screen, const std::string& assembly)
+void screen_rest_controller::map_screen(const std::string &screen, const std::string &assembly)
 {
 	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().load_screen<ScreenData>(screen), assembly));
 }
-

@@ -951,8 +951,8 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly,
 	auto transcripts = loadGenes(assembly, transcript_selection, true, true);
 
 	std::vector<Transcript> result;
-	int minOffset = std::numeric_limits<int>::max();
-	int maxOffset = 0;
+	uint32_t minOffset = std::numeric_limits<int>::max();
+	uint32_t maxOffset = 0;
 
 	CHROM chrom;
 

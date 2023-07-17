@@ -24,15 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pwd.h>
-
-#include <filesystem>
-#include <fstream>
-
-#include <boost/algorithm/string.hpp>
-
-#include <zeep/json/element.hpp>
-
 #include "utils.hpp"
 
 #include "screen-analyzer.hpp"
@@ -40,6 +31,17 @@
 #include "screen-creator.hpp"
 #include "screen-analyzer.hpp"
 #include "user-service.hpp"
+
+#include <boost/algorithm/string.hpp>
+
+#include <zeep/json/element.hpp>
+
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+#include <pwd.h>
+
 
 namespace ba = boost::algorithm;
 namespace fs = std::filesystem;

@@ -152,6 +152,9 @@ class ScreenPlotRegular extends ScreenPlot {
 
 	loadScreen(screen) {
 		return new Promise( (resolve, reject) => {
+
+			const options = this.getOptions();
+
 			let plotTitle = $(".plot-title");
 			if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
 				return;
@@ -159,9 +162,22 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			$(".screen-name").text(screen);
 
+			const assembly = options.get("assembly");
+
+			fetch(`screen/${screen}/description?assembly=${assembly}`, {
+				method: "get",
+				credentials: "include"
+			}).then(r => {
+				if (r.ok)
+					return r.json();
+			}).then(d => {
+				if (typeof(d.description) === "string")
+					$(".screen-name").text(d.description);
+			});
+
 			const screenData = new ScreenData(screen);
 
-			screenData.load(this.getOptions())
+			screenData.load(options)
 				.then(() => {
 					this.add(screenData, 0);
 					// this.spinnerTD.classList.remove("loading");

@@ -24,16 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-
-#include <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
-
-#include <zeep/http/daemon.hpp>
-#include <zeep/crypto.hpp>
-
 #include "bowtie.hpp"
 #include "utils.hpp"
 #include "screen-data.hpp"
@@ -42,6 +32,17 @@
 #include "user-service.hpp"
 
 #include "revision.hpp"
+
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
+
+#include <zeep/http/daemon.hpp>
+#include <zeep/crypto.hpp>
+
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
@@ -1110,6 +1111,26 @@ int main_dump(int argc, char* const argv[])
 	return result;
 }
 
+int main_refresh(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( refresh screen-name)",
+		{
+			{ "screen-name",	po::value<std::string>(),	"The screen to dump" }
+		},
+		{ },
+		{ "screen-name" });
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	auto info = ScreenData::loadManifest(screenDir);
+	ScreenData::refreshManifest(info, screenDir);
+
+	return result;
+}
+
 // --------------------------------------------------------------------
 
 int main(int argc, char* const argv[])
@@ -1192,8 +1213,8 @@ int main(int argc, char* const argv[])
 			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
-		// else if (command == "compress")
-		// 	result = main_compress(argc - 1, argv + 1);
+		else if (command == "refresh")
+			result = main_refresh(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
