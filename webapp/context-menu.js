@@ -34,11 +34,10 @@ export default class ContextMenu {
 		this.menu = document.getElementById(menuID);
 		this.menuState = 0;
 		this.target = null;
+		this.view = view;
 
-		view = view || document;
-
-		view.addEventListener("contextmenu", (e) => this.handleContext(e));
-		view.addEventListener("click", (e) => this.handleClick(e));
+		document.addEventListener("contextmenu", (e) => this.handleContext(e, view));
+		document.addEventListener("click", (e) => this.handleClick(e));
 
 		window.addEventListener("keyup", (e) => {
 			if (e.code === 'Escape') {
@@ -130,10 +129,10 @@ export default class ContextMenu {
 		}
 	}
 
-	handleContext(e) {
+	handleContext(e, view) {
 		this.target = this.clickIsInsideTarget(e);
 
-		if (this.target) {
+		if (this.target && this.view === view) {
 			e.preventDefault();
 			this.toggleMenuOn();
 			this.positionMenu(e);
