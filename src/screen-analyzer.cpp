@@ -947,16 +947,19 @@ Command should be either:
 		pid_file += "-public";
 	}
 
-	if (not context_name.empty())
-	{
-		access_log += "-" + context_name + ".log";
-		error_log += "-" + context_name + ".log";
-	}
-	else
-	{
-		access_log += ".log";
-		error_log += ".log";
-	}
+	access_log += ".log";
+	error_log += ".log";
+
+	// if (not context_name.empty())
+	// {
+	// 	access_log += "-" + context_name + ".log";
+	// 	error_log += "-" + context_name + ".log";
+	// }
+	// else
+	// {
+	// 	access_log += ".log";
+	// 	error_log += ".log";
+	// }
 
 	zh::daemon server([
 		secret, docroot,
