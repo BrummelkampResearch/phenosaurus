@@ -29,18 +29,12 @@
 #include "screen-qc.hpp"
 #include "screen-service.hpp"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-
 #include <filesystem>
 #include <iostream>
 #include <numeric>
 
 using json = zeep::json::element;
 namespace fs = std::filesystem;
-namespace ba = boost::algorithm;
-namespace io = boost::iostreams;
 
 extern int VERBOSE;
 
@@ -876,8 +870,9 @@ ScreenQCData screen_qc_rest_controller::get_data(size_t requestedBinCount, std::
 	if (requestedBinCount == 0)
 		throw std::runtime_error("Invalid bin count requested");
 
-	std::set<std::string> skippedScreens;
-	ba::split(skippedScreens, skip, ba::is_any_of(";"));
+	std::vector<std::string> v;
+	zeep::split(v, skip, ";");
+	std::set<std::string> skippedScreens{ v.begin(), v.end() };
 
 	// std::map<std::string,size_t> chromBinStarts;
 	std::vector<ChromStart> chromBinStarts;

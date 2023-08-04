@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -26,34 +26,31 @@
 
 //	module to run bowtie and process results
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <regex>
-#include <future>
-#include <fstream>
-#include <sys/uio.h>
+#include "bowtie.hpp"
+#include "bsd-closefrom.h"
+#include "job-scheduler.hpp"
+#include "utils.hpp"
+
+#include <gxrio.hpp>
 
 #include <cassert>
-
-#include <iostream>
-#include <iomanip>
 #include <filesystem>
 #include <functional>
+#include <iomanip>
+#include <iostream>
 
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-
-#include "bowtie.hpp"
-#include "utils.hpp"
-#include "job-scheduler.hpp"
-#include "bsd-closefrom.h"
+#include <fcntl.h>
+#include <fstream>
+#include <future>
+#include <regex>
+#include <string.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 namespace fs = std::filesystem;
-namespace io = boost::iostreams;
 using namespace std::literals;
 
 extern int VERBOSE;
@@ -75,12 +72,12 @@ std::unique_ptr<bowtie_parameters> bowtie_parameters::s_instance;
 
 // --------------------------------------------------------------------
 
-Insertion parseLine(const char* line, unsigned readLength)
+Insertion parseLine(const char *line, unsigned readLength)
 {
 	// result
 	Insertion result = { INVALID, '+' };
 
-	const char* s = line;
+	const char *s = line;
 
 	// skip first field
 	s = strchr(s, '\t');
@@ -92,7 +89,7 @@ Insertion parseLine(const char* line, unsigned readLength)
 	s = strchr(s + 1, '\t');
 	if ((result.strand != '+' and result.strand != '-') or s == nullptr)
 		throw std::runtime_error("Invalid input file");
-	
+
 	// next is chromosome
 	if (*++s == 'c' and s[1] == 'h' and s[2] == 'r')
 	{
@@ -112,16 +109,16 @@ Insertion parseLine(const char* line, unsigned readLength)
 				else
 					result.chr = CHR_2;
 				break;
-			
-			case '3':	result.chr = CHR_3;	break;
-			case '4':	result.chr = CHR_4;	break;
-			case '5':	result.chr = CHR_5;	break;
-			case '6':	result.chr = CHR_6;	break;
-			case '7':	result.chr = CHR_7;	break;
-			case '8':	result.chr = CHR_8;	break;
-			case '9':	result.chr = CHR_9;	break;
-			case 'X':	result.chr = CHR_X;	break;
-			case 'Y':	result.chr = CHR_Y;	break;
+
+			case '3': result.chr = CHR_3; break;
+			case '4': result.chr = CHR_4; break;
+			case '5': result.chr = CHR_5; break;
+			case '6': result.chr = CHR_6; break;
+			case '7': result.chr = CHR_7; break;
+			case '8': result.chr = CHR_8; break;
+			case '9': result.chr = CHR_9; break;
+			case 'X': result.chr = CHR_X; break;
+			case 'Y': result.chr = CHR_Y; break;
 		}
 	}
 
@@ -142,43 +139,59 @@ Insertion parseLine(const char* line, unsigned readLength)
 
 // --------------------------------------------------------------------
 
-struct progress_filter
+struct progress_streambuf : public std::streambuf
 {
-	progress_filter() = delete;
-	progress_filter(progress& p) : m_progress(p) {}
-	
-	progress_filter(const progress_filter& cf)
-		: m_progress(const_cast<progress&>(cf.m_progress)) {}
+	static const int kBufferSize = 32;
 
-	progress_filter& operator=(const progress_filter& cf) = delete;
-
-	typedef char char_type;
-	typedef io::multichar_input_filter_tag category;
-
-	template<typename Source>
-	std::streamsize read(Source& src, char* s, std::streamsize n)
+	progress_streambuf(std::streambuf &file_buffer, progress &p)
+		: m_progress(p)
+		, m_file_buffer(file_buffer)
 	{
-		auto r = boost::iostreams::read(src, s, n);
-		if (r > 0)
-			m_progress.consumed(r);
-		
-		return r;
 	}
 
-	progress& m_progress;
+	virtual int_type underflow()
+	{
+		if (this->gptr() == this->egptr())
+		{
+			std::streamsize n = m_file_buffer.sgetn(m_in_buffer.data(), kBufferSize);
+
+			if (n > 0)
+			{
+				this->setg(
+					m_in_buffer.begin(),
+					m_in_buffer.begin(),
+					m_in_buffer.begin() + n);
+			}
+		}
+
+		int_type result = traits_type::eof();
+		if (this->gptr() != this->egptr())
+		{
+			result = traits_type::to_int_type(*this->gptr());
+			m_progress.consumed(1);
+		}
+		
+		return result;
+	}
+
+	progress &m_progress;
+	std::streambuf &m_file_buffer;
+
+	/// \brief Input buffer, this is the input for zlib
+	std::array<char_type, kBufferSize> m_in_buffer;
 };
 
 // -----------------------------------------------------------------------
 
-std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
-	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
-	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength,
+std::vector<Insertion> runBowtieInt(const std::filesystem::path &bowtie,
+	const std::filesystem::path &bowtieIndex, const std::filesystem::path &fastq,
+	const std::filesystem::path &logFile, unsigned threads, unsigned trimLength,
 	int maxmismatch = 0, std::filesystem::path mismatchfile = {})
 {
 	auto p = std::to_string(threads);
 	auto v = std::to_string(maxmismatch);
 
-	std::vector<const char*> args = {
+	std::vector<const char *> args = {
 		bowtie.c_str(),
 		"-m", "1",
 		"-v", v.c_str(),
@@ -205,8 +218,12 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	// ready to roll
 	int ifd[2], ofd[2], err;
 
-	err = pipe2(ifd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe2(ofd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(ifd, O_CLOEXEC);
+	if (err < 0)
+		throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(ofd, O_CLOEXEC);
+	if (err < 0)
+		throw std::runtime_error("Pipe error: "s + strerror(errno));
 
 	// open log file for appending
 	int efd = open(logFile.c_str(), O_CREAT | O_APPEND | O_RDWR, 0644);
@@ -215,9 +232,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 
 	int pid = fork();
 
-	if (pid == 0)    // the child
+	if (pid == 0) // the child
 	{
-		setpgid(0, 0);        // detach from the process group, create new
+		setpgid(0, 0); // detach from the process group, create new
 
 		dup2(ifd[0], STDIN_FILENO);
 		close(ifd[0]);
@@ -232,8 +249,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 
 		closefrom(STDERR_FILENO + 1);
 
-		const char* env[] = { nullptr };
-		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
+		const char *env[] = { nullptr };
+		(void)execve(args.front(), const_cast<char *const *>(&args[0]), const_cast<char *const *>(env));
 		exit(-1);
 	}
 
@@ -254,7 +271,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 
 	// always assume we have to trim (we used to check for trim length==read length, but that complicated the code too much)
 	std::thread thread([trimLength, &fastq, fd = ifd[1], &ep]()
-	{
+		{
 		try
 		{
 			progress p(fs::file_size(fastq), fastq.string());
@@ -265,18 +282,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			if (not file.is_open())
 				throw std::runtime_error("Could not open file " + fastq.string());
 
-			io::filtering_stream<io::input> in;
-			std::string ext = fastq.extension().string();
-			
-			if (fastq.extension() == ".gz")
-			{
-				in.push(io::gzip_decompressor());
-				ext = fastq.stem().extension().string();
-			}
+			progress_streambuf psb(*file.rdbuf(), p);
 
-			in.push(progress_filter(p));
-			
-			in.push(file);
+			gxrio::istream in(&psb);
 
 			char nl[1] = { '\n' };
 
@@ -328,8 +336,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 		catch (const std::exception& ex)
 		{
 			ep = std::current_exception();
-		}
-	});
+		} });
 
 	close(ofd[1]);
 
@@ -341,10 +348,10 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	{
 		int r = read(ofd[0], buffer, sizeof(buffer));
 
-		if (r <= 0)	// keep it simple
+		if (r <= 0) // keep it simple
 			break;
 
-		for (char* s = buffer; s < buffer + r; ++s)
+		for (char *s = buffer; s < buffer + r; ++s)
 		{
 			char ch = *s;
 			if (ch != '\n')
@@ -352,7 +359,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				line += ch;
 				continue;
 			}
-			
+
 			try
 			{
 				auto ins = parseLine(line.c_str(), trimLength);
@@ -362,7 +369,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 					std::push_heap(result.begin(), result.end());
 				}
 			}
-			catch (const std::exception& e)
+			catch (const std::exception &e)
 			{
 				std::cerr << std::endl
 						  << "Exception parsing " << fastq << e.what() << std::endl
@@ -386,7 +393,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				std::push_heap(result.begin(), result.end());
 			}
 		}
-		catch (const std::exception& e)
+		catch (const std::exception &e)
 		{
 			std::cerr << e.what() << std::endl
 					  << line << std::endl;
@@ -421,9 +428,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 
 // -----------------------------------------------------------------------
 
-std::vector<Insertion> runBowtie(const std::filesystem::path& bowtie,
-	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
-	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength)
+std::vector<Insertion> runBowtie(const std::filesystem::path &bowtie,
+	const std::filesystem::path &bowtieIndex, const std::filesystem::path &fastq,
+	const std::filesystem::path &logFile, unsigned threads, unsigned trimLength)
 {
 	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + ".fastq");
 
@@ -459,7 +466,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 	if (not fs::exists(bowtie))
 		throw std::runtime_error("The executable '" + bowtie.string() + "' does not seem to exist");
 
-	std::vector<const char*> args = {
+	std::vector<const char *> args = {
 		bowtie.c_str(),
 		"--version",
 		nullptr
@@ -468,18 +475,22 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 	// ready to roll
 	int ofd[2], efd[2], err;
 
-	err = pipe2(ofd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
-	err = pipe2(efd, O_CLOEXEC); if (err < 0) throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(ofd, O_CLOEXEC);
+	if (err < 0)
+		throw std::runtime_error("Pipe error: "s + strerror(errno));
+	err = pipe2(efd, O_CLOEXEC);
+	if (err < 0)
+		throw std::runtime_error("Pipe error: "s + strerror(errno));
 
 	int pid = fork();
 
-	if (pid == 0)    // the child
+	if (pid == 0) // the child
 	{
-		setpgid(0, 0);        // detach from the process group, create new
+		setpgid(0, 0); // detach from the process group, create new
 
 		// it is dubious if this is needed:
 		signal(SIGHUP, SIG_IGN);
-		signal(SIGCHLD, SIG_IGN);    // block child died signals
+		signal(SIGCHLD, SIG_IGN); // block child died signals
 
 		// fork again, to avoid being able to attach to a terminal device
 		pid = fork();
@@ -491,7 +502,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 			_exit(0);
 
 		signal(SIGHUP, SIG_IGN);
-		signal(SIGCHLD, SIG_IGN);    // block child died signals
+		signal(SIGCHLD, SIG_IGN); // block child died signals
 
 		dup2(ofd[1], STDOUT_FILENO);
 		close(ofd[0]);
@@ -503,8 +514,8 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 
 		closefrom(STDERR_FILENO + 1);
 
-		const char* env[] = { nullptr };
-		(void)execve(args.front(), const_cast<char* const*>(&args[0]), const_cast<char* const*>(env));
+		const char *env[] = { nullptr };
+		(void)execve(args.front(), const_cast<char *const *>(&args[0]), const_cast<char *const *>(env));
 		exit(-1);
 	}
 
@@ -528,7 +539,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 	std::future<std::string> f = p.get_future();
 
 	std::thread t([fd = ofd[0], efd = efd[0], &p]()
-	{
+		{
 		try
 		{
 			std::string line, result;
@@ -572,8 +583,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 		catch(const std::exception& e)
 		{
 			p.set_exception(std::current_exception());
-		}
-	});
+		} });
 
 	// no zombies please, removed the WNOHANG. the forked application should really stop here.
 	int status = 0;
@@ -583,7 +593,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 
 	if (r == pid and WIFEXITED(status))
 		status = WEXITSTATUS(status);
-	
+
 	if (status != 0)
 		throw std::runtime_error("Error executing bowtie, result is " + std::to_string(status));
 
@@ -597,4 +607,3 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 // 	auto params = bowtie_parameters::instance();
 // 	return runBowtie(params.bowtie(), params.bowtieIndex(assembly), fastq, params.threads(), params.trimLength());
 // }
-

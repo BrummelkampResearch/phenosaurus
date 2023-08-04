@@ -14,3 +14,6 @@
 	path = libpqxx
 	url = https://github.com/jtv/libpqxx.git
 	branch = 17e5a6c8
+[submodule "libmcfp"]
+	path = libmcfp
+	url = https://github.com/mhekkel/libmcfp.git

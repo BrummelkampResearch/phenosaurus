@@ -152,8 +152,7 @@ class progress
 	int64_t m_max;
 	std::string m_action;
 	std::atomic<int64_t> m_cur;
-	std::chrono::system_clock::time_point
-		m_last_update;
+	std::chrono::system_clock::time_point m_last_update;
 };
 
 // --------------------------------------------------------------------

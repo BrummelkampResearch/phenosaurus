@@ -78,20 +78,12 @@ set(CMAKE_THREAD_PREFER_PTHREAD)
 set(THREADS_PREFER_PTHREAD_FLAG)
 find_package(Threads)
 
-set(Boost_DETAILED_FAILURE_MSG ON)
-if(NOT BUILD_SHARED_LIBS)
-	set(Boost_USE_STATIC_LIBS ON)
-endif()
-
 find_package(zeep 5.1.3 REQUIRED)
-find_package(Boost COMPONENTS system date_time program_options iostreams)
-find_package(ZLIB REQUIRED)
-# find_package(libpqxx 7.7.4 REQUIRED)
-
-pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpqxx>=7.2 libpq)
-
-add_git_submodule(squeeze EXCLUDE_FROM_ALL)
-add_git_submodule(mailio EXCLUDE_FROM_ALL)
+find_package(squeeze)
+find_package(mailio)
+find_package(libmcfp)
+find_package(gxrio 1.0.2)
+find_package(libpqxx 7.8)
 
 find_program(YARN yarn REQUIRED)
 
@@ -159,12 +151,10 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-analyzer.cpp
 	${CMAKE_SOURCE_DIR}/src/job-scheduler.hpp
 	${CMAKE_SOURCE_DIR}/src/user-service.hpp
-	${CMAKE_SOURCE_DIR}/src/screen-creator.cpp
 	${CMAKE_SOURCE_DIR}/src/screen-data.hpp
 	${CMAKE_SOURCE_DIR}/src/utils.cpp
 	${CMAKE_SOURCE_DIR}/src/screen-service.cpp
 	${CMAKE_SOURCE_DIR}/src/user-service.cpp
-	${CMAKE_SOURCE_DIR}/src/screen-analyzer.hpp
 	${CMAKE_SOURCE_DIR}/src/bowtie.cpp
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.h
 	${CMAKE_SOURCE_DIR}/src/db-connection.cpp
@@ -180,9 +170,7 @@ add_executable(screen-analyzer
 
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
-	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
-	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB
-	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
+	PRIVATE zeep::zeep squeeze::squeeze libpqxx::pqxx mailio::mailio gxrio::gxrio std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
 

@@ -1875,8 +1875,18 @@ void screen_rest_controller::delete_screen(const std::string &name)
 
 bool screen_rest_controller::validateFastQFile(const std::string &filename)
 {
-	checkIsFastQ(filename);
-	return true;
+	bool result = true;
+
+	try
+	{
+		checkIsFastQ(filename);
+	}
+	catch (const std::exception &ex)
+	{
+		result = false;
+	}
+	
+	return result;
 }
 
 bool screen_rest_controller::validateScreenName(const std::string &name)
