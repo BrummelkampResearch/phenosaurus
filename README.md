@@ -12,13 +12,15 @@ Building the software
 
 This software was developed using Linux and probably will not be able to run on a non-unix like operating system.
 
-Other requirements are a very recent C++ compiler capable of compiling C++17 code. You will also need [cmake](https://cmake.org/) to build the software.
+Other requirements are a very recent C++ compiler capable of compiling C++17 code. GNU g++ should be at lease version 9.4. You will also need [cmake](https://cmake.org/) to build the software.
 
 The required tools and libraries before building are:
 
-* [boost](https://boost.org), the Boost libraries offer various C++ modules used in phenosaurus. These usually come with the OS.
 * [Libzeep](https://github.com/mhekkel/libzeep.git) which is a library to build web applications
 * [libpqxx](https://github.com/jtv/libpqxx.git), a library offering a modern C++ interface to PostgreSQL
+* [libmcfp](https://github.com/mhekkel/libmcfp.git) which is a library to handle command line arguments
+* [gxrio](https://github.com/mhekkel/gxrio.git) which is a library to read and write compressed files using C++ streams
+* [squeeze](https://github.com/mhekkel/squeeze.git) which is a library to compress arrays of integers
 * [mrc](https://github.com/mhekkel/mrc.git), not strictly required by very useful to bind resources with the application.
 * [bowtie](http://bowtie-bio.sourceforge.net/manual.shtml), the program used to do the mapping of sequences on the genome.
 
