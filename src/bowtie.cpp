@@ -257,6 +257,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	{
 		try
 		{
+			size_t skipped = 0;
+
 			progress p(fs::file_size(fastq), fastq.string());
 			p.set_action(fastq.filename().string());
 
@@ -301,8 +303,14 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				if (line[2].empty() or line[2][0] != '+')
 					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
 
-				if (line[1].length() != line[3].length() or line[1].empty())
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+				if (line[1].length() != line[3].length())
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");
+				
+				if (line[1].length() < trimLength)
+				{
+					++skipped;
+					continue;
+				}
 
 				iovec v[8] = {
 					{ line[0].data(), line[0].length() },
@@ -324,6 +332,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			}
 
 			close(fd);
+
+			if (skipped > 0)
+				std::cerr << "skipped " << skipped << " short sequences" << std::endl;
 		}
 		catch (const std::exception& ex)
 		{
