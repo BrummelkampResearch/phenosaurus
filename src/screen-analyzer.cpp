@@ -1114,6 +1114,48 @@ int main_dump(int argc, char* const argv[])
 	return result;
 }
 
+// --------------------------------------------------------------------
+
+int main_danielle(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( danielle screen-name assembly file [options])",
+		{
+			{ "screen-name",	po::value<std::string>(),	"The screen to dump" },
+			{ "file",			po::value<std::string>(),	"The file containing the list of screens" }
+		},
+		{ "screen-name", "assembly", "file" },
+		{ "screen-name", "assembly", "file" });
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	auto data = ScreenData::load(screenDir);
+
+	std::string assembly = vm["assembly"].as<std::string>();
+
+	unsigned trimLength = 50;
+	if (vm.count("trim-length"))
+		trimLength = vm["trim-length"].as<unsigned>();
+	
+	auto file = vm["file"].as<std::string>();
+	std::ifstream screensFile(file);
+	if (not screensFile.is_open())
+		throw std::runtime_error("Could not open screens file");
+
+	std::vector<std::string> screens;
+	std::string line;
+	while (getline(screensFile, line))
+		screens.emplace_back(line);
+
+	// data->dump_map(assembly, trimLength, file);
+
+	return result;
+}
+
+// --------------------------------------------------------------------
+
 int main_refresh(int argc, char* const argv[])
 {
 	int result = 0;
@@ -1220,6 +1262,10 @@ int main(int argc, char* const argv[])
 			result = main_refresh(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
+
+		else if (command == "danielle")
+			result = main_danielle(argc - 1, argv + 1);
+
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")
 			usage();
 		else if (command == "version" or command == "-v" or command == "--version")
