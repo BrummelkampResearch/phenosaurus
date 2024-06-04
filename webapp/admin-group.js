@@ -48,7 +48,7 @@ class GroupEditor {
 
 		$(this.dialog).modal();
 
-		fetch(`${context_name}/admin/group/${id}`, {credentials: "include", method: "get"})
+		fetch(`./group/${id}`, {credentials: "include", method: "get"})
 			.then(async response => {
 				if (response.ok)
 					return response.json();
@@ -97,7 +97,7 @@ class GroupEditor {
 		this.group.name = this.form.elements['name'].value;
 		this.group.members = Array.from(members.values());
 
-		const url = this.id ? `${context_name}/admin/group/${this.id}` : `${context_name}/admin/group`;
+		const url = this.id ? `./group/${this.id}` : `./group`;
 		const method = this.id ? 'put' : 'post';
 
 		fetch(url, {
@@ -157,7 +157,7 @@ class GroupEditor {
 
 	deleteGroup(id, name) {
 		if (confirm(`Are you sure you want to delete group ${name}?`)) {
-			fetch(`${context_name}/admin/group/${id}`, {
+			fetch(`./group/${id}`, {
 				credentials: "include",
 				method: "delete",
 				headers: {

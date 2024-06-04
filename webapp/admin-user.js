@@ -49,7 +49,7 @@ class UserEditor {
 
 		document.getElementById("id_username").focus();
 
-		fetch(`${context_name}/admin/user/${id}`, {credentials: "include", method: "get"})
+		fetch(`./user/${id}`, {credentials: "include", method: "get"})
 			.then(async response => {
 				if (response.ok)
 					return response.json();
@@ -108,7 +108,7 @@ class UserEditor {
 
 		this.user.id = +this.user.id;
 
-		const url = this.id ? `${context_name}/admin/user/${this.id}` : `${context_name}/admin/user`;
+		const url = this.id ? `./user/${this.id}` : `./user`;
 		const method = this.id ? 'put' : 'post';
 
 		fetch(url, {
@@ -159,7 +159,7 @@ class UserEditor {
 
 	deleteUser(id, name) {
 		if (confirm(`Are you sure you want to delete user ${name}?`)) {
-			fetch(`${context_name}/admin/user/${id}`, {
+			fetch(`./user/${id}`, {
 				credentials: "include",
 				method: "delete",
 				headers: {

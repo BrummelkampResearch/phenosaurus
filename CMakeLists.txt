@@ -34,14 +34,13 @@ include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CMakePackageConfigHelpers)
-include(Dart)
 include(FindFilesystem)
 include(FindPkgConfig)
 include(GenerateExportHeader)
 include(AddGitSubmodule)
 
 set(CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Filesystem REQUIRED)
@@ -54,7 +53,7 @@ endif()
 
 # Create a revision file, containing the current git version info
 include(VersionString)
-write_version_header()
+write_version_header(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Optionally use mrc to create resources
 find_package(Mrc QUIET)
@@ -80,10 +79,13 @@ find_package(Threads)
 
 find_package(zeep 5.1.3 REQUIRED)
 find_package(squeeze)
-find_package(mailio)
-find_package(libmcfp)
+# find_package(mailio)
+# find_package(libmcfp)
 find_package(gxrio 1.0.2)
 find_package(libpqxx 7.8)
+
+add_subdirectory(mailio EXCLUDE_FROM_ALL)
+add_subdirectory(libmcfp EXCLUDE_FROM_ALL)
 
 find_program(YARN yarn REQUIRED)
 

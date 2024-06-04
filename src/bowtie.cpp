@@ -309,8 +309,14 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path &bowtie,
 				if (line[2].empty() or line[2][0] != '+')
 					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
 
-				if (line[1].length() != line[3].length() or line[1].empty())
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+				if (line[1].length() != line[3].length())
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");
+				
+				if (line[1].length() < trimLength)
+				{
+					std::cerr << "skipping short sequence" << std::endl;
+					continue;
+				}
 
 				iovec v[8] = {
 					{ line[0].data(), line[0].length() },
