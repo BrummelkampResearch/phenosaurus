@@ -28,6 +28,7 @@
 #include "utils.hpp"
 #include "screen-data.hpp"
 #include "screen-server.hpp"
+#include "screen-service.hpp"
 #include "db-connection.hpp"
 #include "user-service.hpp"
 
@@ -1122,23 +1123,56 @@ int main_danielle(int argc, char* const argv[])
 
 	auto vm = load_options(argc, argv, "screen-analyzer" R"( danielle screen-name assembly file [options])",
 		{
-			{ "screen-name",	po::value<std::string>(),	"The screen to dump" },
-			{ "file",			po::value<std::string>(),	"The file containing the list of screens" }
+			{ "file",			po::value<std::string>(),	"The file containing the list of screens" },
+
+			{ "mode",		po::value<std::string>()->default_value("longest-exon"),	"Mode, should be either collapse, longest-exon or longest-transcript" },
+			{ "start",		po::value<std::string>()->default_value("tx"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "end",		po::value<std::string>()->default_value("cds"),	"cds or tx with optional offset (e.g. +100 or -500)" },
+			{ "overlap",	po::value<std::string>(),	"Supported values are both or neither." },
+			{ "direction",	po::value<std::string>(),	"Direction for the counted integrations, can be 'sense', 'antisense' or 'both'" },
+
+			{ "p-value-filter", po::value<float>()->default_value(0.05f), "P-value filter"},
+			{ "z-score-filter", po::value<float>()->default_value(2.0f), "Z-score filter"},
+			
+
 		},
-		{ "screen-name", "assembly", "file" },
-		{ "screen-name", "assembly", "file" });
+		{ "assembly", "file" },
+		{ "assembly", "file" });
 
-	fs::path screenDir = vm["screen-dir"].as<std::string>();
-	screenDir /= vm["screen-name"].as<std::string>();
+	// auto data = ScreenData::load(screenDir);
 
-	auto data = ScreenData::load(screenDir);
+	bool cutOverlap = true;
+	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
+		cutOverlap = false;
 
 	std::string assembly = vm["assembly"].as<std::string>();
 
+	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
+
 	unsigned trimLength = 50;
-	if (vm.count("trim-length"))
-		trimLength = vm["trim-length"].as<unsigned>();
-	
+	// if (vm.count("trim-length"))
+	// 	trimLength = vm["trim-length"].as<unsigned>();
+
+	Direction direction = Direction::Sense;
+	if (vm.count("direction"))
+	{
+		if (vm["direction"].as<std::string>() == "sense")
+			direction = Direction::Sense;
+		else if (vm["direction"].as<std::string>() == "antisense" or vm["direction"].as<std::string>() == "anti-sense")
+			direction = Direction::AntiSense;
+		else if (vm["direction"].as<std::string>() == "both")
+			direction = Direction::Both;
+		else
+		{
+			std::cerr << "invalid direction" << std::endl;
+			exit(1);
+		}
+	}
+
+	screen_service::init(
+		vm["screen-dir"].as<std::string>(),
+		vm["transcripts-dir"].as<std::string>());
+
 	auto file = vm["file"].as<std::string>();
 	std::ifstream screensFile(file);
 	if (not screensFile.is_open())
@@ -1148,6 +1182,32 @@ int main_danielle(int argc, char* const argv[])
 	std::string line;
 	while (getline(screensFile, line))
 		screens.emplace_back(line);
+
+	auto allScreens = screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype);
+
+	allScreens.erase(
+		std::remove_if(allScreens.begin(), allScreens.end(),
+			[&](const screen_info &si) { return find(screens.begin(), screens.end(), si.name) == screens.end(); }),
+		allScreens.end()
+	);
+
+	ip_screen_data_cache sd(allScreens, ScreenType::IntracellularPhenotype,
+		assembly, trimLength, "default", mode, cutOverlap, vm["start"].as<std::string>(), vm["end"].as<std::string>(), direction);
+
+	for (auto &t : sd.get_transcripts())
+	{
+		auto s = sd.find_similar(t.geneName, vm["p-value-filter"].as<float>(),  vm["z-score-filter"].as<float>());
+
+		if (s.size() < 2)
+			continue;
+
+		std::cout << t.geneName << ":\n";
+
+		for (auto &si : s)
+			std::cout << si.gene << '\t' << si.zscore << '\n';
+
+		std::cout << "\n";
+	}
 
 	// data->dump_map(assembly, trimLength, file);
 
