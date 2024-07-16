@@ -22,7 +22,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.29)
 
 # set the project name
 project(phenosaurus VERSION 2.0.3 LANGUAGES CXX C)
@@ -82,12 +82,13 @@ if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 endif()
 
+pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
+
 find_package(zeep 5.1.3 REQUIRED)
 find_package(Boost COMPONENTS system date_time program_options iostreams)
 find_package(ZLIB REQUIRED)
 find_package(libpqxx 7.7.4 REQUIRED)
 
-pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
 
 add_git_submodule(squeeze EXCLUDE_FROM_ALL)
 add_git_submodule(mailio EXCLUDE_FROM_ALL)
