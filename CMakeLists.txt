@@ -25,7 +25,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # set the project name
-project(screen-analyzer VERSION 2.0.3 LANGUAGES CXX C)
+project(phenosaurus VERSION 2.0.3 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -37,9 +37,10 @@ include(CMakePackageConfigHelpers)
 include(FindFilesystem)
 include(FindPkgConfig)
 include(GenerateExportHeader)
+include(AddGitSubmodule)
 
 set(CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Filesystem REQUIRED)
@@ -50,69 +51,17 @@ elseif(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 endif()
 
-if(NOT "$ENV{CCP4}" STREQUAL "")
-	set(CCP4 $ENV{CCP4})
-	list(PREPEND CMAKE_MODULE_PATH "${CCP4}/Lib")
-	list(APPEND CMAKE_PREFIX_PATH ${CCP4})
-	if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-		set(CMAKE_PREFIX_PATH ${CCP4})
-	endif()
-endif()
-
-if(MSVC)
-    # make msvc standards compliant...
-    add_compile_options(/permissive-)
-
-	macro(get_WIN32_WINNT version)
-		if (WIN32 AND CMAKE_SYSTEM_VERSION)
-			set(ver ${CMAKE_SYSTEM_VERSION})
-			string(REPLACE "." "" ver ${ver})
-			string(REGEX REPLACE "([0-9])" "0\\1" ver ${ver})
-
-			set(${version} "0x${ver}")
-		endif()
-	endmacro()
-
-	get_WIN32_WINNT(ver)
-	add_definitions(-D_WIN32_WINNT=${ver})
-
-	# On Windows, do not install in the system location
-	if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT AND NOT BUILD_FOR_CCP4)
-		message(STATUS "The library and auxiliary files will be installed in $ENV{LOCALAPPDATA}/${PROJECT_NAME}")
-		set(CMAKE_INSTALL_PREFIX "$ENV{LOCALAPPDATA}/${PROJECT_NAME}" CACHE PATH "..." FORCE)
-	endif()
-
-	# Find out the processor type for the target
-	if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "AMD64")
-		set(COFF_TYPE "x64")
-	elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")
-		set(COFF_TYPE "x86")
-	elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ARM64")
-		set(COFF_TYPE "arm64")
-	else()
-		message(FATAL_ERROR "Unsupported or unknown processor type ${CMAKE_SYSTEM_PROCESSOR}")
-	endif()	
-endif()
-
-if(UNIX AND NOT APPLE)
-	# On Linux, install in the $HOME/.local folder by default
-	if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-		message(WARNING "The library and auxiliary files will be installed in $ENV{HOME}/.local")
-		set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "..." FORCE)
-	endif()
-endif()
-
 # Create a revision file, containing the current git version info
 include(VersionString)
 write_version_header()
 
 # Optionally use mrc to create resources
-find_package(Mrc)
+find_package(Mrc QUIET)
 
 if(MRC_FOUND)
 	option(USE_RSRC "Use mrc to create resources" ON)
 else()
-	message(WARNING "Not using resources since mrc was not found")
+	message(STATUS "Not using resources since mrc was not found")
 endif()
 
 if(USE_RSRC STREQUAL "ON")
@@ -134,15 +83,14 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 
 find_package(zeep 5.1.3 REQUIRED)
-find_package(Boost COMPONENTS system date_time program_options regex iostreams)
-find_package(squeeze 1.0.0 REQUIRED)
+find_package(Boost COMPONENTS system date_time program_options iostreams)
+find_package(ZLIB REQUIRED)
+find_package(libpqxx 7.7.4 REQUIRED)
 
-pkg_check_modules(PQ libpq REQUIRED IMPORTED_TARGET)
-pkg_check_modules(PQXX libpqxx>=7.2 REQUIRED IMPORTED_TARGET)
-pkg_check_modules(MAILIO mailio REQUIRED IMPORTED_TARGET)
-pkg_check_modules(SSL libssl IMPORTED_TARGET)
-pkg_check_modules(CRYPTO libcrypto IMPORTED_TARGET)
-pkg_check_modules(ZLIB zlib IMPORTED_TARGET)
+pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
+
+add_git_submodule(squeeze EXCLUDE_FROM_ALL)
+add_git_submodule(mailio EXCLUDE_FROM_ALL)
 
 find_program(YARN yarn REQUIRED)
 
@@ -229,10 +177,10 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-server.hpp
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c)
 
-target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
-	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::regex Boost::iostreams
-	PkgConfig::PQXX PkgConfig::PQ PkgConfig::MAILIO PkgConfig::SSL PkgConfig::CRYPTO PkgConfig::ZLIB
+	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
+	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB libpqxx::pqxx
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)
@@ -241,7 +189,7 @@ if(USE_RSRC)
 	mrc_target_resources(screen-analyzer ${CMAKE_SOURCE_DIR}/docroot/ ${CMAKE_SOURCE_DIR}/rsrc/)
 endif()
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS screen-analyzer
     RUNTIME DESTINATION ${BIN_INSTALL_DIR}
 )
 

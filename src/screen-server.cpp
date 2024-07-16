@@ -1,4 +1,28 @@
-// copyright 2020 M.L. Hekkelman, NKI/AVL
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <iostream>
 #include <numeric>
@@ -108,6 +132,8 @@ class IPScreenRestController : public zh::rest_controller
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
 			"id", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
+		map_get_request("screen/{id}/description", &IPScreenRestController::screenDescription, "id", "assembly");
+
 		map_post_request("finder/{gene}", &IPScreenRestController::find_gene,
 			"gene", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
@@ -130,6 +156,15 @@ class IPScreenRestController : public zh::rest_controller
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
+	
+	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
+	{
+		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
+
+		zeep::json::element result;
+		to_element(result, desc);
+		return result;
+	}
 
 	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
@@ -498,6 +533,8 @@ class SLScreenRestController : public zh::rest_controller
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
 			"id", "assembly", "transcripts", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
 
+		map_get_request("screen/{id}/description", &SLScreenRestController::screenDescription, "id", "assembly");
+
 		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end");
 
 		// download data
@@ -513,6 +550,15 @@ class SLScreenRestController : public zh::rest_controller
 
 	std::vector<sl_data_point> screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
+
+	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
+	{
+		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
+
+		zeep::json::element result;
+		to_element(result, desc);
+		return result;
+	}
 
 	Region geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
@@ -807,10 +853,16 @@ zh::server *createServer(const fs::path &docroot,
 	auto server = new zh::server(sc, docroot);
 
 	server->add_error_handler(new db_error_handler());
+	server->add_controller(new zh::login_controller());
+
+#ifndef NDEBUG
+	server->set_template_processor(new zeep::http::file_based_html_template_processor("docroot"));
+#else
+	server->set_template_processor(new zeep::http::rsrc_based_html_template_processor());
+#endif
 
 	server->set_context_name(context_name);
 
-	server->add_controller(new zh::login_controller());
 	server->add_controller(new user_service_html_controller());
 
 	server->add_controller(new ScreenHtmlController());

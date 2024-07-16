@@ -1,7 +1,28 @@
-//               Copyright Maarten L. Hekkelman.
-//   Distributed under the Boost Software License, Version 1.0.
-//      (See accompanying file LICENSE_1_0.txt or copy at
-//            http://www.boost.org/LICENSE_1_0.txt)
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #pragma once
 
@@ -34,6 +55,8 @@ class screen_data_cache
 
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const = 0;
 	virtual bool contains_data_for_screen(const std::string &screen) const = 0;
+
+	const std::vector<Transcript> &get_transcripts() const { return m_transcripts; }
 
   protected:
 	struct cached_screen
@@ -158,6 +181,11 @@ class ip_screen_data_cache : public screen_data_cache
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
+	ip_screen_data_cache(const std::vector<screen_info> &screens,
+		ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+		Direction direction);
+
 	~ip_screen_data_cache();
 
 	bool is_for(ScreenType type, std::string &assembly, short trim_length, const std::string &transcript_selection, Mode mode,
@@ -184,6 +212,7 @@ class ip_screen_data_cache : public screen_data_cache
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
 
   private:
+
 	struct data_point
 	{
 		float pv;
@@ -336,9 +365,16 @@ class screen_service
 	bool is_owner(const std::string &name, const std::string &username) const;
 	bool is_allowed(const std::string &screenname, const std::string &username) const;
 
+	screen_description get_description(const std::string &name, const std::string &assembly, short trim_length) const;
+	uint32_t count_insertions(const std::string &name, const std::string &assembly, short trim_length, const std::string &file) const;
+
 	std::unique_ptr<ScreenData> create_screen(const screen_info &screen);
 	void update_screen(const std::string &name, const screen_info &screen);
 	void delete_screen(const std::string &name);
+
+	// refresh manifest
+	void refresh_manifest(const std::string &name);
+	void refresh_manifest_all();
 
 	template<typename ScreenDataType>
 	std::unique_ptr<ScreenDataType> load_screen(const std::string &screen)

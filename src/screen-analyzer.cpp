@@ -1,14 +1,28 @@
-// copyright 2020 M.L. Hekkelman, NKI/AVL
-
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-
-#include <boost/program_options.hpp>
-#include <boost/algorithm/string.hpp>
-
-#include <zeep/http/daemon.hpp>
-#include <zeep/crypto.hpp>
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "bowtie.hpp"
 #include "utils.hpp"
@@ -18,6 +32,17 @@
 #include "user-service.hpp"
 
 #include "revision.hpp"
+
+#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
+
+#include <zeep/http/daemon.hpp>
+#include <zeep/crypto.hpp>
+
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+
 
 namespace po = boost::program_options;
 namespace fs = std::filesystem;
@@ -996,16 +1021,19 @@ Command should be either:
 		pid_file += "-public";
 	}
 
-	if (not context_name.empty())
-	{
-		access_log += "-" + context_name + ".log";
-		error_log += "-" + context_name + ".log";
-	}
-	else
-	{
-		access_log += ".log";
-		error_log += ".log";
-	}
+	access_log += ".log";
+	error_log += ".log";
+
+	// if (not context_name.empty())
+	// {
+	// 	access_log += "-" + context_name + ".log";
+	// 	error_log += "-" + context_name + ".log";
+	// }
+	// else
+	// {
+	// 	access_log += ".log";
+	// 	error_log += ".log";
+	// }
 
 	zh::daemon server([
 		secret, docroot,
@@ -1160,6 +1188,26 @@ int main_dump(int argc, char* const argv[])
 	return result;
 }
 
+int main_refresh(int argc, char* const argv[])
+{
+	int result = 0;
+
+	auto vm = load_options(argc, argv, "screen-analyzer" R"( refresh screen-name)",
+		{
+			{ "screen-name",	po::value<std::string>(),	"The screen to dump" }
+		},
+		{ },
+		{ "screen-name" });
+
+	fs::path screenDir = vm["screen-dir"].as<std::string>();
+	screenDir /= vm["screen-name"].as<std::string>();
+
+	auto info = ScreenData::loadManifest(screenDir);
+	ScreenData::refreshManifest(info, screenDir);
+
+	return result;
+}
+
 // --------------------------------------------------------------------
 
 int main(int argc, char* const argv[])
@@ -1239,6 +1287,8 @@ int main(int argc, char* const argv[])
 			result = main_refseq(argc - 1, argv + 1);
 		else if (command == "server")
 			result = main_server(argc - 1, argv + 1);
+		else if (command == "refresh")
+			result = main_refresh(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = main_dump(argc - 1, argv + 1);
 		else if (command == "help" or command == "--help" or command == "-h" or command == "-?")

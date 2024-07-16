@@ -1,4 +1,28 @@
-// copyright 2020 M.L. Hekkelman, NKI/AVL
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include <exception>
 #include <fstream>
@@ -13,7 +37,7 @@
 #include <zeep/json/parser.hpp>
 #include <zeep/value-serializer.hpp>
 
-#include "sq/squeeze.hpp"
+#include <squeeze.hpp>
 
 #include "binom.hpp"
 #include "bowtie.hpp"
@@ -87,7 +111,7 @@ ScreenData::ScreenData(const fs::path &dir, const screen_info &info)
 	if (fs::exists(dir))
 		throw std::runtime_error("Screen already exists");
 
-	mInfo.created = boost::posix_time::second_clock().local_time();
+	mInfo.created = std::chrono::system_clock::now();
 
 	// always add the Brummelkamp group as allowed group
 	if (std::find(mInfo.groups.begin(), mInfo.groups.end(), "Brummelkamp-group") == mInfo.groups.end())
@@ -165,6 +189,17 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 
 	fs::path bowtieLogFile = assemblyDataPath / "bowtie.log";
 
+	std::string version = bowtieVersion(bowtie);
+	if (version.empty())
+		version = "(unknown, path is " + bowtie.string() + ')';
+
+	mapped_info mi{};
+	mi.assembly = assembly;
+	mi.trimlength = trimLength;
+	mi.bowtie_version = version;
+	mi.bowtie_index = bowtieIndex;
+	mi.bowtie_params = kBowtieParams;
+
 	for (auto fi = fs::directory_iterator(mDataDir); fi != fs::directory_iterator(); ++fi)
 	{
 		if (fi->is_directory())
@@ -187,28 +222,12 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 					<< "Unique hits in " << name << " channel: " << hits.size() << std::endl;
 
 		write_insertions(assembly, trimLength, name, hits);
+
+		mi.file.emplace_back(screen_insertion_count{ name, static_cast<uint32_t>(hits.size()) });
 	}
 
-	std::string version = bowtieVersion(bowtie);
-	if (version.empty())
-		version = "(unknown, path is " + bowtie.string() + ')';
-
-	bool isSet = false;
-
-	for (auto &mi : mInfo.mappedInfo)
-	{
-		if (mi.assembly == assembly and mi.trimlength == trimLength)
-		{
-			mi.bowtie_version = version;
-			mi.bowtie_index = bowtieIndex;
-			mi.bowtie_params = kBowtieParams;
-			isSet = true;
-			break;
-		}
-	}
-
-	if (not isSet)
-		mInfo.mappedInfo.push_back({ assembly, trimLength, version, kBowtieParams, bowtieIndex });
+	mInfo.mappedInfo.erase(std::remove_if(mInfo.mappedInfo.begin(), mInfo.mappedInfo.end(), [=](auto &mi) { return mi.assembly == assembly and mi.trimlength == trimLength;}), mInfo.mappedInfo.end());
+	mInfo.mappedInfo.emplace_back(std::move(mi));
 
 	saveManifest(mInfo, mDataDir);
 }
@@ -293,6 +312,50 @@ std::vector<Insertion> ScreenData::read_insertions(std::filesystem::path file)
 		result.resize(N);
 		infile.read(reinterpret_cast<char *>(result.data()), size);
 	}
+
+	infile.close();
+
+	return result;
+}
+
+uint32_t ScreenData::count_insertions(std::filesystem::path file)
+{
+	bool compressed = file.extension() == ".sq";
+	if (not compressed) // see if a compressed version exists
+	{
+		auto psq = file.parent_path() / (file.filename().string() + ".sq");
+		if (fs::exists(psq))
+		{
+			compressed = true;
+			file = psq;
+		}
+	}
+
+	if (not fs::exists(file))
+		throw std::runtime_error("File does not exist: " + file.string());
+
+	std::ifstream infile(file, std::ios::binary);
+	if (not infile.is_open())
+		throw std::runtime_error("Could not open " + file.string() + " file");
+
+	auto size = fs::file_size(file);
+
+	uint32_t result = 0;
+
+	if (compressed)
+	{
+		if (size > 32)
+			size = 32;
+
+		std::vector<uint8_t> bits(size);
+
+		infile.read(reinterpret_cast<char *>(bits.data()), size);
+
+		sq::ibitstream ibs(bits);
+		result = read_gamma(ibs);
+	}
+	else
+		result = size / sizeof(Insertion);
 
 	infile.close();
 
@@ -404,49 +467,73 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 
 	// Some info may be missing (old screens?)
 	if (result.mappedInfo.empty())
+		refreshManifest(result, dir);
+
+	return result;
+}
+
+void ScreenData::refreshManifest(screen_info &info, const std::filesystem::path &dir)
+{
+	// Resetting mapped info
+	bool updated = not info.mappedInfo.empty();
+
+	info.mappedInfo.clear();
+
+	try
 	{
-		try
+		// iterate assembly directories
+		std::error_code ec;
+
+		for (std::string assembly : { "hg19", "hg38" })
 		{
-			// iterate assembly directories
-			for (auto &dia : fs::directory_iterator(dir))
+			auto d = dir / assembly / "50";
+
+			if (not fs::exists(d, ec))
+				continue;
+
+			mapped_info mi{};
+
+			mi.assembly = assembly;
+			mi.trimlength = std::stoul(d.filename());
+
+			if (info.type == ScreenType::SyntheticLethal)
 			{
-				if (not dia.is_directory())
-					continue;
-
-				// iterate trim length directories
-				for (auto &ditl : fs::directory_iterator(dia.path()))
+				// iterate files
+				for (auto mfi : fs::directory_iterator(d))
 				{
-					if (not ditl.is_directory())
+					if (mfi.path().filename().string().substr(0, 10) != "replicate-")
 						continue;
-
-					// should check for a string that is a number here...
-
-					// iterate files
-					for (auto mfi : fs::directory_iterator(ditl.path()))
-					{
-						if ((result.type == ScreenType::SyntheticLethal and mfi.path().filename().string().substr(0, 10) == "replicate-") or
-							(result.type != ScreenType::SyntheticLethal and (mfi.path().filename().string() == "high.sq" or mfi.path().filename().string() == "low.sq" or
-																				mfi.path().filename().string() == "high" or mfi.path().filename().string() == "low")))
-						{
-							mapped_info mi{};
-							mi.assembly = dia.path().filename().string();
-							mi.trimlength = std::stoul(ditl.path().filename());
-							result.mappedInfo.push_back(mi);
-							break;
-						}
-					}
+					mi.file.emplace_back(screen_insertion_count{ mfi.path().filename().string(), ScreenData::count_insertions(mfi.path()) });
 				}
 			}
-		}
-		catch (const std::exception &ex)
-		{
-			std::cerr << "Error retrieving mapped info for screen " << result.name << ": " << ex.what() << std::endl;
+			else
+			{
+				for (std::string f : { "high", "low" })
+				{
+					auto p = d / (f + ".sq");
+					if (not fs::exists(p))
+						p = d / f;
+					if (fs::exists(p))
+
+					mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
+				}
+			}
+
+			if (not mi.file.empty())
+			{
+				info.mappedInfo.emplace_back(std::move(mi));
+				updated = true;
+			}
 		}
 	}
-
-	if (result.mappedInfo.size() > 1)
+	catch (const std::exception &ex)
 	{
-		auto &mi = result.mappedInfo;
+		std::cerr << "Error retrieving mapped info for screen " << info.name << ": " << ex.what() << std::endl;
+	}
+
+	if (info.mappedInfo.size() > 1)
+	{
+		auto &mi = info.mappedInfo;
 		auto cmp = [](const mapped_info &a, const mapped_info &b)
 		{
 			int d = a.assembly.compare(b.assembly);
@@ -457,7 +544,8 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 		mi.erase(std::unique(mi.begin(), mi.end(), cmp), mi.end());
 	}
 
-	return result;
+	if (updated)
+		saveManifest(info, dir);
 }
 
 // --------------------------------------------------------------------
@@ -591,7 +679,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 
 	for (std::string s : { "low", "high" })
 	{
-#ifdef NDEBUG
+#ifndef DEBUG
 		t.emplace_back([&, lh = s]()
 			{
 #else
@@ -645,7 +733,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 				{
 					eptr = std::current_exception();
 				}
-#ifdef NDEBUG
+#ifndef DEBUG
 			});
 #endif
 	}

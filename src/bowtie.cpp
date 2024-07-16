@@ -1,5 +1,29 @@
-// copyright 2020 M.L. Hekkelman, NKI/AVL
-//
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 //	module to run bowtie and process results
 
 #include <unistd.h>
@@ -233,6 +257,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 	{
 		try
 		{
+			size_t skipped = 0;
+
 			progress p(fs::file_size(fastq), fastq.string());
 			p.set_action(fastq.filename().string());
 
@@ -277,8 +303,14 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				if (line[2].empty() or line[2][0] != '+')
 					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", third line not valid");
 
-				if (line[1].length() != line[3].length() or line[1].empty())
-					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");			
+				if (line[1].length() != line[3].length())
+					throw std::runtime_error("Invalid FastQ file " + fastq.string() + ", no valid sequence data");
+				
+				if (line[1].length() < trimLength)
+				{
+					++skipped;
+					continue;
+				}
 
 				iovec v[8] = {
 					{ line[0].data(), line[0].length() },
@@ -300,6 +332,9 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			}
 
 			close(fd);
+
+			if (skipped > 0)
+				std::cerr << "skipped " << skipped << " short sequences" << std::endl;
 		}
 		catch (const std::exception& ex)
 		{

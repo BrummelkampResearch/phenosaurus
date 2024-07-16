@@ -1,0 +1,16 @@
+[submodule "libconfig"]
+	path = libconfig
+	url = https://github.com/mhekkel/libconfig.git
+[submodule "gxrio"]
+	path = gxrio
+	url = https://github.com/mhekkel/gxrio.git
+[submodule "squeeze"]
+	path = squeeze
+	url = https://github.com/mhekkel/squeeze.git
+[submodule "mailio"]
+	path = mailio
+	url = https://github.com/mhekkel/mailio.git
+[submodule "libpqxx"]
+	path = libpqxx
+	url = https://github.com/jtv/libpqxx.git
+	branch = 17e5a6c8

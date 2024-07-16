@@ -141,15 +141,19 @@
 					<th>Assembly</th>
 					<th>Trimlength</th>
 					<th>Mapped</th>
+					<th>Insertion counts</th>
 				</tr>
 			</thead>
 			<tbody>
 				<tr z:each="m: ${screen.mapped}">
 					<td z:text="${m.assembly}"></td>
 					<td z:text="${m.trim-length}"></td>
-					<td z:switch="${m.bowtie-version}">
+					<td z:switch="${m.insertion-counts.length}">
 						<i z:case="*" class="fa fa-check"></i>
-						<button z:case="null" class="btn btn-sm btn-secondary" z:data-assembly="${m.assembly}">map</button>
+						<button z:case="0" class="btn btn-sm btn-secondary" z:data-assembly="${m.assembly}">map</button>
+					</td>
+					<td class="insertion-counts">
+						<z:block z:each="f: ${m.insertion-counts}"><span z:text="|${f.file}: ${f.count}|"></span><br/></z:block>
 					</td>
 				</tr>
 			</tbody>

@@ -1,3 +1,29 @@
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 import 'chosen-js/chosen.jquery';
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
 import { geneSelectionEditor } from './gene-selection';
@@ -191,10 +217,25 @@ class SLScreenPlot extends ScreenPlot {
 			plotTitle.classList.add("plot-status-loading");
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
-			[...this.parentColumn.getElementsByClassName("screen-name")]
-				.forEach(sn => sn.textContent = name);
-
 			const options = geneSelectionEditor.getOptions();
+			const assembly = options.get("assembly");
+
+			[...this.parentColumn.getElementsByClassName("screen-name")]
+				.forEach(sn => {
+					sn.textContent = name;
+
+					fetch(`screen/${name}/description?assembly=${assembly}`, {
+						method: "get",
+						credentials: "include"
+					}).then(r => {
+						if (r.ok)
+							return r.json();
+					}).then(d => {
+						if (typeof (d.description) === "string")
+							sn.textContent = d.description;
+					});
+
+				});
 
 			if (this.control != null)
 				options.append("control", this.control.name);
@@ -431,31 +472,28 @@ class SLScreenPlot extends ScreenPlot {
 	}
 
 	setPvCutOff(pv) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			super.setPvCutOff(+pv);
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
 
 	setBinomCutOff(binom) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			binomCutOff = +binom;
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
 
 	setOddsRatioCutOff(or) {
-		if (this.control != null)
-		{
+		if (this.control != null) {
 			oddsRatioCutOff = +or;
 			this.recolorGenes();
-	
+
 			this.updateSignificantTable();
 		}
 	}
@@ -476,7 +514,7 @@ class SLScreenPlot extends ScreenPlot {
 				};
 
 				const td = document.createElement("td");
-				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${ colorMap.getColor(d) }" /></svg>`;
+				td.innerHTML = `${d.gene} <svg height="12" width="12"><circle cx="6" cy="6" r="5" fill="${colorMap.getColor(d)}" /></svg>`;
 				row.appendChild(td);
 
 				col(d.odds_ratio ? format_pv(d.odds_ratio) : '');
@@ -555,7 +593,7 @@ class SLScreenPlot extends ScreenPlot {
 		const url = window.URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = `Raw_data_for_${screen}.csv`;
+		a.download = `Raw_data_for_${this.name}_replicate-${this.replicate + 1}.csv`;
 		document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
 		a.click();
 		a.remove();
@@ -566,7 +604,7 @@ class SLControlScreenPlot extends SLScreenPlot {
 	constructor(svg, plot, screenList) {
 		super(svg, screenList);
 
-		this.updateColorMap = () => {};
+		this.updateColorMap = () => { };
 		plot.control = this;
 	}
 
@@ -654,7 +692,7 @@ window.addEventListener('load', () => {
 			plot.loadScreen(screen);
 		}
 	});
-	
+
 
 });
 

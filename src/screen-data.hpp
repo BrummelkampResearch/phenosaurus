@@ -1,4 +1,28 @@
-// copyright 2020 M.L. Hekkelman, NKI/AVL
+/*-
+ * SPDX-License-Identifier: BSD-2-Clause
+ * 
+ * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #pragma once
 
@@ -46,6 +70,32 @@ struct screen_file
 	}
 };
 
+struct screen_insertion_count
+{
+	std::string file;
+	uint32_t count;
+
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
+	{
+		ar & zeep::make_nvp("file", file)
+		   & zeep::make_nvp("count", count);
+	}
+};
+
+struct screen_description
+{
+	std::string description;
+	std::vector<screen_insertion_count> counts;
+
+	template <typename Archive>
+	void serialize(Archive &ar, unsigned long)
+	{
+		ar & zeep::make_nvp("description", description)
+		   & zeep::make_nvp("count", counts);
+	}
+};
+
 struct mapped_info
 {
 	std::string assembly;
@@ -53,6 +103,7 @@ struct mapped_info
 	std::string	bowtie_version;
 	std::string bowtie_params;
 	std::string bowtie_index;
+	std::vector<screen_insertion_count> file;
 
 	template<typename Archive>
 	void serialize(Archive& ar, unsigned long version)
@@ -61,7 +112,8 @@ struct mapped_info
 		   & zeep::name_value_pair("trim-length", trimlength)
 		   & zeep::name_value_pair("bowtie-version", bowtie_version)
 		   & zeep::name_value_pair("bowtie-params", bowtie_params)
-		   & zeep::name_value_pair("bowtie-index", bowtie_index);
+		   & zeep::name_value_pair("bowtie-index", bowtie_index)
+		   & zeep::name_value_pair("insertion-counts", file);
 	}
 };
 
@@ -78,7 +130,7 @@ struct screen_info
 	std::string cell_line;
 	std::optional<std::string> description;
 	bool ignore;
-	boost::posix_time::ptime created;
+	std::chrono::time_point<std::chrono::system_clock> created;
 	std::vector<std::string> groups;
 	std::vector<screen_file> files;
 	std::vector<mapped_info> mappedInfo;
@@ -261,10 +313,13 @@ class ScreenData
 
 	// convenience, should probably moved elsewhere
 	static std::vector<Insertion> read_insertions(std::filesystem::path file);
+	static uint32_t count_insertions(std::filesystem::path file);
+	static uint32_t count_insertions(const std::string& assembly, unsigned readLength, const std::string& file);
 
 	// load and save screen_info from the manifest file
 	static screen_info loadManifest(const std::filesystem::path& dir);
 	static void saveManifest(const screen_info& info, const std::filesystem::path& dir);
+	static void refreshManifest(screen_info& info, const std::filesystem::path& dir);
 
 	std::istream *get_bed_file_for_insertions(const std::string& assembly, unsigned readLength, const std::string& file) const;
 

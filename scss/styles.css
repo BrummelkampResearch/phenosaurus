@@ -1,4 +1,3 @@
-
 .jumbotron {
 	background: white url("../images/screen.png") no-repeat 100% center;
 
@@ -18,7 +17,7 @@ footer {
 	border-top: 1px solid #888;
 	padding: 0.5em;
 	margin-top: 2em;
-	font-size:  small;
+	font-size: small;
 	color: #555;
 	white-space: pre;
 }
@@ -91,8 +90,15 @@ div.tooltip {
 	display: none;
 }
 
-.plot-status-loading .loading, .plot-status-loaded .loaded, .plot-status-failed .failed, .plot-title .screen-name {
+.plot-status-loading .loading,
+.plot-status-loaded .loaded,
+.plot-status-failed .failed,
+.plot-title .screen-name {
 	display: unset;
+}
+
+.insertion-counts {
+	font-size: small;
 }
 
 .spinner {
@@ -142,14 +148,15 @@ td.loading .swatch {
 }
 
 /*.ft-plot-container svg {*/
-	/*margin-left: 30px;*/
+/*margin-left: 30px;*/
 /*}*/
 
 table.fishtail .no-fishtail {
 	display: none;
 }
 
-table.heatmap td.screen-status, table.dotplot td.screen-status {
+table.heatmap td.screen-status,
+table.dotplot td.screen-status {
 	display: none;
 }
 
@@ -174,7 +181,7 @@ g.dot.link circle {
 	opacity: 0%;
 }
 
-.plot-container > svg {
+.plot-container>svg {
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -223,12 +230,14 @@ ul.option-group li {
 	width: 1em;
 }
 
-#controls a, a.control-icon {
+#controls a,
+a.control-icon {
 	color: black;
 	padding: 4px;
 }
 
-#controls a:hover, a.control-icon:hover {
+#controls a:hover,
+a.control-icon:hover {
 	background-color: lightgray;
 }
 
