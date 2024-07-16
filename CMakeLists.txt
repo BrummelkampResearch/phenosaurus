@@ -180,7 +180,7 @@ add_executable(screen-analyzer
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
-	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB
+	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB libpqxx::pqxx
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
 add_dependencies(screen-analyzer webpack)

@@ -128,11 +128,20 @@ bool screen_data_cache::is_up_to_date() const
 ip_screen_data_cache::ip_screen_data_cache(ScreenType type, const std::string &assembly,
 	short trim_length, const std::string &transcript_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
+	: ip_screen_data_cache(screen_service::instance().get_all_screens_for_type(type),
+		  type, assembly, trim_length, transcript_selection, mode, cutOverlap,
+		  geneStart, geneEnd, direction)
+{
+}
+
+ip_screen_data_cache::ip_screen_data_cache(const std::vector<screen_info> &screens,
+	ScreenType type, const std::string &assembly,
+	short trim_length, const std::string &transcript_selection, Mode mode,
+	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 	: screen_data_cache(type, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd)
 	, m_direction(direction)
 	, m_data(nullptr)
 {
-	auto screens = screen_service::instance().get_all_screens_for_type(type);
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
 
 	uint32_t data_offset = 0;
@@ -1438,7 +1447,7 @@ screen_description screen_service::get_description(const std::string &name, cons
 	{
 		if (mi.assembly != assembly or mi.trimlength != static_cast<unsigned>(trim_length))
 			continue;
-		
+
 		for (auto file : mi.file)
 			result.counts.emplace_back(file);
 	}
@@ -1780,13 +1789,14 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 	auto info = screen_service::instance().retrieve_screen(screenID);
 
 	// make the mapped section complete
-	auto& mapped = info.mappedInfo;
+	auto &mapped = info.mappedInfo;
 
-	for (auto a: { "hg19", "hg38" })
+	for (auto a : { "hg19", "hg38" })
 	{
-		if (std::find_if(mapped.begin(), mapped.end(), [a](mapped_info& mi) { return mi.assembly == a; }) != mapped.end())
+		if (std::find_if(mapped.begin(), mapped.end(), [a](mapped_info &mi)
+				{ return mi.assembly == a; }) != mapped.end())
 			continue;
-		
+
 		mapped.push_back({ a, 50 });
 	}
 
