@@ -954,7 +954,7 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly,
 	uint32_t minOffset = std::numeric_limits<int>::max();
 	uint32_t maxOffset = 0;
 
-	CHROM chrom;
+	CHROM chrom{INVALID};
 
 	for (auto& t: transcripts)
 	{
