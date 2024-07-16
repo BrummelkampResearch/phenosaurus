@@ -56,6 +56,8 @@ class screen_data_cache
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const = 0;
 	virtual bool contains_data_for_screen(const std::string &screen) const = 0;
 
+	const std::vector<Transcript> &get_transcripts() const { return m_transcripts; }
+
   protected:
 	struct cached_screen
 	{
@@ -179,6 +181,11 @@ class ip_screen_data_cache : public screen_data_cache
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
+	ip_screen_data_cache(const std::vector<screen_info> &screens,
+		ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+		Direction direction);
+
 	~ip_screen_data_cache();
 
 	bool is_for(ScreenType type, std::string &assembly, short trim_length, const std::string &transcript_selection, Mode mode,
@@ -205,6 +212,7 @@ class ip_screen_data_cache : public screen_data_cache
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
 
   private:
+
 	struct data_point
 	{
 		float pv;
