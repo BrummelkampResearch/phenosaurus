@@ -8,16 +8,15 @@
 	<div z:fragment="gene-selection-dialog(screenType)">
 		<script z:src="@{/scripts/gene-selection.js}" src="/scripts/gene-selection.js"></script>
 
-		<button class="btn btn-sm btn-secondary show-gene-selection-btn" id="show-gene-selection-btn">Select Genes</button>
+		<button class="btn btn-sm btn-secondary show-gene-selection-btn" id="show-gene-selection-btn"
+			data-bs-toggle="modal" data-bs-target="#gene-selection-dialog">Select Genes</button>
 
 		<div class="modal fade" tabindex="-1" role="dialog" aria-labelledby="dialog-label" id="gene-selection-dialog">
 			<div class="modal-dialog" role="document">
 				<div class="modal-content">
 					<div class="modal-header">
 						<h5 class="modal-title" id="dialog-label">Gene selection editor</h5>
-						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-						</button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
 					<div class="modal-body">
 						<div z:fragment="geneselection">
@@ -26,27 +25,27 @@
 								<ul class="option-group">
 									<li>
 										<div class="input-group input-group-sm mb-3">
-											<span class="input-group-text" style="min-width: 4em;">Assembly</span>
+											<label class="input-group-text" for="assembly-select" style="min-width: 4em;">Assembly</label>
 							
-											<select class="custom-select custom-select-sm" name="assembly">
+											<select class="form-select form-select-sm" name="assembly" id="assembly-select">
 												<option value="hg19">HG19</option>
 												<option value="hg38" selected="selected">HG38</option>
 											</select>
 										</div>
 
 										<div class="input-group input-group-sm mb-3">
-											<span class="input-group-text" style="min-width: 4em;">Transcript</span>
+											<label class="input-group-text" for="transcripts-select" style="min-width: 4em;">Transcript</label>
 							
-											<select class="custom-select custom-select-sm" name="transcripts">
+											<select class="form-select form-select-sm" name="transcripts" id="transcripts-select">
 												<option value="default">Default</option>
 												<option z:each="transcript: ${transcripts}" z:value="${transcript.id}" z:text="${transcript.name}"></option>
 											</select>
 										</div>
 
 										<div class="input-group input-group-sm mb-3">
-											<span class="input-group-text">Mode</span>
+											<label class="input-group-text" for="mode-select">Mode</label>
 							
-											<select class="custom-select custom-select-sm" name="mode">
+											<select class="form-select form-select-sm" name="mode" id="mode-select">
 												<option value="collapse" z:selected="${screenType=='ip'}">Collapse</option>
 												<option value="longest-transcript" z:selected="${screenType=='pa' or screenType=='sl'}">Longest Transcript</option>
 												<option value="longest-exon">Longest Exon</option>
@@ -62,9 +61,9 @@
 										</div>
 							
 										<div class="input-group input-group-sm mb-3">
-											<span class="input-group-text" id="StartLabel" style="min-width: 4em;">Start</span>
+											<label class="input-group-text" id="StartLabel" for="geneStartType" style="min-width: 4em;">Start</label>
 							
-											<select class="custom-select custom-select-sm" id="geneStartType">
+											<select class="form-select form-select-sm" id="geneStartType">
 												<option value="txStart" selected="selected">tx-start</option>
 												<option value="txEnd">tx-end</option>
 												<option value="cdsStart">cds-start</option>
@@ -77,9 +76,9 @@
 										</div>
 
 										<div class="input-group input-group-sm mb-3">
-											<span class="input-group-text" id="EndLabel" style="min-width: 4em;">End</span>
+											<label class="input-group-text" id="EndLabel" for="geneEndType" style="min-width: 4em;">End</label>
 							
-											<select class="custom-select custom-select-sm" id="geneEndType">
+											<select class="form-select form-select-sm" id="geneEndType">
 												<option value="txStart">tx-start</option>
 												<option value="txEnd">tx-end</option>
 												<option value="cdsStart" z:selected="${screenType=='pa'}">cds-start</option>
@@ -91,19 +90,19 @@
 												placeholder="offset..." />
 										</div>
 							
-										<div z:if="${screenType!='sl'}" class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons" id="directionBtns">
+										<div z:if="${screenType!='sl'}" class="btn-group btn-group-toggle btn-group-sm" role="group" data-bs-toggle="buttons" id="directionBtns">
 											<label class="btn btn-secondary active">
-												<input type="radio" name="direction" autocomplete="off"
+												<input type="radio" class="btn-check" name="direction" autocomplete="off"
 													value="sense" checked="checked"/>Sense
 											</label>
 							
 											<label class="btn btn-secondary">
-												<input type="radio" name="direction" value="antisense"
+												<input type="radio" class="btn-check" name="direction" value="antisense"
 													autocomplete="off"/>AntiSense
 											</label>
 							
 											<label class="btn btn-secondary">
-												<input type="radio" name="direction" value="both" autocomplete="off"/>Both
+												<input type="radio" class="btn-check" name="direction" value="both" autocomplete="off"/>Both
 											</label>
 										</div>
 							

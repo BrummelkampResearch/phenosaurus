@@ -25,17 +25,12 @@
  */
 
 import 'bootstrap/js/dist/modal';
-import $ from 'jquery';
 
 export let geneSelectionEditor;
 
 class GeneSelectionEditor {
 	constructor() {
 		this.dlog = document.getElementById("gene-selection-dialog");
-	}
-
-	show() {
-		$(this.dlog).modal();
 	}
 
 	getOptions() {
@@ -64,15 +59,8 @@ class GeneSelectionEditor {
 
 		return fd;
 	}
-
 }
 
 window.addEventListener('load', () => {
 	geneSelectionEditor = new GeneSelectionEditor();
-
-	const btn = document.getElementById('show-gene-selection-btn');
-	if (btn)
-		btn.addEventListener('click', () => {
-			geneSelectionEditor.show();
-		});
 });
