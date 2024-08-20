@@ -24,8 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'chosen-js/chosen.jquery';
-
 import * as d3 from 'd3';
 
 import ScreenData from "./screenData";

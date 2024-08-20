@@ -24,7 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'chosen-js/chosen.jquery';
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
 import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';

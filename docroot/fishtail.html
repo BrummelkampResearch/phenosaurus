@@ -12,13 +12,11 @@
 	<div class="container-fluid mt-3">
 		<div class="option-row">
 			<div class="option-col option-col-screenselector">
-				<div class="input-group input-group-sm">
-					<select id="screenList" data-placeholder="Choose a Screen...">
-						<option value=""></option>
-						<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
-							z:text="${public ? screen.published_name ?: screen.name : screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
-					</select>
-				</div>
+				<input class="form-control form-control-sm" list="screenListOptions" id="screenList" placeholder="type to search..."/>
+				<datalist id="screenListOptions">
+					<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
+					z:text="${public ? screen.published_name ?: screen.name : screen.name}" z:selected="${screen.name==#request.getParameter('screen')}"></option>
+				</datalist>
 			</div>
 
 			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
@@ -29,26 +27,26 @@
 					<form name="graphTypeForm">
 						<div class="btn-group btn-group-toggle btn-group-sm" role="group" data-toggle="buttons">
 							<label class="btn btn-secondary active">
-								<input type="radio" name="graphType" autocomplete="off"
+								<input type="radio" class="btn-check" name="graphType" autocomplete="off"
 									data-type="regular" checked="checked"/>Regular
 							</label>
 
 							<label class="btn btn-secondary">
-								<input type="radio" name="graphType" data-type="unique"
+								<input type="radio" class="btn-check" name="graphType" data-type="unique"
 									autocomplete="off"/>Unique
 							</label>
 
 							<label class="btn btn-secondary">
-								<input type="radio" name="graphType" data-type="total-unique"
+								<input type="radio" class="btn-check" name="graphType" data-type="total-unique"
 									autocomplete="off"/>Totally Unique
 							</label>
 
 							<label class="btn btn-secondary">
-								<input type="radio" name="graphType" data-type="low" autocomplete="off"/>Low
+								<input type="radio" class="btn-check" name="graphType" data-type="low" autocomplete="off"/>Low
 							</label>
 
 							<label class="btn btn-secondary">
-								<input type="radio" name="graphType" data-type="high" autocomplete="off"/>High
+								<input type="radio" class="btn-check" name="graphType" data-type="high" autocomplete="off"/>High
 							</label>
 						</div>
 					</form>
@@ -58,9 +56,7 @@
 
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='pv-cut-off'>p-value</label>
-					</div>
+					<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					<input type="number" min="0" max="1" step="0.01" id="pv-cut-off" maxlength="8" size="5"
 							placeholder="0.05"
 							class="form-control" value="0.05"/>
@@ -74,10 +70,8 @@
 						z:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
 
-					<div class="input-group-append" id="button-addon4">
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
-					</div>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
 				</div>	
 			</div>
 

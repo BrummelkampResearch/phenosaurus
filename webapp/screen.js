@@ -24,7 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'chosen-js/chosen.jquery';
 import $ from 'jquery';
 
 import * as d3 from 'd3';
@@ -58,8 +57,7 @@ class ScreenPlotRegular extends ScreenPlot {
 	add(data, screenNr) {
 		const result = super.add(data, screenNr);
 
-		if (this.graphType === 'unique' || this.graphType === 'total-unique')
-		{
+		if (this.graphType === 'unique' || this.graphType === 'total-unique') {
 			const options = this.getOptions();
 			options.append("pv-cut-off", pvCutOff);
 			options.append("single-sided", this.graphType === 'unique')
@@ -151,7 +149,7 @@ class ScreenPlotRegular extends ScreenPlot {
 	}
 
 	loadScreen(screen) {
-		return new Promise( (resolve, reject) => {
+		return new Promise((resolve, reject) => {
 
 			const options = this.getOptions();
 
@@ -171,7 +169,7 @@ class ScreenPlotRegular extends ScreenPlot {
 				if (r.ok)
 					return r.json();
 			}).then(d => {
-				if (typeof(d.description) === "string")
+				if (typeof (d.description) === "string")
 					$(".screen-name").text(d.description);
 			});
 
@@ -218,7 +216,7 @@ class ScreenPlotRegular extends ScreenPlot {
 					// if (err === "invalid-credentials")
 					// 	showLoginDialog(null, () => screenData.load());
 					// else 
-						reject(err);
+					reject(err);
 				});
 		});
 	}
@@ -228,7 +226,7 @@ class ScreenPlotRegular extends ScreenPlot {
 		const selected = screenList.selectedOptions;
 		if (selected.length === 1) {
 			const screen = selected.item(0).dataset.screen;
-			
+
 			const screenData = new ScreenData(screen);
 
 			screenData.load(this.getOptions())
@@ -258,8 +256,8 @@ class ScreenPlotRegular extends ScreenPlot {
 					a.href = url;
 					a.download = `Raw_data_for_${screen}.csv`;
 					document.body.appendChild(a); // we need to append the element to the dom -> otherwise it will not work in firefox
-					a.click();    
-					a.remove();  
+					a.click();
+					a.remove();
 				});
 		}
 	}
@@ -293,14 +291,22 @@ window.addEventListener('load', () => {
 	const plot = new ScreenPlotRegular(svg);
 
 	const screenList = document.getElementById("screenList");
-
-	$(screenList).chosen().on('change', () => {
-		const selected = screenList.selectedOptions;
-		if (selected.length === 1) {
-			const screen = selected.item(0).dataset.screen;
-			plot.loadScreen(screen);
-		}
+	screenList.addEventListener("change", () => {
+		plot.loadScreen(screenList.value);
+		// const selected = screenList.selectedOptions;
+		// if (selected.length === 1) {
+		// 	const screen = selected.item(0).dataset.screen;
+		// 	plot.loadScreen(screen);
+		// }
 	});
+
+	// $(screenList).chosen().on('change', () => {
+	// 	const selected = screenList.selectedOptions;
+	// 	if (selected.length === 1) {
+	// 		const screen = selected.item(0).dataset.screen;
+	// 		plot.loadScreen(screen);
+	// 	}
+	// });
 
 	$("#reload-btn").on("click", (e) => {
 		if (e && e.preventDefault)

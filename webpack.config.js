@@ -1,118 +1,142 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const webpack = require('webpack');
+const path = require('path');
+const { mode } = require('d3');
 
 const SCRIPTS = __dirname + "/webapp/";
 const SCSS = __dirname + "/scss/";
 const DEST = __dirname + "/docroot/";
 
-module.exports = {
-	// node: {
-	// 	fs: 'empty'
-	// },
+module.exports = (env) => {
 
-	mode: "development",
-	entry: {
-		'sa-style': SCSS + "sa-style.scss",
-		'index': SCRIPTS + "index.js",
-		'screen': SCRIPTS + "screen.js",
-		'sl-screen': SCRIPTS + "sl-screen.js",
+	const PRODUCTION = env != null && env.PRODUCTION;
 
-		'gene-selection': SCRIPTS + 'gene-selection.js',
-		'gene-finder': SCRIPTS + 'gene-finder.js',
-		'similar-finder': SCRIPTS + 'similar-finder.js',
-		'cluster-finder': SCRIPTS + 'cluster-finder.js',
+	const webpackConf = {
 
-		'compare-3': SCRIPTS + "compare-3.js",
+		entry: {
+			'sa-style': SCSS + "sa-style.scss",
 
-		'admin-user': SCRIPTS + "admin-user.js",
-		'admin-group': SCRIPTS + "admin-group.js",
-		'genome-browser': SCRIPTS + "genome-browser.js",
+			'index': SCRIPTS + "index.js",
+			'screen': SCRIPTS + "screen.js",
+			'sl-screen': SCRIPTS + "sl-screen.js",
 
-		'create-screen': SCRIPTS + "create-screen.js",
-		'edit-screen': SCRIPTS + "edit-screen.js",
-		'list-screen': SCRIPTS + "list-screen.js",
+			'gene-selection': SCRIPTS + 'gene-selection.js',
+			'gene-finder': SCRIPTS + 'gene-finder.js',
+			'similar-finder': SCRIPTS + 'similar-finder.js',
+			'cluster-finder': SCRIPTS + 'cluster-finder.js',
 
-		'qc': SCRIPTS + "qc.js",
+			'compare-3': SCRIPTS + "compare-3.js",
 
-		'sortable': SCRIPTS + "sortable.js"
-	},
+			'admin-user': SCRIPTS + "admin-user.js",
+			'admin-group': SCRIPTS + "admin-group.js",
+			'genome-browser': SCRIPTS + "genome-browser.js",
 
-	output: {
-		path: DEST,
-		filename: "./scripts/[name].js"
-	},
+			'create-screen': SCRIPTS + "create-screen.js",
+			'edit-screen': SCRIPTS + "edit-screen.js",
+			'list-screen': SCRIPTS + "list-screen.js",
 
-	devtool: "source-map",
+			'qc': SCRIPTS + "qc.js",
 
-	module: {
-		rules: [
-			{
-				test: /\.js#/,
-				exclude: /node_modules/,
-				use: {
-					loader: "babel-loader",
-					options: {
-						presets: ['@babel/preset-env']
+			'sortable': SCRIPTS + "sortable.js"
+		},
+
+		output: {
+			path: path.resolve(__dirname, "docroot"),
+			filename: "scripts/[name].js",
+			chunkFilename: "scripts/[id].js"
+		},
+
+		module: {
+			rules: [
+				{
+					test: /\.js/,
+					exclude: /node_modules/,
+					use: {
+						loader: "babel-loader",
+						options: {
+							presets: ['@babel/preset-env']
+						}
+					},
+					generator: {
+						filename: 'scripts/[name].js'
+					},
+				},
+
+				{
+					test: /\.(sa|sc|c)ss$/i,
+					// exclude: /node_modules/,
+					use: [
+						PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
+						"css-loader",
+						"postcss-loader",
+						"sass-loader"
+					],
+					generator: {
+						filename: 'css/[name].css'
+					},
+					type: "javascript/auto"
+				},
+
+				{
+					test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+					// include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
+					type: 'asset/resource',
+					generator: {
+						filename: 'css/fonts/[name][ext]'
+					}
+				},
+
+				{
+					test: /\.(png|jpg|gif)$/,
+					type: 'asset/resource',
+					generator: {
+						filename: 'css/images/[name][ext]'
 					}
 				}
-			},
-			{
-				test: /\.css$/,
-				use: [
-					// 'style-loader',
-					MiniCssExtractPlugin.loader,
-					'css-loader'
-				]
-			},
-			{
-				test: /\.(eot|svg|ttf|woff(2)?)(\?v=\d+\.\d+\.\d+)?/,
-				loader: 'file-loader',
-				options: {
-					name: '[name].[ext]',
-					outputPath: 'fonts/',
-					publicPath: '../fonts/'
-				}
-			},
-			{
-				test: /\.s[ac]ss$/i,
-				use: [
-					MiniCssExtractPlugin.loader,
-					'css-loader',
-					'sass-loader'
-				]
-			},
-			{
-				test: /\.(png|jpg|gif)$/,
-				use: [
-					{
-						loader: 'file-loader',
-						options: {
-							outputPath: "css/images",
-							publicPath: "images/"
-						},
-					},
-				]
-			}
-		]
-	},
-
-	plugins: [
-		new CleanWebpackPlugin({
-			cleanOnceBeforeBuildPatterns: [
-				'css/**/*',
-				'css/*',
-				'scripts/**/*',
-				'fonts/**/*'
 			]
-		}),
-		new webpack.ProvidePlugin({
-			$: 'jquery',
-			jQuery: 'jquery'
-		}),
-		new MiniCssExtractPlugin({
-			filename: './css/[name].css',
-			chunkFilename: './css/[id].css'
-		})
-	]
+		},
+
+		resolve: {
+			extensions: ['.js', '.scss'],
+		},
+
+		plugins: [
+			new MiniCssExtractPlugin({
+				filename: "css/[name].css",
+				chunkFilename: "css/[id].css"
+			})
+		],
+
+		optimization: {
+			minimizer: [],
+			// splitChunks: {
+			// 	chunks: 'all'
+			// }
+		}
+	};
+
+	if (PRODUCTION) {
+		webpackConf.mode = "production";
+
+		webpackConf.plugins.push(
+			new CleanWebpackPlugin({
+				cleanOnceBeforeBuildPatterns: [
+					'scripts',
+					'fonts'
+				]
+			}));
+
+		// webpackConf.optimization.minimizer.push(
+		// 	new TerserPlugin({ /* additional options here */ }),
+		// 	new UglifyJsPlugin({ parallel: 4 })
+		// );
+	} else {
+		webpackConf.mode = "development";
+		webpackConf.devtool = 'source-map';
+		webpackConf.plugins.push(new webpack.optimize.AggressiveMergingPlugin())
+	}
+
+	return webpackConf;
 };
+

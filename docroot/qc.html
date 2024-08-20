@@ -38,9 +38,7 @@
 		<div class="option-row">
 			<div class="option-col">
 				<div class="input-group input-group-sm mb-3">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='chromosomeList'>Chromosome</label>
-					</div>
+					<label class="input-group-text" for='chromosomeList'>Chromosome</label>
 					<select class="custom-select" id="chromosomeList">
 						<option value="all">All</option>
 						<option z2:each="chr: ${chromosomes}" z2:attr="data-chr=${chr}" z2:text="${chr}"></option>
@@ -50,9 +48,7 @@
 
 			<div class="option-col">
 				<div class="input-group input-group-sm mb-3">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for="zoomLevel">Zoom level</label>
-					</div>
+					<label class="input-group-text" for="zoomLevel">Zoom level</label>
 					<select class="custom-select" id="zoomLevel">
 						<option value="1">1</option>
 						<option value="2">2</option>

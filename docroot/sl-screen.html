@@ -28,10 +28,8 @@
 					<input type="text" id="highlightGene" size="10" placeholder="Enter genename..." z:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
 
-					<div class="input-group-append" id="button-addon4">
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
-					</div>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
 				</div>	
 			</div>
 
@@ -50,19 +48,15 @@
 			</div> -->
 
 			<div class="option-col">
-				
 				<div z:replace="gene-info :: geneDiv('sl')"></div>
 				<label>
 					<button type="button" class="btn btn-sm btn-secondary" id="show-gene-info">Show Gene Info Dialog</button>
 				</label>
-
 			</div>
 
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='pv-cut-off'>p-value</label>
-					</div>
+					<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					<input type="number" min="0" max="1" step="0.01" id="pv-cut-off" maxlength="8" size="5"
 							class="form-control" value="0.05"/>
 				</div>
@@ -70,9 +64,7 @@
 
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for="binom_fdr">Binom_fdr</label>
-					</div>
+					<label class="input-group-text" for="binom_fdr">Binom_fdr</label>
 					<input type="number" min="0" max="1" step="0.01" id="binom_fdr" maxlength="4" size="3"
 						value="0.05" class="form-control form-control-sm"/> 
 				</div>
@@ -80,9 +72,7 @@
 
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for="odds-ratio">Odds Ratio</label>
-					</div>
+					<label class="input-group-text" for="odds-ratio">Odds Ratio</label>
 					<input type="number" min="0" max="1" step="0.1" id="odds-ratio" maxlength="4" size="3"
 						value="0.8" class="form-control form-control-sm"/> 
 				</div>
@@ -113,20 +103,20 @@
 						<form class="replicateBtnForm">
 							<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
 								<label class="btn btn-secondary active">
-									<input type="radio" name="replicate" autocomplete="off" data-replicate="1"
+									<input type="radio" class="btn-check" name="replicate" autocomplete="off" data-replicate="1"
 										checked="checked"/>1
 								</label>
 
 								<label class="btn btn-secondary">
-									<input type="radio" name="replicate" data-replicate="2" autocomplete="off"/>2
+									<input type="radio" class="btn-check" name="replicate" data-replicate="2" autocomplete="off"/>2
 								</label>
 
 								<label class="btn btn-secondary">
-									<input type="radio" name="replicate" data-replicate="3" autocomplete="off"/>3
+									<input type="radio" class="btn-check" name="replicate" data-replicate="3" autocomplete="off"/>3
 								</label>
 
 								<label class="btn btn-secondary">
-									<input type="radio" name="replicate" data-replicate="4" autocomplete="off"/>4
+									<input type="radio" class="btn-check" name="replicate" data-replicate="4" autocomplete="off"/>4
 								</label>
 							</div>
 						</form>
@@ -164,20 +154,20 @@
 						<form class="replicateBtnForm">
 							<div class="btn-group btn-group-toggle btn-group-sm replicate-btn-container" role="group" data-toggle="buttons">
 									<label class="btn btn-secondary active">
-										<input type="radio" name="replicate" autocomplete="off" data-replicate="1"
+										<input type="radio" class="btn-check" name="replicate" autocomplete="off" data-replicate="1"
 											checked="checked"/>1
 									</label>
 
 									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="2" autocomplete="off"/>2
+										<input type="radio" class="btn-check" name="replicate" data-replicate="2" autocomplete="off"/>2
 									</label>
 
 									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="3" autocomplete="off"/>3
+										<input type="radio" class="btn-check" name="replicate" data-replicate="3" autocomplete="off"/>3
 									</label>
 
 									<label class="btn btn-secondary">
-										<input type="radio" name="replicate" data-replicate="4" autocomplete="off"/>4
+										<input type="radio" class="btn-check" name="replicate" data-replicate="4" autocomplete="off"/>4
 									</label>
 								</div>
 							

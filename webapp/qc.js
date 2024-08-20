@@ -27,13 +27,10 @@
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 
-import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'bootstrap';
 import 'bootstrap/js/dist/modal'
 import 'bootstrap/dist/css/bootstrap.min.css';
 import * as d3 from 'd3';
-import 'chosen-js/chosen.jquery';
-import 'bootstrap4c-chosen/dist/css/component-chosen.min.css';
 
 /*global chromosomes screens $*/
 

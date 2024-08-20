@@ -15,9 +15,7 @@
 		<div class="option-row">
 			<div class="option-col">
 				<div class="input-group input-group-sm">
-					<div class="input-group-prepend">
-						<label class="input-group-text" for='pv-cut-off'>p-value</label>
-					</div>
+					<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
 							placeholder="0.05"
 							class="form-control" value="0.05"/>
@@ -44,10 +42,8 @@
 						z2:value="${#request.getParameter('gene')}"
 						class="form-control form-control-sm"/>
 
-					<div class="input-group-append" id="button-addon4">
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
-					</div>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-highlight-gene">Highlight</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-highlight">Clear</button>
 				</div>	
 			</div>
 			
