@@ -1,4 +1,15 @@
-@import '../node_modules/bootstrap/dist/css/bootstrap.min.css';
+@use "sass:math";
+
+// (Required) Import Bootstrap
+@import "bootstrap/scss/_functions";
+@import "bootstrap/scss/_variables";
+@import "bootstrap/scss/_mixins";
+
+$navbar-padding-x: 1rem;
+$navbar-padding-y: 0.5rem;
+
+@import "bootstrap/scss/bootstrap";
+// @import "bootstrap-icons/font/bootstrap-icons.css";
 
 @import './signin.css';
 @import './styles.css';

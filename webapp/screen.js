@@ -292,30 +292,17 @@ window.addEventListener('load', () => {
 
 	const screenList = document.getElementById("screenList");
 	screenList.addEventListener("change", () => {
-		plot.loadScreen(screenList.value);
-		// const selected = screenList.selectedOptions;
-		// if (selected.length === 1) {
-		// 	const screen = selected.item(0).dataset.screen;
-		// 	plot.loadScreen(screen);
-		// }
+		if (screenList.value !== "") {
+			plot.loadScreen(screenList.value);
+		}
 	});
-
-	// $(screenList).chosen().on('change', () => {
-	// 	const selected = screenList.selectedOptions;
-	// 	if (selected.length === 1) {
-	// 		const screen = selected.item(0).dataset.screen;
-	// 		plot.loadScreen(screen);
-	// 	}
-	// });
 
 	$("#reload-btn").on("click", (e) => {
 		if (e && e.preventDefault)
 			e.preventDefault();
 
-		const selected = screenList.selectedOptions;
-		if (selected.length === 1) {
-			const screen = selected.item(0).dataset.screen;
-			plot.loadScreen(screen);
+		if (screenList.value !== "") {
+			plot.loadScreen(screenList.value);
 		}
 
 		return false;

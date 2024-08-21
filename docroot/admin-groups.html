@@ -7,7 +7,7 @@
     <meta name="generator" content="HTML Tidy for HTML5 for Linux version 5.6.0" />
     <title>Welcome - Phenosaurus</title>
 
-    <script src="/scripts/admin-group.js" th:src="@{/scripts/admin-group.js}" defer="defer"></script>
+    <script src="/scripts/admin-group.js" th:src="@{/dist/admin-group.js}" defer="defer"></script>
 </head>
 
 <body>
@@ -37,14 +37,14 @@
             </tbody>
         </table>
     </div>
-    <!-- The group editor dialog: -->
+
+	<!-- The group editor dialog: -->
     <div id="group-dialog" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="dialog-label">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="dialog-label">Group editor</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
-                            aria-hidden="true">×</span></button>
+                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="group-edit-form" th:action="@{/admin/group}" method="post" name="group-edit-form">

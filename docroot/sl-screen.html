@@ -5,8 +5,8 @@
 
 	<title>Fishtail Plot - Phenosaurus</title>
 
-	<script src="/scripts/sl-screen.js" type="application/ecmascript" z:src="@{/scripts/sl-screen.js}"></script>
-	<script src="/scripts/sortable.js" type="application/ecmascript" z:src="@{/scripts/sortable.js}"></script>
+	<script src="/scripts/sl-screen.js" type="application/ecmascript" z:src="@{/dist/sl-screen.js}"></script>
+	<script src="/scripts/sortable.js" type="application/ecmascript" z:src="@{/dist/sortable.js}"></script>
 
 	<script z:inline="javascript">
 		const screenReplicates = /*[[${screens}]]*/ null;
@@ -124,7 +124,7 @@
 
 					<div class="col">
 						<div class="plot-title">
-							<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading screen <span class="screen-name"></span>...</span>
+							<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Loading screen <span class="screen-name"></span></span>
 							<span class="loaded">Synthetic lethal plot for <span class="screen-name"></span></span>
 							<span class="failed">Synthetic lethal plot for <span class="screen-name"></span> could not be loaded.</span>
 						</div>
@@ -176,7 +176,7 @@
 
 					<div class="col">
 						<div class="plot-title">
-							<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Loading screen <span class="screen-name"></span>...</span>
+							<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Loading screen <span class="screen-name"></span></span>
 							<span class="loaded">Synthetic lethal plot for <span class="screen-name"></span></span>
 							<span class="failed">Synthetic lethal for <span class="screen-name"></span> could not be loaded.</span>
 						</div>

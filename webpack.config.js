@@ -6,7 +6,6 @@ const { mode } = require('d3');
 
 const SCRIPTS = __dirname + "/webapp/";
 const SCSS = __dirname + "/scss/";
-const DEST = __dirname + "/docroot/";
 
 module.exports = (env) => {
 
@@ -42,9 +41,10 @@ module.exports = (env) => {
 		},
 
 		output: {
-			path: path.resolve(__dirname, "docroot"),
-			filename: "scripts/[name].js",
-			chunkFilename: "scripts/[id].js"
+			path: path.resolve(__dirname, "docroot/dist"),
+			filename: "[name].js",
+			chunkFilename: "[id].js",
+			clean: true
 		},
 
 		module: {
@@ -59,7 +59,7 @@ module.exports = (env) => {
 						}
 					},
 					generator: {
-						filename: 'scripts/[name].js'
+						filename: '[name].js'
 					},
 				},
 
@@ -67,13 +67,14 @@ module.exports = (env) => {
 					test: /\.(sa|sc|c)ss$/i,
 					// exclude: /node_modules/,
 					use: [
-						PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
+						// PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
+						MiniCssExtractPlugin.loader,
 						"css-loader",
 						"postcss-loader",
 						"sass-loader"
 					],
 					generator: {
-						filename: 'css/[name].css'
+						filename: '[name].css'
 					},
 					type: "javascript/auto"
 				},
@@ -83,7 +84,7 @@ module.exports = (env) => {
 					// include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
 					type: 'asset/resource',
 					generator: {
-						filename: 'css/fonts/[name][ext]'
+						filename: '[name][ext]'
 					}
 				},
 
@@ -91,7 +92,7 @@ module.exports = (env) => {
 					test: /\.(png|jpg|gif)$/,
 					type: 'asset/resource',
 					generator: {
-						filename: 'css/images/[name][ext]'
+						filename: '[name][ext]'
 					}
 				}
 			]
@@ -103,8 +104,8 @@ module.exports = (env) => {
 
 		plugins: [
 			new MiniCssExtractPlugin({
-				filename: "css/[name].css",
-				chunkFilename: "css/[id].css"
+				filename: "[name].css",
+				chunkFilename: "[id].css"
 			})
 		],
 

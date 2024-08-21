@@ -5,7 +5,7 @@
 
 	<title>Fishtail Plot - Phenosaurus</title>
 
-	<script defer="defer" src="/scripts/similar-finder.js" type="application/ecmascript" z2:src="@{/scripts/similar-finder.js}"></script>
+	<script defer="defer" src="/scripts/similar-finder.js" type="application/ecmascript" z2:src="@{/dist/similar-finder.js}"></script>
 
 	<script z2:inline="javascript">
 		const screenInfo = /*[[${screenInfo}]]*/ null;
@@ -59,7 +59,7 @@
 
 	<div class="container-fluid mt-4 mb-4">
 		<div class="plot-title">
-			<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Searching for <span class="gene-name"></span>...</span>
+			<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Searching for <span class="gene-name"></span></span></span>
 			<span class="loaded">Query results for <span class="gene-name"></span></span>
 			<span class="failed">Query results for <span class="gene-name"></span> could not be loaded.</span>
 			<span class="no-hits">No hits found for <span class="gene-name"></span></span>

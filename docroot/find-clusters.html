@@ -5,7 +5,7 @@
 
 	<title>Fishtail Plot - Phenosaurus</title>
 
-	<script defer="defer" src="/scripts/cluster-finder.js" type="application/ecmascript" z2:src="@{/scripts/cluster-finder.js}"></script>
+	<script defer="defer" src="/scripts/cluster-finder.js" type="application/ecmascript" z2:src="@{/dist/cluster-finder.js}"></script>
 
 	<script z2:inline="javascript">
 		const screenInfo = /*[[${screenInfo}]]*/ null;
@@ -74,7 +74,7 @@
 
 	<div class="container-fluid mt-4 mb-4">
 		<div class="plot-title">
-			<span class="loading"><i class="fa fa-circle-notch fa-spin" style="font-size: 24px"></i> Searching for clusters...</span>
+			<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Searching for clusters</span>
 			<span class="loaded">Cluster results</span>
 			<span class="failed">Cluster results could not be loaded.</span>
 			<span class="no-hits">No clusters found</span>
