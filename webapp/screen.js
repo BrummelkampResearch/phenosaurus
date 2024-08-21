@@ -33,6 +33,8 @@ import GenomeViewer from "./genome-viewer";
 import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";
 import { format_pv } from './pvformat';
 
+import { fillTable } from './index';
+
 const positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;
 
@@ -153,12 +155,14 @@ class ScreenPlotRegular extends ScreenPlot {
 
 			const options = this.getOptions();
 
-			let plotTitle = $(".plot-title");
-			if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
+			let plotTitle = document.querySelector(".plot-title");
+			if (plotTitle === null || plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
 				return;
-			plotTitle.addClass("plot-status-loading").removeClass("plot-status-loaded").removeClass("plot-status-failed");
+			plotTitle.classList.add("plot-status-loading");
+			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
-			$(".screen-name").text(screen);
+			const screenName = document.querySelector(".screen-name");
+			screenName.textContent = screen;
 
 			const assembly = options.get("assembly");
 
@@ -170,7 +174,7 @@ class ScreenPlotRegular extends ScreenPlot {
 					return r.json();
 			}).then(d => {
 				if (typeof (d.description) === "string")
-					$(".screen-name").text(d.description);
+					screenName.textContent = d.description;
 			});
 
 			const screenData = new ScreenData(screen);
@@ -187,31 +191,26 @@ class ScreenPlotRegular extends ScreenPlot {
 					const fmt = d3.format(".3g");
 					const fmt2 = format_pv;
 
-					const fillTable = function (table, genes) {
-						$("tr", table).remove();
-						genes.forEach(d => {
-							let row = $("<tr/>");
-							$("<td/>").text(d.gene).appendTo(row);
-							$("<td/>").text(d.low).appendTo(row);
-							$("<td/>").text(d.high).appendTo(row);
-							$("<td/>").text(fmt2(d.fcpv)).appendTo(row);
-							$("<td/>").text(fmt(d.log2mi)).appendTo(row);
-							row.appendTo(table);
-						});
-					};
+					fillTable(document.querySelector("#positive-regulators"),
+						data.filter(d => d.fcpv < pvCutOff && d.mi < 1).sort((a, b) => a.mi - b.mi),
+						d => [d.gene, d.low, d.high, fmt2(d.fcpv), fmt(d.log2mi)]);
+					fillTable(document.querySelector("#negative-regulators"),
+						data.filter(d => d.fcpv < pvCutOff && d.mi > 1).sort((a, b) => b.mi - a.mi),
+						d => [d.gene, d.low, d.high, fmt2(d.fcpv), fmt(d.log2mi)]);
 
-					fillTable($("#positive-regulators"), data.filter(d => d.fcpv < pvCutOff && d.mi < 1).sort((a, b) => a.mi - b.mi));
-					fillTable($("#negative-regulators"), data.filter(d => d.fcpv < pvCutOff && d.mi > 1).sort((a, b) => b.mi - a.mi));
-
-					plotTitle.removeClass("plot-status-loading").addClass("plot-status-loaded");
+					plotTitle.classList.remove("plot-status-loading");
+					plotTitle.classList.add("plot-status-loaded");
 
 					resolve(data);
 				})
 				.catch(err => {
-					plotTitle.removeClass("plot-status-loading").addClass("plot-status-failed");
+					plotTitle.classList.remove("plot-status-loading");
+					plotTitle.classList.add("plot-status-failed");
 					console.log(err);
 
-					$("#plot-status-error-text").text(err).show();
+					const errorMsg = document.querySelector("#plot-status-error-text");
+					errorMsg.textContent = err;
+					errorMsg.style.display = "";
 
 					// if (err === "invalid-credentials")
 					// 	showLoginDialog(null, () => screenData.load());

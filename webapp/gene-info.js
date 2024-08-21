@@ -26,25 +26,26 @@
 
 import * as d3 from "d3";
 import { format_pv } from "./pvformat";
+import { fillTable } from "./index";
 
 export let gene;
 
 export default class GeneInfo {
 	constructor() {
 		this.div = document.getElementById("gene-info-dialog");
-		this.header = this.div.getElementsByClassName("gene-info-dialog-header")[0];
+		this.header = this.div.querySelector("div.modal-header");
 
 		this.closeDragHandler = e => this.closeDragElement(e);
 		this.elementDragHandler = e => this.elementDrag(e);
 
 		this.header.addEventListener("mousedown", e => this.dragMouseDown(e));
 
-		const btn = document.getElementById("close-info-dialog-button");
+		const btn = this.div.querySelector("button.btn-close");
 		btn.addEventListener("click", () => this.hide());
 
 		this.pos = [{x: 0, y: 0}, {x: 0, y: 0}];
 
-		this.showBtn = document.getElementById("show-gene-info");
+		this.showBtn = document.getElementById("show-gene-info-btn");
 		if (this.showBtn != null)
 			this.showBtn.addEventListener("click", () => this.show());
 	}
@@ -81,7 +82,7 @@ export default class GeneInfo {
 
 	show() {
 		this.showBtn.style.display = 'none';
-		this.div.style.display = '';
+		this.div.style.display = 'block';
 	}
 
 	hide() {
@@ -90,32 +91,14 @@ export default class GeneInfo {
 	}
 
 	set(data) {
-		const table = this.div.getElementsByClassName("table")[0];
-
-		$("tr", table.tBodies[0]).remove();
-		data.forEach(d => {
-			const row = $("<tr/>");
-			$("<td/>").text(d.gene).appendTo(row);
-			$("<td/>").text(format_pv(d.fcpv)).appendTo(row);
-			$("<td/>").text(d.high).appendTo(row);
-			$("<td/>").text(d.low).appendTo(row);
-			row.appendTo(table);
-		});
+		const table = this.div.querySelector("table");
+		fillTable(table, data, d => [d.gene, format_pv(d.fcpv), d.high, d.low]);
 	}
 
 	setSL(data) {
-		const table = this.div.getElementsByClassName("table")[0];
-
-		$("tr", table.tBodies[0]).remove();
-		data.forEach(d => {
-			const row = $("<tr/>");
-			$("<td/>").text(d.gene).appendTo(row);
-			$("<td/>").text(d3.format(".2e")(d.binom_fdr)).appendTo(row);
-			$("<td/>").text(d.sense).appendTo(row);
-			$("<td/>").text(d.antisense).appendTo(row);
-			$("<td/>").text(d3.format(".2e")(d.odds_ratio)).appendTo(row);
-			row.appendTo(table);
-		});
+		const table = this.div.querySelector("table");
+		const fmt = d3.format(".2e");
+		fillTable(table, data, d => [d.gene, fmt(d.binom_fdr), d.sense, d.antisense, fmt(d.odds_ratio)]);
 	}
 }
 

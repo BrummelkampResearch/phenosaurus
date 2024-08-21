@@ -26,7 +26,7 @@
 
 import * as d3 from "d3";
 import ScreenColorMap from "./screenColorMap";
-import {gene} from "./geneInfo";
+import { gene } from "./gene-info";
 import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
 
@@ -88,8 +88,7 @@ export default class ScreenPlot {
 		pvCutOff = +pvCutOffEdit.value;
 
 		const highlightGene = document.getElementById("highlightGene");
-		if (highlightGene != null)
-		{
+		if (highlightGene != null) {
 			highlightGene.addEventListener("change", () => this.highlightGene());
 			highlightGene.addEventListener("highlight-gene", () => this.highlightGenes());
 		}
@@ -107,7 +106,7 @@ export default class ScreenPlot {
 		const bBoxWidth = plotContainerNode.clientWidth;
 		const bBoxHeight = plotContainerNode.clientHeight;
 
-		this.margin = {top: 30, right: 50, bottom: 30, left: 50};
+		this.margin = { top: 30, right: 50, bottom: 30, left: 50 };
 		this.width = bBoxWidth - this.margin.left - this.margin.right;
 		this.height = bBoxHeight - this.margin.top - this.margin.bottom;
 
@@ -157,7 +156,7 @@ export default class ScreenPlot {
 		this.plotData = this.plot.append('g')
 			.attr("width", this.width)
 			.attr("height", this.height);
-		
+
 		if (this.createLegend)
 			this.createLegend();
 
@@ -199,7 +198,7 @@ export default class ScreenPlot {
 				.attr("id", patternID)
 				.attr("width", radius)
 				.attr("height", radius)
-				.attr("patternUnits" , "userSpaceOnUse")
+				.attr("patternUnits", "userSpaceOnUse")
 				.attr("patternTransform", "rotate(45)");
 
 			pattern.append("rect")
@@ -242,22 +241,21 @@ export default class ScreenPlot {
 			evt.preventDefault();
 		}
 
-		if (this.xAxis != null && this.yAxis != null)
-		{
+		if (this.xAxis != null && this.yAxis != null) {
 			this.plotData.attr('transform', d3.event.transform);
-	
+
 			const k = d3.event.transform.k;
-	
+
 			const x = this.x;
 			const y = this.y;
-	
+
 			[...this.screens.keys()].forEach(sn => {
 				const screenPlotData = this.plotData.select(`#plot-${sn}`);
-	
+
 				screenPlotData.selectAll("g.dot")
-					.attr('transform', d => `translate(${x(d.x)},${y(d.y)}) scale(${1/k})`);
+					.attr('transform', d => `translate(${x(d.x)},${y(d.y)}) scale(${1 / k})`);
 			});
-	
+
 			this.gX.call(this.xAxis.scale(d3.event.transform.rescaleX(this.x)));
 			this.gY.call(this.yAxis.scale(d3.event.transform.rescaleY(this.y)));
 		}
@@ -270,7 +268,7 @@ export default class ScreenPlot {
 				.map(d =>
 					d.fcpv >= pvCutOff
 						? highlightedGenes.has(d.gene)
-							? highlight 
+							? highlight
 							: neutral
 						: color)
 				.reduce((a, b) => {
@@ -309,8 +307,7 @@ export default class ScreenPlot {
 		const screenPlotID = `plot-${screenNr}`;
 
 		let screenPlot = this.plotData.select(`#${screenPlotID}`);
-		if (screenPlot === null || screenPlot.empty())
-		{
+		if (screenPlot === null || screenPlot.empty()) {
 			screenPlot = this.plotData.append("g")
 				.classed("screen-plot", true)
 				.attr("id", screenPlotID);
@@ -410,12 +407,12 @@ export default class ScreenPlot {
 	adjustAxes(xRange, yRange) {
 		if (xRange === undefined || yRange === undefined) {
 			const screens = [...this.screens.values()];
-	
+
 			xRange = [
 				screens.map(s => s.xRange[0]).reduce((previousValue, currentValue) => previousValue < currentValue ? previousValue : currentValue, 1),
 				screens.map(s => s.xRange[1]).reduce((previousValue, currentValue) => previousValue > currentValue ? previousValue : currentValue, 1)
 			];
-	
+
 			yRange = [
 				screens.map(s => s.yRange[0]).reduce((previousValue, currentValue) => previousValue < currentValue ? previousValue : currentValue, 0),
 				screens.map(s => s.yRange[1]).reduce((previousValue, currentValue) => previousValue > currentValue ? previousValue : currentValue, 0)
@@ -502,11 +499,10 @@ export default class ScreenPlot {
 			.select("text")
 			.remove();
 
-		if ((this.showAllLabels = !this.showAllLabels))
-		{
+		if ((this.showAllLabels = !this.showAllLabels)) {
 			[...this.screens.keys()].forEach(sn => {
 				const screenPlotData = this.plotData.select(`#plot-${sn}`);
-	
+
 				// regular dots
 				screenPlotData.selectAll("g.dot")
 					.filter(d => d.multiDot === undefined && d.significant(pvCutOff))
@@ -522,7 +518,7 @@ export default class ScreenPlot {
 	}
 
 	togglePresentationMode() {
-		this.presentationMode = ! this.presentationMode;
+		this.presentationMode = !this.presentationMode;
 		this.svg.node().classList.toggle("presentation");
 		this.recolorGenes();
 	}
@@ -531,16 +527,16 @@ export default class ScreenPlot {
 		highlightedGenes.clear();
 
 		const selected = this.plotData.selectAll("g.dot.highlight")
-		.classed("highlight", false);
-	
-	selected
-		.select("circle")
-		.style("fill", this.getColor())
-		.style("opacity", this.getOpacity());
-	
-	selected
-		.select("text")
-		.remove();
+			.classed("highlight", false);
+
+		selected
+			.select("circle")
+			.style("fill", this.getColor())
+			.style("opacity", this.getOpacity());
+
+		selected
+			.select("text")
+			.remove();
 	}
 
 	highlightGene(gene) {
@@ -560,18 +556,18 @@ export default class ScreenPlot {
 			const screenPlotData = this.plotData.select(`#plot-${sn}`);
 
 			const selected = screenPlotData.selectAll("g.dot")
-			.filter(d => d.multiDot === undefined && d.values.filter(g => geneSet.has(g.gene)).length > 0)
-			.classed("highlight", true)
+				.filter(d => d.multiDot === undefined && d.values.filter(g => geneSet.has(g.gene)).length > 0)
+				.classed("highlight", true)
 				.raise();
 
 			selected
-			.append("text")
-			.attr("class", "label")
-			.text(d => d.label())
-			.filter(d => d.subdot)
-			.attr("x", d => d.tx)
-			.attr("y", d => d.ty)
-			.attr("text-anchor", d => d.anchor);
+				.append("text")
+				.attr("class", "label")
+				.text(d => d.label())
+				.filter(d => d.subdot)
+				.attr("x", d => d.tx)
+				.attr("y", d => d.ty)
+				.attr("text-anchor", d => d.anchor);
 
 			selected
 				.select("circle")

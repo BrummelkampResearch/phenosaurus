@@ -121,7 +121,7 @@ set(webpack_input
 	webapp/edit-screen.js
 	webapp/list-screen.js
 	webapp/screen.js
-	webapp/geneInfo.js
+	webapp/gene-info.js
 	webapp/screenPlot.js
 	webapp/sortable.js
 	webapp/pvformat.js

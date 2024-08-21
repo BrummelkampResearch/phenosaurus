@@ -27,7 +27,7 @@
 import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
 import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
-import { gene } from "./geneInfo";
+import { gene } from "./gene-info";
 
 import * as d3 from 'd3';
 import { format_pv } from './pvformat';
@@ -629,7 +629,6 @@ window.addEventListener('load', () => {
 			)
 		: {}
 
-	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
 	const selectedControl = params["control"] || 'ControlData-HAP1';
 	const selectedReplicate = params["replicate"] || 0;

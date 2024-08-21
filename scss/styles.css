@@ -300,34 +300,6 @@ text.screen-label {
 }
 
 /*
-	For the gene info tooltip window
- */
-
-#gene-info-dialog {
-	position: absolute;
-	z-index: 9;
-	/*border: solid 1px black;*/
-	border-radius: .3rem;
-	/*margin: 0.5em;*/
-	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
-}
-
-.gene-info-dialog-header {
-	padding: .3rem;
-	cursor: move;
-	z-index: 10;
-	background-color: #fafafa;
-	color: #999;
-	font-size: small;
-}
-
-.gene-info-dialog-table {
-	font-size: small;
-	max-height: 200px;
-	overflow-y: auto;
-}
-
-/*
 	admin
  */
 
