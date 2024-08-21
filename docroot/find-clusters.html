@@ -117,9 +117,11 @@
 						<div class="row">
 							<div class="col-sm-1 mb-3">
 								<div class="col-sm-1 mb-3">
-									<div class="btn-group btn-group-sm btn-group-toggle" data-toggle="buttons" id="graphTypeBtns">
-										<label class="btn btn-sm btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
-										<label class="btn btn-sm btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off"/>Dotplot</label>
+									<div class="btn-group btn-group-sm" id="graphTypeBtns">
+										<input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />
+										<label for="heatmap" class="btn btn-sm btn-secondary active">Heatmap</label>
+										<input type="radio" name="graphType" id="dotplot" autocomplete="off"/>
+										<label for="dotplot" class="btn btn-sm btn-secondary">Dotplot</label>
 									</div>
 								</div>
 							</div>

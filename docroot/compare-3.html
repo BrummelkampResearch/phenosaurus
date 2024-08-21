@@ -24,13 +24,11 @@
 
 			<div class="option-col">
 
-				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphColorBtns">
-					<label class="btn btn-secondary active">
-						<input type="radio" name="graphColor" id="gradient" autocomplete="off" data-colortype="gradient" class="graph-color-btn" checked="checked" />Gradient
-					</label>
-					<label class="btn btn-secondary">
-						<input type="radio" name="graphColor" id="unique" autocomplete="off" data-colortype="unique" class="graph-color-btn" /> Unique
-					</label>
+				<div class="btn-group btn-group-sm" id="graphColorBtns">
+					<input type="radio" name="graphColor" id="gradient" autocomplete="off" data-colortype="gradient" class="graph-color-btn" checked="checked" />
+					<label for="gradient" class="btn btn-secondary active">Gradient</label>
+					<input type="radio" name="graphColor" id="unique" autocomplete="off" data-colortype="unique" class="graph-color-btn" />
+					<label for="unique" class="btn btn-secondary">Unique</label>
 				</div>
 
 			</div>

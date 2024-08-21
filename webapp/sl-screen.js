@@ -430,15 +430,16 @@ class SLScreenPlot extends ScreenPlot {
 
 			for (let i = 0; i < this.data[0].replicate.length; ++i) {
 				const replicate = i + 1;
-				const label = document.createElement("label");
-				label.classList.add("btn", "btn-secondary");
-				if (+number === +i)
-					label.classList.add("active");
 				const btn = document.createElement("input");
+				btn.classList.add("btn-check");
 				btn.type = "radio";
 				btn.name = "replicate";
 				btn.autocomplete = "off";
 				btn.dataset.replicate = i;
+				const label = document.createElement("label");
+				label.classList.add("btn", "btn-secondary");
+				if (+number === +i)
+					label.classList.add("active");
 				label.appendChild(btn);
 				label.appendChild(document.createTextNode(`${replicate}`));
 				btn.addEventListener('change', () => this.process(i));
@@ -683,15 +684,5 @@ window.addEventListener('load', () => {
 					}
 				});
 		})
-
-	$("select.chosen").chosen().on('change', () => {
-		const selected = screenList.selectedOptions;
-		if (selected.length === 1) {
-			const screen = selected.item(0).dataset.screen;
-			plot.loadScreen(screen);
-		}
-	});
-
-
 });
 

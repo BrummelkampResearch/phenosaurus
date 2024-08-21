@@ -29,10 +29,13 @@
 
 		<div class="option-row">
 			<div class="option-col" z:if="${screenType != 'sl'}">
-				<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons" id="graphTypeBtns">
-					<label class="btn btn-secondary active"><input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />Heatmap</label>
-					<label class="btn btn-secondary"><input type="radio" name="graphType" id="dotplot" autocomplete="off" />Dotplot</label>
-					<!-- <label class="btn btn-secondary"><input type="radio" name="graphType" id="fishtail" autocomplete="off" />Fishtail</label> -->
+				<div class="btn-group btn-group-sm" id="graphTypeBtns">
+					<input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />
+					<label for="heatmap" class="btn btn-secondary active">Heatmap</label>
+					<input type="radio" name="graphType" id="dotplot" autocomplete="off" />
+					<label for="dotplot" class="btn btn-secondary">Dotplot</label>
+					<!-- <input type="radio" name="graphType" id="fishtail" autocomplete="off" /> -->
+					<!-- <label class="btn btn-secondary">Fishtail</label> -->
 				</div>
 			</div>
 			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>

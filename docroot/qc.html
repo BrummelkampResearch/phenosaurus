@@ -64,25 +64,13 @@
 					data-target="#selectScreensModal">Select Screens</button>
 			</div>
 
-
-			<!-- <div class="col-sm-1 mb-3">
-				<div class="btn-group-toggle" data-toggle="buttons">
-					<label class="btn btn-secondary active">
-						<input id="winsorize" type="checkbox" checked="checked" autocomplete="off"/>
-						Winsorize
-					</label>
-				</div>
-			</div> -->
-
 			<div class="option-col">
 				<form class="mb-3" name="graphTypeForm">
-					<div class="btn-group btn-group-toggle btn-group-sm" data-toggle="buttons">
-						<label class="btn btn-secondary active">
-							<input type="radio" name="graphType" data-type="heatmap" autocomplete="off" checked="checked"/> Heatmap
-						</label>
-						<label class="btn btn-secondary">
-							<input type="radio" name="graphType" data-type="emptybins" autocomplete="off"/> Emptiness
-						</label>
+					<div class="btn-group btn-group-sm">
+						<input type="radio" name="graphType" data-type="heatmap" autocomplete="off" checked="checked" id="btn-graph-type-heatmap"/> 
+						<label for="btn-graph-type-heatmap" class="btn btn-secondary active">Heatmap</label>
+						<input type="radio" name="graphType" data-type="emptybins" autocomplete="off" id="btn-graph-type-emptiness"/> 
+						<label for="btn-graph-type-emptiness" class="btn btn-secondary">Emptiness</label>
 					</div>
 				</form>
 			</div>

@@ -24,9 +24,9 @@ footer {
 
 /* override list-group-item's padding */
 
-#screenList {
+/* #screenList {
 	width: 100%;
-}
+} */
 
 span.error {
 	color: red;
