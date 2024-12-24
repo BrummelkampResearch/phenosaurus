@@ -31,8 +31,7 @@
 #include <regex>
 #include <stdexcept>
 
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
+#include <gxrio.hpp>
 
 #include <zeep/json/parser.hpp>
 #include <zeep/value-serializer.hpp>
@@ -46,7 +45,6 @@
 #include "utils.hpp"
 
 namespace fs = std::filesystem;
-namespace io = boost::iostreams;
 using namespace std::literals;
 
 extern int VERBOSE;
@@ -59,21 +57,10 @@ void checkIsFastQ(fs::path infile)
 		throw std::runtime_error("FastQ file " + infile.string() + " does not seem to exist");
 
 	fs::path p = infile;
-	std::ifstream file(p, std::ios::binary);
+	gxrio::ifstream in(p, std::ios::binary);
 
-	if (not file.is_open())
+	if (not in.is_open())
 		throw std::runtime_error("Could not open file " + infile.string());
-
-	io::filtering_stream<io::input> in;
-	std::string ext = p.extension().string();
-
-	if (p.extension() == ".gz")
-	{
-		in.push(io::gzip_decompressor());
-		ext = p.stem().extension().string();
-	}
-
-	in.push(file);
 
 	// just check the first four lines
 

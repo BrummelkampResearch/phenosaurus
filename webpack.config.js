@@ -1,11 +1,19 @@
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+// const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+// const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+// const webpack = require('webpack');
+// const path = require('path');
+// const { mode } = require('d3');
+
+// const SCRIPTS = __dirname + "/webapp/";
+// const SCSS = __dirname + "/scss/";
+
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const webpack = require('webpack');
 const path = require('path');
-const { mode } = require('d3');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const SCRIPTS = __dirname + "/webapp/";
 const SCSS = __dirname + "/scss/";
+const DEST = __dirname + "/docroot/scripts/";
 
 module.exports = (env) => {
 
@@ -41,10 +49,8 @@ module.exports = (env) => {
 		},
 
 		output: {
-			path: path.resolve(__dirname, "docroot/dist"),
-			filename: "[name].js",
-			chunkFilename: "[id].js",
-			clean: true
+			path: DEST,
+			crossOriginLoading: 'anonymous'
 		},
 
 		module: {
@@ -57,42 +63,25 @@ module.exports = (env) => {
 						options: {
 							presets: ['@babel/preset-env']
 						}
-					},
-					generator: {
-						filename: '[name].js'
-					},
-				},
-
-				{
-					test: /\.(sa|sc|c)ss$/i,
-					// exclude: /node_modules/,
-					use: [
-						// PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
-						MiniCssExtractPlugin.loader,
-						"css-loader",
-						"postcss-loader",
-						"sass-loader"
-					],
-					generator: {
-						filename: '[name].css'
-					},
-					type: "javascript/auto"
-				},
-
-				{
-					test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
-					// include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
-					type: 'asset/resource',
-					generator: {
-						filename: '[name][ext]'
 					}
 				},
 
 				{
-					test: /\.(png|jpg|gif)$/,
+					test: /\.(sa|sc|c)ss$/i,
+					use: [
+						PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
+						"css-loader",
+						"postcss-loader",
+						"sass-loader"
+					]
+				},
+
+				{
+					test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+					include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
 					type: 'asset/resource',
 					generator: {
-						filename: '[name][ext]'
+						filename: '../fonts/[name][ext]'
 					}
 				}
 			]
@@ -102,18 +91,10 @@ module.exports = (env) => {
 			extensions: ['.js', '.scss'],
 		},
 
-		plugins: [
-			new MiniCssExtractPlugin({
-				filename: "[name].css",
-				chunkFilename: "[id].css"
-			})
-		],
+		plugins: [],
 
 		optimization: {
-			minimizer: [],
-			// splitChunks: {
-			// 	chunks: 'all'
-			// }
+			minimizer: []
 		}
 	};
 
@@ -122,20 +103,13 @@ module.exports = (env) => {
 
 		webpackConf.plugins.push(
 			new CleanWebpackPlugin({
-				cleanOnceBeforeBuildPatterns: [
-					'scripts',
-					'fonts'
-				]
-			}));
-
-		// webpackConf.optimization.minimizer.push(
-		// 	new TerserPlugin({ /* additional options here */ }),
-		// 	new UglifyJsPlugin({ parallel: 4 })
-		// );
+				verbose: true
+			}),
+			new MiniCssExtractPlugin({})
+		);
 	} else {
 		webpackConf.mode = "development";
 		webpackConf.devtool = 'source-map';
-		webpackConf.plugins.push(new webpack.optimize.AggressiveMergingPlugin())
 	}
 
 	return webpackConf;

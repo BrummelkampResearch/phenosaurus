@@ -45,7 +45,8 @@
 #include <functional>
 
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
+
+#include <gxrio.hpp>
 
 #include "bowtie.hpp"
 #include "utils.hpp"
@@ -262,19 +263,12 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			progress p(fs::file_size(fastq), fastq.string());
 			p.set_action(fastq.filename().string());
 
-			std::ifstream file(fastq, std::ios::binary);
+			gxrio::ifstream file(fastq, std::ios::binary);
 
 			if (not file.is_open())
 				throw std::runtime_error("Could not open file " + fastq.string());
 
 			io::filtering_stream<io::input> in;
-			std::string ext = fastq.extension().string();
-			
-			if (fastq.extension() == ".gz")
-			{
-				in.push(io::gzip_decompressor());
-				ext = fastq.stem().extension().string();
-			}
 
 			in.push(progress_filter(p));
 			

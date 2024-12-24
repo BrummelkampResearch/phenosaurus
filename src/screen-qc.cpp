@@ -29,9 +29,7 @@
 #include "screen-qc.hpp"
 #include "screen-service.hpp"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
+#include <zeep/unicode-support.hpp>
 
 #include <filesystem>
 #include <iostream>
@@ -39,8 +37,6 @@
 
 using json = zeep::json::element;
 namespace fs = std::filesystem;
-namespace ba = boost::algorithm;
-namespace io = boost::iostreams;
 
 extern int VERBOSE;
 
@@ -322,9 +318,9 @@ class screen_qc_data
 	std::vector<std::string> chromosomes() const;
 
 	ChromBinMap remapBins(size_t requestedBinCount, const std::string &chrom) const;
-	std::map<std::string, std::vector<float>> heatmap(const ChromBinMap &rm, const std::set<std::string> &skip, float winsorize, bool emptiness) const;
-	std::map<std::string, std::vector<float>> emptiness(const ChromBinMap &rm, const std::set<std::string> &skip, float winsorize) const;
-	// std::map<std::string,std::vector<float>> emptybins(const ChromBinMap& rm, const std::set<std::string>& skip) const;
+	std::map<std::string, std::vector<float>> heatmap(const ChromBinMap &rm, const std::vector<std::string> &skip, float winsorize, bool emptiness) const;
+	std::map<std::string, std::vector<float>> emptiness(const ChromBinMap &rm, const std::vector<std::string> &skip, float winsorize) const;
+	// std::map<std::string,std::vector<float>> emptybins(const ChromBinMap& rm, const std::vector<std::string>& skip) const;
 
 	static std::vector<std::string> cluster(const std::map<std::string, std::vector<float>> &data);
 
@@ -487,7 +483,7 @@ ChromBinMap screen_qc_data::remapBins(size_t requestedBinCount, const std::strin
 	return result;
 }
 
-std::map<std::string, std::vector<float>> screen_qc_data::heatmap(const ChromBinMap &rm, const std::set<std::string> &skip, float winsorize, bool emptiness) const
+std::map<std::string, std::vector<float>> screen_qc_data::heatmap(const ChromBinMap &rm, const std::vector<std::string> &skip, float winsorize, bool emptiness) const
 {
 	const size_t N = accumulate(rm.begin(), rm.end(), 0UL, [](size_t n, auto &r)
 		{ return n + r.second.m_count; });
@@ -518,7 +514,7 @@ std::map<std::string, std::vector<float>> screen_qc_data::heatmap(const ChromBin
 	{
 		std::string name = screen.screen;
 
-		if (skip.count(std::regex_replace(name, rx, "")))
+		if (std::find(skip.begin(), skip.end(), std::regex_replace(name, rx, "")) != skip.end())
 			continue;
 
 		auto &v = insertions[name];
@@ -598,7 +594,7 @@ std::map<std::string, std::vector<float>> screen_qc_data::heatmap(const ChromBin
 	return data;
 }
 
-std::map<std::string, std::vector<float>> screen_qc_data::emptiness(const ChromBinMap &rm, const std::set<std::string> &skip, float winsorize) const
+std::map<std::string, std::vector<float>> screen_qc_data::emptiness(const ChromBinMap &rm, const std::vector<std::string> &skip, float winsorize) const
 {
 	const size_t N = accumulate(rm.begin(), rm.end(), 0UL, [](size_t n, auto &r)
 		{ return n + r.second.m_count; });
@@ -629,7 +625,7 @@ std::map<std::string, std::vector<float>> screen_qc_data::emptiness(const ChromB
 	{
 		std::string name = screen.screen;
 
-		if (skip.count(std::regex_replace(name, rx, "")))
+		if (std::find(skip.begin(), skip.end(), std::regex_replace(name, rx, "")) != skip.end())
 			continue;
 
 		auto &v = insertions[name];
@@ -876,8 +872,8 @@ ScreenQCData screen_qc_rest_controller::get_data(size_t requestedBinCount, std::
 	if (requestedBinCount == 0)
 		throw std::runtime_error("Invalid bin count requested");
 
-	std::set<std::string> skippedScreens;
-	ba::split(skippedScreens, skip, ba::is_any_of(";"));
+	std::vector<std::string> skippedScreens;
+	zeep::split(skippedScreens, skip, ";");
 
 	// std::map<std::string,size_t> chromBinStarts;
 	std::vector<ChromStart> chromBinStarts;

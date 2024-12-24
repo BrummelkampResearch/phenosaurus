@@ -25,7 +25,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # set the project name
-project(phenosaurus VERSION 2.0.3 LANGUAGES CXX C)
+project(phenosaurus VERSION 3.0.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -77,14 +77,10 @@ set(CMAKE_THREAD_PREFER_PTHREAD)
 set(THREADS_PREFER_PTHREAD_FLAG)
 find_package(Threads)
 
-set(Boost_DETAILED_FAILURE_MSG ON)
-if(NOT BUILD_SHARED_LIBS)
-	set(Boost_USE_STATIC_LIBS ON)
-endif()
-
-find_package(zeep 5.1.3 REQUIRED)
-find_package(Boost COMPONENTS system date_time program_options iostreams)
-find_package(ZLIB REQUIRED)
+find_package(zeep 6.0.16 REQUIRED)
+find_package(Boost REQUIRED)
+find_package(gxrio REQUIRED)
+find_package(mcfp REQUIRED)
 find_package(libpqxx 7.7.4 REQUIRED)
 
 pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
@@ -179,7 +175,7 @@ add_executable(screen-analyzer
 
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
-	PRIVATE zeep::zeep Boost::date_time Boost::program_options Boost::iostreams squeeze::squeeze
+	PRIVATE zeep::zeep squeeze::squeeze mcfp::mcfp gxrio::gxrio Boost::headers
 	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB libpqxx::pqxx
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 
@@ -192,41 +188,3 @@ endif()
 install(TARGETS screen-analyzer
     RUNTIME DESTINATION ${BIN_INSTALL_DIR}
 )
-
-# manual
-# ...
-
-# # test
-
-# add_executable(unit-test ${PROJECT_SOURCE_DIR}/test/unit-test.cpp ${PROJECT_SOURCE_DIR}/src/dssp.cpp ${SA_RESOURCE})
-
-# target_include_directories(unit-test PRIVATE
-# 	${CMAKE_CURRENT_SOURCE_DIR}/src
-# 	${CMAKE_CURRENT_SOURCE_DIR}/include
-# )
-
-# target_link_libraries(unit-test Threads::Threads cifpp::cifpp Boost::date_time)
-
-# if(MSVC)
-# 	# Specify unwind semantics so that MSVC knowns how to handle exceptions
-# 	target_compile_options(unit-test PRIVATE /EHsc)
-# endif()
-
-# enable_testing()
-
-# add_test(NAME unit-test
-# 	COMMAND $<TARGET_FILE:unit-test>
-# 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test)
-
-# option(DSSP_BUILD_INSTALLER "Build an installer" OFF)
-# if(DSSP_BUILD_INSTALLER)
-# 	include(InstallRequiredSystemLibraries)
-# 	set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-	
-# 	# NSIS options
-# 	set(CPACK_NSIS_MODIFY_PATH ON)
-
-# 	# configuration done, include CPack
-
-# 	include(CPack)
-# endif()

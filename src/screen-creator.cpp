@@ -29,12 +29,11 @@
 #include "screen-analyzer.hpp"
 #include "screen-data.hpp"
 #include "screen-creator.hpp"
-#include "screen-analyzer.hpp"
 #include "user-service.hpp"
 
-#include <boost/algorithm/string.hpp>
-
+#include <mcfp.hpp>
 #include <zeep/json/element.hpp>
+#include <zeep/unicode-support.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -42,10 +41,7 @@
 
 #include <pwd.h>
 
-
-namespace ba = boost::algorithm;
 namespace fs = std::filesystem;
-namespace po = boost::program_options;
 
 using json = zeep::json::element;	
 
@@ -69,7 +65,7 @@ bool askYesNo(const std::string& msg, bool defaultYes)
 	std::cout << msg << (defaultYes ? " [Y/n]: " : " [y/N]: "); std::cout.flush();
 	std::getline(std::cin, yesno);
 
-	return yesno.empty() ? defaultYes : ba::iequals(yesno, "y") or ba::iequals(yesno, "yes");
+	return yesno.empty() ? defaultYes : zeep::iequals(yesno, "y") or zeep::iequals(yesno, "yes");
 }
 
 std::string ask(const std::string& msg, std::string defaultAnswer = {})
