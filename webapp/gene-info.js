@@ -28,66 +28,36 @@ import * as d3 from "d3";
 import { format_pv } from "./pvformat";
 import { fillTable } from "./index";
 
-export let gene;
-
-export default class GeneInfo {
+class GeneInfo {
 	constructor() {
+		window.addEventListener("load", () => {
+			this.init();
+		})
+	}
+
+	init() {
 		this.div = document.getElementById("gene-info-dialog");
-		this.header = this.div.querySelector("div.modal-header");
-
-		this.closeDragHandler = e => this.closeDragElement(e);
-		this.elementDragHandler = e => this.elementDrag(e);
-
-		this.header.addEventListener("mousedown", e => this.dragMouseDown(e));
-
-		const btn = this.div.querySelector("button.btn-close");
-		btn.addEventListener("click", () => this.hide());
-
-		this.pos = [{x: 0, y: 0}, {x: 0, y: 0}];
 
 		this.showBtn = document.getElementById("show-gene-info-btn");
 		if (this.showBtn != null)
-			this.showBtn.addEventListener("click", () => this.show());
-	}
-
-	dragMouseDown(e) {
-		e = e || window.event;
-		e.preventDefault();
-
-		this.pos[1].x = e.clientX;
-		this.pos[1].y = e.clientY;
-
-		document.addEventListener("mouseup", this.closeDragHandler);
-		document.addEventListener("mousemove", this.elementDragHandler);
-	}
-
-	elementDrag(e) {
-		e = e || window.event;
-		e.preventDefault();
-
-		this.pos[0].x = this.pos[1].x - e.clientX;
-		this.pos[0].y = this.pos[1].y - e.clientY;
-
-		this.pos[1].x = e.clientX;
-		this.pos[1].y = e.clientY;
-
-		this.div.style.top = (this.div.offsetTop - this.pos[0].y) + "px";
-		this.div.style.left = (this.div.offsetLeft - this.pos[0].x) + "px";
-	}
-
-	closeDragElement(e) {
-		document.removeEventListener("mouseup", this.closeDragHandler);
-		document.removeEventListener("mousemove", this.elementDragHandler);
+			this.showBtn.addEventListener("click", (evt) => {
+				if (this.showBtn.classList.contains("active"))
+					this.hide();
+				else
+					this.show();
+			});
+		
+		this.div.style.display = "none";
 	}
 
 	show() {
-		this.showBtn.style.display = 'none';
 		this.div.style.display = 'block';
+		this.showBtn.classList.add("active");
 	}
 
 	hide() {
 		this.div.style.display = 'none';
-		this.showBtn.style.display = '';
+		this.showBtn.classList.remove("active");
 	}
 
 	set(data) {
@@ -102,7 +72,5 @@ export default class GeneInfo {
 	}
 }
 
-window.addEventListener("load", () => {
-	gene = new GeneInfo();
+export const gene = new GeneInfo();
 
-});

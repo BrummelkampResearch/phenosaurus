@@ -249,9 +249,9 @@ export class HeatMapPlot extends Plot {
 			.attr("width", this.gridWidth)
 			.attr("height", this.height - 2)
 
-			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", (e, d) => tooltip.show(Plot.label(d, gene), e.pageX + 5, e.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
+			.on("click", (e, d) => Plot.clickGene(d.screen, gene, d.replicate))
 
 			.merge(tiles)
 			.style("fill", d => yScale(d.y));
@@ -356,9 +356,9 @@ export class DotPlot extends Plot {
 			.append("circle")
 			.attr("class", "dot")
 			.attr("r", radius)
-			.on("mouseover", d => tooltip.show(Plot.label(d, gene), d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", (e, d) => tooltip.show(Plot.label(d, gene), e.pageX + 5, e.pageY - 5))
 			.on("mouseout", () => tooltip.hide())
-			.on("click", d => Plot.clickGene(d.screen, gene, d.replicate))
+			.on("click", (e, d) => Plot.clickGene(d.screen, gene, d.replicate))
 			.merge(dots)
 			.attr("cx", d => this.x(xScale(d.screen)) + this.gridWidth / 2)
 			.attr("cy", d => this.y(d.y))

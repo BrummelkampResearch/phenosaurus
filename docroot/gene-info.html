@@ -5,61 +5,30 @@
 
 <!-- The gene info dialog: -->
 <div z:fragment="gene-info-dialog(type)">
-	<script z:src="@{/dist/gene-info.js}" src="/scripts/gene-info.js"></script>
-
 	<button class="btn btn-sm btn-secondary show-gene-info-btn" id="show-gene-info-btn">Gene Info</button>
-	<!-- 
-	data-bs-toggle="modal"
-		data-bs-target="#gene-info-dialog" -->
 
-	<div class="modal-sm" tabindex="-1" role="dialog" aria-labelledby="dialog-label" id="gene-info-dialog" data-bs-backdrop="false">
-		<div class="modal-dialog" role="document">
-			<div class="modal-content">
-				<div class="modal-header">
-					<h5 class="modal-title" id="dialog-label">Gene info</h5>
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-				</div>
-				<div class="modal-body">
-					<table class="table table-sm gene-info-dialog-table">
-						<thead z:switch="${type}">
-							<tr z:case="'ip'">
-								<th>Gene</th>
-								<th>p-value</th>
-								<th>high</th>
-								<th>low</th>
-							</tr>
-							<tr z:case="'sl'">
-								<th>Gene</th>
-								<th>binom</th>
-								<th>sense</th>
-								<th>antisense</th>
-								<th>odds</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr><td>empty</td></tr>
-						</tbody>
-					</table>
-				</div>
-				<!-- <div class="modal-footer">
-						<button type="submit" form="geneSelectionForm" class="btn btn-primary">Set</button></div> -->
-			</div>
-		</div>
-	</div>
-</div>
+	<div id="gene-info-dialog" style="background-color: white;">
+		<div class="container">
 
-
-
-
-
-
-<div z:fragment="gene-info-dialog(type)" z:id="${'gene-info-dialog'}" class="modal-sm" style="display: none">
-	<div class="modal-content gene-info-dialog-content">
-		<div class="modal-header gene-info-dialog-header">
-			<h6 class="modal-title gene-info-dialog-title">Gene Info</h6>
-			<button id="close-info-dialog-button" type="button" class="close"></button>
-		</div>
-		<div class="modal-body gene-info-dialog-body">
+			<table class="table table-sm">
+				<thead z:switch="${type}">
+					<tr z:case="'ip'">
+						<th>Gene</th>
+						<th>p-value</th>
+						<th>high</th>
+						<th>low</th>
+					</tr>
+					<tr z:case="'sl'">
+						<th>Gene</th>
+						<th>binom</th>
+						<th>sense</th>
+						<th>antisense</th>
+						<th>odds</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
 		</div>
 	</div>
 </div>

@@ -372,10 +372,14 @@ class SLScreenPlot extends ScreenPlot {
 		let maxInsertions = Math.max(...data.map(d => d.insertions));
 		maxInsertions = Math.ceil(Math.pow(10, Math.log10(maxInsertions) + 0.1));
 
-		this.dotData = d3.nest()
-			.key(d => [d.sense_ratio, d.insertions].join(":"))
-			.entries(data)
-			.map(d => new SLDot(d.key, d.values));
+		// this.dotData = d3.nest()
+		// 	.key(d => [d.sense_ratio, d.insertions].join(":"))
+		// 	.entries(data)
+		// 	.map(d => new SLDot(d.key, d.values));
+
+		this.dotData = 
+			d3.groups(data, d => [d.sense_ratio, d.insertions].join(":"))
+			.map(([key, values]) => new SLDot(key, values));
 
 		const xRange = [1, maxInsertions];
 		const yRange = [0, 1];
@@ -402,10 +406,10 @@ class SLScreenPlot extends ScreenPlot {
 
 		gs.append("circle")
 			.attr("r", radius)
-			.on("mouseover", d => this.mouseOver(d))
-			.on("mouseout", d => this.mouseOut(d))
-			.on("click", d => this.clickGenes(d))
-			.on("dblclick", d => this.dblClickGenes(d));
+			.on("mouseover", (e, d) => this.mouseOver(d))
+			.on("mouseout", (e, d) => this.mouseOut(d))
+			.on("click", (e, d) => this.clickGenes(e, d))
+			.on("dblclick", (e, d) => this.dblClickGenes(e, d));
 
 		gs.merge(dots)
 			.select("circle")

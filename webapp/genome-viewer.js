@@ -262,11 +262,11 @@ export default class GenomeViewer {
 			});
 	}
 
-	zoomed() {
+	zoomed(evt) {
 		if (this.xAxis != null) {
-			this.plotData.attr('transform', d3.event.transform);
+			this.plotData.attr('transform', evt.transform);
 
-			const x = d3.event.transform.rescaleX(this.x);
+			const x = evt.transform.rescaleX(this.x);
 
 			this.insertionsData.selectAll("rect.ins")
 				.attr("x", d => x(d));
@@ -330,7 +330,7 @@ export default class GenomeViewer {
 				.append("g")
 				.attr("class", "ins")
 				.attr("transform", `translate(0, ${ii.y})`)
-				.on("mouseover", () => tooltip.show(`${ii.name} ${ii.strand}`, d3.event.pageX + 5, d3.event.pageY - 5))
+				.on("mouseover", (e, d) => tooltip.show(`${ii.name} ${ii.strand}`, e.pageX + 5, e.pageY - 5))
 				.on("mouseout", () => tooltip.hide());
 
 			data.area.forEach(a => {
@@ -380,7 +380,7 @@ export default class GenomeViewer {
 			.append("g")
 			.attr("class", "gene")
 			.attr("transform", g => `translate(0, ${Y + 12 + g.nr * INSERTION_STRIP_HEIGHT})`)
-			.on("mouseover", g => tooltip.show(g.name, d3.event.pageX + 5, d3.event.pageY - 5))
+			.on("mouseover", (e, g) => tooltip.show(g.name, e.pageX + 5, e.pageY - 5))
 			.on("mouseout", () => tooltip.hide());
 
 		gl.append("line")

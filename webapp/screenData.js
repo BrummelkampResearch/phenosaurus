@@ -91,10 +91,9 @@ export default class ScreenData {
 
 		this.data = data;
 
-		this.dotData = d3.nest()
-			.key(d => [this.screen, d.mi, d.low + d.high].join(':'))
-			.entries(data)
-			.map(d => new Dot(d.key, d.values));
+		this.dotData = 
+			d3.groups(data, d => [this.screen, d.mi, d.low + d.high].join(':'))
+			.map(([key, values]) => new Dot(key, values));
 	}
 
 	loadUnique(options) {

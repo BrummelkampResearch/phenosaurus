@@ -29,6 +29,7 @@ import ScreenColorMap from "./screenColorMap";
 import { gene } from "./gene-info";
 import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
+import { event } from "jquery";
 
 export const radius = 5;
 export const neutral = "#aaa", highlight = "#b3ff3e";
@@ -163,8 +164,10 @@ export default class ScreenPlot {
 		const zoom = d3.zoom()
 			.scaleExtent([1, 8])
 			.translateExtent([[0, 0], [this.width + 90, this.height + 90]])
-			.filter(() => d3.event.ctrlKey)
-			.on("zoom", () => this.zoomed());
+			.filter(event => event.ctrlKey)
+			.on("zoom", (e, z) => {
+				this.zoomed(e)
+			});
 
 		this.svg.call(zoom);
 
@@ -234,17 +237,16 @@ export default class ScreenPlot {
 		});
 	}
 
-	zoomed() {
-		const evt = d3.event.sourceEvent;
-		if (evt != null) {
-			evt.stopPropagation();
-			evt.preventDefault();
+	zoomed({sourceEvent, transform}) {
+		if (sourceEvent != null) {
+			sourceEvent.stopPropagation();
+			sourceEvent.preventDefault();
 		}
 
 		if (this.xAxis != null && this.yAxis != null) {
-			this.plotData.attr('transform', d3.event.transform);
+			this.plotData.attr('transform', transform);
 
-			const k = d3.event.transform.k;
+			const k = transform.k;
 
 			const x = this.x;
 			const y = this.y;
@@ -256,8 +258,8 @@ export default class ScreenPlot {
 					.attr('transform', d => `translate(${x(d.x)},${y(d.y)}) scale(${1 / k})`);
 			});
 
-			this.gX.call(this.xAxis.scale(d3.event.transform.rescaleX(this.x)));
-			this.gY.call(this.yAxis.scale(d3.event.transform.rescaleY(this.y)));
+			this.gX.call(this.xAxis.scale(transform.rescaleX(this.x)));
+			this.gY.call(this.yAxis.scale(transform.rescaleY(this.y)));
 		}
 	}
 
@@ -326,10 +328,10 @@ export default class ScreenPlot {
 
 		gs.append("circle")
 			.attr("r", radius)
-			.on("mouseover", d => this.mouseOver(d, screenNr))
-			.on("mouseout", d => this.mouseOut(d, screenNr))
-			.on("click", d => this.clickGenes(d, screenNr))
-			.on("dblclick", d => this.dblClickGenes(d, screenNr));
+			.on("mouseover", (e, d) => this.mouseOver(d, screenNr))
+			.on("mouseout", (e, d) => this.mouseOut(d, screenNr))
+			.on("click", (e, d) => this.clickGenes(e, d, screenNr))
+			.on("dblclick", (e, d) => this.dblClickGenes(e, d, screenNr));
 
 		gs.merge(dots)
 			.select("circle")
@@ -339,7 +341,7 @@ export default class ScreenPlot {
 		return colorMap.get(screenNr);
 	}
 
-	clickGenes(d, screenNr) {
+	clickGenes(evt, d, screenNr) {
 		let handled = false;
 
 		if (d.multiDot !== undefined) {
@@ -370,7 +372,7 @@ export default class ScreenPlot {
 
 			plot.dispatchEvent(e);
 		} else {
-			const clickedCircle = d3.event.target;
+			const clickedCircle = evt.target;
 
 			d.multiDot = new MultiDot(clickedCircle, d, this, screenNr);
 			handled = true;
@@ -379,16 +381,13 @@ export default class ScreenPlot {
 		return handled;
 	}
 
-	dblClickGenes(d) {
-		const evt = d3.event.sourceEvent;
-		if (evt != null) {
-			evt.stopPropagation();
-			evt.preventDefault();
-		}
+	dblClickGenes(evt, d) {
+		evt.stopPropagation();
+		evt.preventDefault();
 
 		const genes = d.values.map(g => g.gene).join(';');
 
-		if (d3.event.ctrlKey || d3.event.altKey)
+		if (evt.ctrlKey || evt.altKey)
 			window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + genes, "_blank");
 		else
 			window.open("finder?gene=" + genes, "_blank");
