@@ -24,12 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "core-js/stable";
-import "regenerator-runtime/runtime";
-
-import 'bootstrap';
-import 'bootstrap/js/dist/modal'
-import 'bootstrap/dist/css/bootstrap.min.css';
 import * as d3 from 'd3';
 
 /*global chromosomes screens $*/
@@ -43,13 +37,7 @@ class CanvasPlot {
 		this.zoomLevel = zoomLevel;
 
 		this.plotContainer = d3.select(".plot-container");
-
 		this.skipScreenList = [];
-
-		// this.winsorize = document.getElementById("winsorize");	
-		// // this.winsorize.addEventListener('change', () => this.update());
-		// $(this.winsorize).on("change", () => this.update());
-
 		this.graphType = "heatmap";
 
 		for (let btn of document.graphTypeForm.graphType) {
@@ -58,7 +46,7 @@ class CanvasPlot {
 			btn.onchange = (e) => this.selectGraphType(e.target.dataset.type);
 		}
 
-		const boxWidth = $(this.plotContainer.node()).width();
+		const boxWidth = this.plotContainer.node().getBoundingClientRect().width;
 
 		this.margin = {top: 30, right: 50, bottom: 40, left: 250};
 		this.width = boxWidth - this.margin.left - this.margin.right;
@@ -74,9 +62,9 @@ class CanvasPlot {
 		[...document.getElementsByClassName("chr-name")]
 			.forEach(e => e.textContent = this.chromosome ? this.chromosome : "all chromosomes");
 
-		plotTitle.classList.toggle("plot-status-loading", true);
-		plotTitle.classList.toggle("plot-status-loaded", false);
-		plotTitle.classList.toggle("plot-status-failed", false);
+		plotTitle.classList.add("plot-status-loading");
+		plotTitle.classList.remove("plot-status-loaded");
+		plotTitle.classList.remove("plot-status-failed");
 
 		const cellWidth = 5;
 		const graphWidth = this.width * this.zoomLevel;
@@ -96,30 +84,28 @@ class CanvasPlot {
 				if (response.ok)
 					return response.json();
 
-				plotTitle.classList.toggle("plot-status-loading", false);
-				plotTitle.classList.toggle("plot-status-loaded", false);
-				plotTitle.classList.toggle("plot-status-failed", true);
+				plotTitle.classList.remove("plot-status-loading");
+				plotTitle.classList.remove("plot-status-loaded");
+				plotTitle.classList.add("plot-status-failed");
 			})
 			.then(data => {
 				this.init(data);
 
-				plotTitle.classList.toggle("plot-status-loading", false);
-				plotTitle.classList.toggle("plot-status-loaded", true);
-				plotTitle.classList.toggle("plot-status-failed", false);
+				plotTitle.classList.remove("plot-status-loading");
+				plotTitle.classList.add("plot-status-loaded");
+				plotTitle.classList.remove("plot-status-failed");
 			})
 			.catch(err => {
 				console.log(err);
 
-				plotTitle.classList.toggle("plot-status-loading", false);
-				plotTitle.classList.toggle("plot-status-loaded", false);
-				plotTitle.classList.toggle("plot-status-failed", true);
+				plotTitle.classList.remove("plot-status-loading");
+				plotTitle.classList.remove("plot-status-loaded");
+				plotTitle.classList.add("plot-status-failed");
 			});
 	}
 	
 	init(info)
 	{
-        console.log(info);
-
         const data = Object.entries(info.data)
             .map(d => { return { "screen": d[0], "zscores": d[1] }});
 
@@ -215,8 +201,6 @@ class CanvasPlot {
 				context.fillRect(this.margin.left + x(i), this.margin.top + y(d.screen), cellWidth, y.bandwidth());
 			});
 		});
-
-		console.log(`laatste x: ${x(data[0].zscores.length -1)}`);
 	}
 
 	showChromosome(chr) {
@@ -272,7 +256,6 @@ window.addEventListener('load', () => {
 	const updateScreensBtn = document.getElementById('updateSelectedScreens');
 	updateScreensBtn.addEventListener('click', () => {
 		const screenList = screens.filter(s => ! document.getElementById(`screen-${s}`).checked);
-		console.log(screenList);
 		plot.setScreenSkipList(screenList);
 		$('#selectScreensModal').modal('hide');
 	});

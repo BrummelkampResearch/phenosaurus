@@ -82,21 +82,6 @@ div.tooltip {
 	pointer-events: none;
 }
 
-.plot-title {
-	margin-bottom: 1em;
-}
-
-.plot-title span {
-	display: none;
-}
-
-.plot-status-loading .loading,
-.plot-status-loaded .loaded,
-.plot-status-failed .failed,
-.plot-title .screen-name {
-	display: unset;
-}
-
 .insertion-counts {
 	font-size: small;
 }

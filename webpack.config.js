@@ -1,18 +1,8 @@
-// const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-// const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-// const webpack = require('webpack');
-// const path = require('path');
-// const { mode } = require('d3');
-
-// const SCRIPTS = __dirname + "/webapp/";
-// const SCSS = __dirname + "/scss/";
-
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const SCRIPTS = __dirname + "/webapp/";
-const SCSS = __dirname + "/scss/";
 const DEST = __dirname + "/docroot/dist/";
 
 module.exports = (env) => {
@@ -22,8 +12,6 @@ module.exports = (env) => {
 	const webpackConf = {
 
 		entry: {
-			'sa-style': SCSS + "sa-style.scss",
-
 			'index': SCRIPTS + "index.js",
 			'screen': SCRIPTS + "screen.js",
 			'sl-screen': SCRIPTS + "sl-screen.js",
@@ -70,7 +58,7 @@ module.exports = (env) => {
 				{
 					test: /\.(sa|sc|c)ss$/i,
 					use: [
-						PRODUCTION ? MiniCssExtractPlugin.loader : "style-loader",
+						/* PRODUCTION ?  */MiniCssExtractPlugin.loader/*  : "style-loader" */,
 						"css-loader",
 						"postcss-loader",
 						"sass-loader"
@@ -92,7 +80,9 @@ module.exports = (env) => {
 			extensions: ['.js', '.scss'],
 		},
 
-		plugins: [],
+		plugins: [
+			new MiniCssExtractPlugin({})
+		],
 
 		optimization: {
 			minimizer: []
@@ -105,8 +95,8 @@ module.exports = (env) => {
 		webpackConf.plugins.push(
 			new CleanWebpackPlugin({
 				verbose: true
-			}),
-			new MiniCssExtractPlugin({})
+			})/* ,
+			new MiniCssExtractPlugin({}) */
 		);
 	} else {
 		webpackConf.mode = "development";

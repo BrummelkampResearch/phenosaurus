@@ -57,7 +57,7 @@ void checkIsFastQ(fs::path infile)
 		throw std::runtime_error("FastQ file " + infile.string() + " does not seem to exist");
 
 	fs::path p = infile;
-	gxrio::ifstream in(p, std::ios::binary);
+	gxrio::ifstream in(p);
 
 	if (not in.is_open())
 		throw std::runtime_error("Could not open file " + infile.string());

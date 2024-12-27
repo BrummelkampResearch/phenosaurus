@@ -123,12 +123,13 @@ set(webpack_input
 	webapp/pvformat.js
 	webapp/sl-dot.js
 	webapp/sl-screen.js
-	scss/contextMenu.css
-	scss/sa-style.scss
-	scss/signin.css
-	scss/styles.css)
 
-set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/scripts/index.js)
+	webapp/contextMenu.css
+	webapp/sa-style.scss
+	webapp/signin.css
+	webapp/styles.css)
+
+set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/dist/index.js)
 
 add_custom_command(
 	OUTPUT ${webpack_output}

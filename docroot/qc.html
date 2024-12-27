@@ -1,45 +1,27 @@
 <!DOCTYPE html SYSTEM "about:legacy-compat">
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:z2="http://www.hekkelman.com/libzeep/m2" xml:lang="en" lang="en">
 
-<head>
-	<link rel="stylesheet" type="text/css" z2:href="@{/dist/sa-style.css}" />
+<head z2:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
+	<title>Phenosaurus</title>
 	<link rel="stylesheet" type="text/css" z2:href="@{/dist/qc.css}" />
 	<script z2:src="@{/dist/qc.js}" type="text/javascript"></script>
-
-<script type="text/javascript" z2:inline="javascript">
-// <![CDATA[
-	const chromosomes = [[${chromosomes}]];
-	const screens = [[${screens}]];
-//]]>
-</script>
+	<script type="text/javascript" z2:inline="javascript">
+		// <![CDATA[
+		const chromosomes = [[${ chromosomes }]];
+		const screens = [[${ screens }]];
+		//]]>
+	</script>
 </head>
 
 <body>
 	<nav z2:replace="menu :: menu"></nav>
-
-	<!-- <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-		<a href="/" class="navbar-brand">Screen Quality Control</a>
-
-		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-			aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-			<span class="navbar-toggler-icon"></span>
-		</button>
-
-		<div class="collapse navbar-collapse" id="navbarSupportedContent">
-			<ul class="navbar-nav mr-auto">
-				<li class="nav-item ${page == 'index' ? 'active' : ''}">
-					<a class="nav-link" href="/index">All Chromosomes</a>
-				</li>
-			</ul>
-		</div>
-	</nav> -->
 
 	<div class="container-fluid mt-3">
 		<div class="option-row">
 			<div class="option-col">
 				<div class="input-group input-group-sm mb-3">
 					<label class="input-group-text" for='chromosomeList'>Chromosome</label>
-					<select class="custom-select" id="chromosomeList">
+					<select class="form-select" id="chromosomeList">
 						<option value="all">All</option>
 						<option z2:each="chr: ${chromosomes}" z2:attr="data-chr=${chr}" z2:text="${chr}"></option>
 					</select>
@@ -49,7 +31,7 @@
 			<div class="option-col">
 				<div class="input-group input-group-sm mb-3">
 					<label class="input-group-text" for="zoomLevel">Zoom level</label>
-					<select class="custom-select" id="zoomLevel">
+					<select class="form-select" id="zoomLevel">
 						<option value="1">1</option>
 						<option value="2">2</option>
 						<option value="4">4</option>
@@ -65,21 +47,27 @@
 			</div>
 
 			<div class="option-col">
-				<form class="mb-3" name="graphTypeForm">
-					<div class="btn-group btn-group-sm">
-						<input type="radio" name="graphType" data-type="heatmap" autocomplete="off" checked="checked" id="btn-graph-type-heatmap"/> 
-						<label for="btn-graph-type-heatmap" class="btn btn-secondary">Heatmap</label>
-						<input type="radio" name="graphType" data-type="emptybins" autocomplete="off" id="btn-graph-type-emptiness"/> 
-						<label for="btn-graph-type-emptiness" class="btn btn-secondary">Emptiness</label>
-					</div>
-				</form>
+				<div class="input-group input-group-sm">
+					<form class="mb-3" name="graphTypeForm">
+						<div class="btn-group btn-group-sm">
+							<input type="radio" class="btn-check" name="graphType" data-type="heatmap"
+								autocomplete="off" checked="checked" id="btn-graph-type-heatmap" />
+							<label for="btn-graph-type-heatmap" class="btn btn-secondary">Heatmap</label>
+							<input type="radio" class="btn-check" name="graphType" data-type="emptybins"
+								autocomplete="off" id="btn-graph-type-emptiness" />
+							<label for="btn-graph-type-emptiness" class="btn btn-secondary">Emptiness</label>
+						</div>
+					</form>
+				</div>
 			</div>
 		</div>
 	</div>
 
 	<div class="container-fluid plot-title">
-		<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Loading data
-			for <span class="chr-name"></span></span>
+		<span class="loading">
+			<div class="spinner-border spinner-border-sm" role="status"></div> Loading data
+			for <span class="chr-name"></span>
+		</span>
 		<span class="loaded">Quality plot for <span class="chr-name"></span></span>
 		<span class="failed">Quality plot for <span class="chr-name"></span> could not be loaded.</span>
 	</div>
@@ -100,7 +88,7 @@
 				<div class="modal-body">
 					<ul class="list-group">
 						<li class="list-group-item" z2:each="screen: ${screens}">
-							<input type="checkbox" z2:value="${screen}" z2:id="'screen-'+${screen}" checked='checked'/>
+							<input type="checkbox" z2:value="${screen}" z2:id="'screen-'+${screen}" checked='checked' />
 							<label z2:text="${screen}" z2:for="'screen-'+${screen}"></label>
 						</li>
 					</ul>

@@ -25,7 +25,6 @@
  */
 
 import * as d3 from 'd3';
-import $ from 'jquery';
 
 import { geneSelectionEditor } from './gene-selection';
 import { GeneLine } from './gene-finder';

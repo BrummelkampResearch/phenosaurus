@@ -28,6 +28,10 @@ import "core-js/stable";
 import "regenerator-runtime/runtime";
 import 'bootstrap';
 
+import 'bootstrap/js/dist/modal'
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+import './sa-style.scss';
 
 export function fillTable(table, data, splitter) {
 	const oldTBody = table.tBodies[0];

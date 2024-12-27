@@ -83,136 +83,137 @@ class ScreenCreator {
 		if (type == 'sl') {
 			this.form['fastq-low'].required = false;
 			this.form['fastq-high'].required = false;
-	
+
 			document.getElementById('fastq-sl').classList.remove('d-none');
 			document.getElementById('fastq-ip').classList.add('d-none');
-	
+
 			this.form['detected-signal'].parentNode.classList.add('invisible');
 			this.form['detected-signal'].required = false;
 		}
 		else {
 			this.form['fastq-low'].required = true;
 			this.form['fastq-high'].required = true;
-	
+
 			document.getElementById('fastq-ip').classList.remove('d-none');
 			document.getElementById('fastq-sl').classList.add('d-none');
-	
+
 			this.form['detected-signal'].parentNode.classList.remove('invisible');
 			this.form['detected-signal'].required = true;
 		}
 	}
 
-	validateFile(f) {
+	async validateFile(f) {
 		const input = this.form[`fastq-${f}`];
 
 		const fd = new FormData();
 		fd.append('file', input.value);
 
-		let wasOK;
-		fetch(`screen/validate/fastq?file=${input.value}`, {
+		try {
+			const reply = await fetch(`screen/validate/fastq?file=${input.value}`, {
+				credentials: "include", method: 'POST', body: fd
+			});
+
+			if (reply.ok)
+				input.setCustomValidity('');
+			else {
+				const msg = await r.json();
+
+				if (msg.error)
+					input.setCustomValidity(`Failed to validate FastQ file: ${msg.error}`);
+				else
+					input.setCustomValidity("Failed to validate FastQ file, no error message");
+			}
+		} catch (error) {
+			alert(`Could not validate fastq file: ${e}`);
+		}
+	}
+
+validateScreenName() {
+	return new Promise((resolve, reject) => {
+		const screenName = this.form['screen-name'];
+		const fd = new FormData();
+		fd.append('name', screenName);
+
+		fetch(`screen/validate/name?name=${screenName.value}`, {
 			credentials: "include", method: 'POST', body: fd
 		}).then(r => {
-			wasOK = r.ok;
-			return r.json();
-		})
-		.then(r => {
-			if (wasOK)
-				input.setCustomValidity('');
-			else if (r.error)
-				input.setCustomValidity(`Failed to validate FastQ file: ${r.error}`);
+			if (r.ok == false)
+				reject('Invalid response from server');
 			else
-			input.setCustomValidity("Failed to validate FastQ file, no error message");
-		}).catch((e) => {
-			alert(`Could not validate fastq file: ${e}`);
-		})
-	}
-
-	validateScreenName() {
-		return new Promise((resolve, reject) => {
-			const screenName = this.form['screen-name'];
-			const fd = new FormData();
-			fd.append('name', screenName);
-			
-			fetch(`screen/validate/name?name=${screenName.value}`, {
-				credentials: "include", method: 'POST', body: fd
-			}).then(r => {
-				if (r.ok == false)
-					reject('Invalid response from server');
-				else
-					return r.json();
-			}).then(r => {
-				r === true ? resolve() : reject(`unexpected result from server: ${r}`);
-			});
+				return r.json();
+		}).then(r => {
+			r === true ? resolve() : reject(`unexpected result from server: ${r}`);
 		});
-	}
+	});
+}
 
-	submitForm(e) {
-		if (e) e.preventDefault();
+submitForm(e) {
+	if (e) e.preventDefault();
 
-		this.validateScreenName()
-			.then(() => {
-		
-				const screen = {
-					name: this.form['screen-name'].value,
-					published_name: (this.form['screen-published-name'] || this.form['screen-name']).value,
-					scientist: this.form['scientist'].value,
-					type: this.form['screen-type'].value,
-					detected_signal: this.form['detected-signal'].value,
-					genotype: this.form['genotype'].value,
-					treatment: this.form['treatment'].value,
-					treatment_details: this.form['treatment-details'].value,
-					cell_line: this.form['cell-line-clone'].value,
-					description: this.form['description'].value,
-					ignore: this.form['ignore'].checked,
-					files: []
-				};
+	this.validateScreenName()
+		.then(() => {
 
-				if (screen.type == 'sl') {
-					for (let r of [1, 2, 3, 4]) {
-						const fn = `fastq-replicate-${r}`;
-						const fv = this.form[fn].value;
-						if (fv.length > 0)
-							screen.files.push({ name: `replicate-${r}`, source: fv});
-					}
-				} else {
-					for (let c of ['low', 'high']) {
-						const fn = `fastq-${c}`;
-						const fv = this.form[fn].value;
-						if (fv.length > 0)
-							screen.files.push({ name: c, source: fv});
-					}
+			const screen = {
+				name: this.form['screen-name'].value,
+				published_name: (this.form['screen-published-name'] || this.form['screen-name']).value,
+				scientist: this.form['scientist'].value,
+				type: this.form['screen-type'].value,
+				detected_signal: this.form['detected-signal'].value,
+				genotype: this.form['genotype'].value,
+				treatment: this.form['treatment'].value,
+				treatment_details: this.form['treatment-details'].value,
+				cell_line: this.form['cell-line-clone'].value,
+				description: this.form['description'].value,
+				ignore: this.form['ignore'].checked,
+				files: []
+			};
+
+			if (screen.type == 'sl') {
+				for (let r of [1, 2, 3, 4]) {
+					const fn = `fastq-replicate-${r}`;
+					const fv = this.form[fn].value;
+					if (fv.length > 0)
+						screen.files.push({ name: `replicate-${r}`, source: fv });
 				}
+			} else {
+				for (let c of ['low', 'high']) {
+					const fn = `fastq-${c}`;
+					const fv = this.form[fn].value;
+					if (fv.length > 0)
+						screen.files.push({ name: c, source: fv });
+				}
+			}
 
-				let wasOK;
-				fetch(`screen`, {
-					body: JSON.stringify(screen),
-					credentials: "include",
-					method: 'POST',
-					headers: {
-						'X-CSRF-Token': this.csrf,
-						'Content-Type': 'application/json'
-					}
-				}).then(r => {
-					wasOK = r.ok;
-					return r.json();
-				}).then(r => {
-					if (r.error)
-						throw r.error;
-					if (wasOK == false)
-						throw 'server returned an error';
-					
-					// this.form.reset();
-					window.location = 'screens';
-				}).catch(err => {
-					console.log(err);
-					alert(`Failed to submit form: ${err}`);
-				});
-			})
-			.catch(err => {
+			let wasOK;
+			fetch(`screen`, {
+				body: JSON.stringify(screen),
+				credentials: "include",
+				method: 'POST',
+				headers: {
+					'X-CSRF-Token': this.csrf,
+					'Content-Type': 'application/json'
+				}
+			}).then(r => {
+				wasOK = r.ok;
+				return r.json();
+			}).then(r => {
+				if (r.error)
+					throw r.error;
+				if (wasOK == false)
+					throw 'server returned an error';
+
+				// this.form.reset();
+				window.location = 'screens';
+			}).catch(err => {
 				console.log(err);
-				alert("The screen name is not valid, is it unique?");
+				alert(`Failed to submit form: ${err}`);
 			});
-	}
+		})
+		.catch(err => {
+			console.log(err);
+			alert("The screen name is not valid, is it unique?");
+		});
+}
 }
 
 window.addEventListener("load", () => {

@@ -42,3 +42,31 @@ box-sizing: border-box;
 		overflow-y: auto;
 	}
 }
+
+/* Plot titles */
+
+div.plot-title {
+
+	margin-bottom: 1em;
+
+	&.plot-status-loading {
+		span.failed,
+		span.loaded {
+			display: none;
+		}
+	}
+
+	&.plot-status-loaded {
+		span.failed,
+		span.loading {
+			display: none;
+		}
+	}
+
+	&.plot-status-failed {
+		span.loading,
+		span.loaded {
+			display: none;
+		}
+	}
+}

@@ -26,8 +26,6 @@
 
 import 'bootstrap/js/dist/modal';
 
-/*global context_name, $ */
-
 class GroupEditor {
 
 	constructor() {

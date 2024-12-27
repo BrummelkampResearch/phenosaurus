@@ -24,8 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import $ from 'jquery';
-
 import * as d3 from 'd3';
 
 import ScreenData from "./screenData";
@@ -277,7 +275,6 @@ window.addEventListener('load', () => {
 			)
 		: {}
 
-	// const [selectedID, selectedName] = $("input[name='selectedScreen']").val().split(':');
 	const selectedScreen = params["screen"];
 
 	if (typeof params["gene"] == 'string') {

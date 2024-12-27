@@ -29,7 +29,6 @@ import ScreenColorMap from "./screenColorMap";
 import { gene } from "./gene-info";
 import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
-import { event } from "jquery";
 
 export const radius = 5;
 export const neutral = "#aaa", highlight = "#b3ff3e";
