@@ -302,20 +302,6 @@ text.screen-label {
 	overflow-y: auto;
 }
 
-div.option-row {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-between;
-}
-
-div.option-row div.option-col {
-	margin: 0 0.4em;
-}
-
-div.option-col-screenselector {
-	width: 15em;
-}
-
 /*
 	sortable tables
 */

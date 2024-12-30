@@ -24,69 +24,64 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import * as d3 from 'd3';
-
 import { geneSelectionEditor } from './gene-selection';
-import { GeneLine } from './gene-finder';
+import { GeneLine } from './gene-line';
+import { Modal } from 'bootstrap';
+
+const maxGenes = 30;
 
 class ClusterLine {
 	constructor(cl, nr) {
 		this.data = cl;
 
-		const template = $("#cluster-tabel > tbody:first > tr:first");
-		const line = template.clone(true);
+		const template = document.querySelector("#cluster-row-template");
+		const clone = template.cloneNode(true);
+		const line = clone.content.querySelector("tr");
 		
 		this.line = line;
-		this.row = line[0];
-		// this.data = [];
 
-		const maxGenes = 30;
+		const tds = [...line.querySelectorAll("td")];
 
-		this.row.cells[0].innerText = nr;
-		this.row.cells[1].innerText = cl.variance;
+		tds[0].innerText = nr;
+		tds[1].innerText = cl.variance;
 
 		if (cl.genes.length <= maxGenes)
-			this.row.cells[2].innerText = cl.genes.join(", ");
+			tds[2].innerText = cl.genes.join(", ");
 		else
-			this.row.cells[2].innerText = `${cl.genes.slice(0, maxGenes).join(", ")} and ${cl.genes.length - maxGenes} more`;
+			tds[2].innerText = `${cl.genes.slice(0, maxGenes).join(", ")} and ${cl.genes.length - maxGenes} more`;
 		
-		line.prop("clusterLine", this)
-			.appendTo(template.parent())
-			.show();
+		line.clusterLine = this;
+		document.querySelector("#cluster-tabel").appendChild(line);
 
-		this.row.addEventListener("click", () => this.clicked());
-		this.row.addEventListener("dblclick", () => this.dblclicked());
+		this.line.addEventListener("click", () => this.clicked());
+		this.line.addEventListener("dblclick", () => this.dblclicked());
 	}
 
 	clicked() {
 	}
 
 	dblclicked() {
-		$("#displayClusterModal").modal('show');
+		const dlog = new Modal(document.querySelector("#displayClusterModal"));
+		dlog.show();
 
-		$("#plot > tbody:first > tr:not(:first-child)").remove();
-		// $("#plot > tbody:last > tr").remove();
+		const plot = document.querySelector("#plot");
+		plot.querySelector("tbody:first-of-type").replaceChildren();
 		document.getElementById("plot").classList.add("no-anti");
-	
-		// if (this.data.findIndex((v) => v.anti) >= 0)
-		// 	document.getElementById("plot").classList.remove("no-anti");
-
-		this.data.genes.forEach(d => new GeneLine(d));
+		this.data.genes.slice(0, maxGenes).forEach(d => new GeneLine(d));
 	}
 }
 
-function doCluster() {
+async function doCluster() {
 
-	let plotTitle = $(".plot-title");
-	if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
+	let plotTitle = document.querySelector(".plot-title");
+	if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
 		return;
 
-	$("#cluster-tabel > tbody > tr:not(:first-child)").remove();
-
-	plotTitle.addClass("plot-status-loading")
-		.removeClass("plot-status-loaded")
-		.removeClass("plot-status-failed")
-		.removeClass("plot-status-no-hits");
+	plotTitle.style.display = '';
+	plotTitle.classList.add("plot-status-loading");
+	plotTitle.classList.remove("plot-status-loaded");
+	plotTitle.classList.remove("plot-status-failed");
+	plotTitle.classList.remove("plot-status-no-hits");
 
 	const options = geneSelectionEditor.getOptions();
 
@@ -96,37 +91,31 @@ function doCluster() {
 	options.append("nns", document.getElementById("nns").value);
 	options.append("minPts", document.getElementById("minPts").value);
 
-	const uri = 'clusters';
-
-	fetch(uri, {
-		body: options,
-		method: 'POST',
-		credentials: "include"
-	})
-	.then(response => {
-		if (response.ok)
-			return response.json();
-
-		response.json()
-			.then(err => { throw err.error; })
-			.catch(err => { throw err; });
-	})
-	.then(data => {
-		let nr = 1;
-		data.forEach(d => {
-			new ClusterLine(d, ++nr);
+	try {
+		const resp = await fetch("clusters", {
+			body: options,
+			method: 'POST',
+			credentials: "include"
 		});
 
-		console.log(data);
+		if (resp.ok == false) {
+			const err = await resp.json();
+			throw err.error;
+		}
 
-		plotTitle.removeClass("plot-status-loading")
-			.toggleClass("plot-status-loaded", data.length > 0)
-			.toggleClass("plot-status-no-hits", data.length === 0);
-	})
-	.catch(err => {
+		const data = await resp.json();
+
+		let nr = 1;
+		data.forEach(d => new ClusterLine(d, ++nr));
+
+		plotTitle.classList.remove("plot-status-loading")
+		plotTitle.classList.toggle("plot-status-loaded", data.length > 0);
+		plotTitle.classList.toggle("plot-status-no-hits", data.length === 0);
+	} catch (err) {
 		console.log(err);
-		plotTitle.removeClass("plot-status-loading").addClass("plot-status-failed");
-	});
+		plotTitle.classList.remove("plot-status-loading")
+		plotTitle.classList.add("plot-status-failed");;
+	};
 }
 
 window.addEventListener('load', () => {

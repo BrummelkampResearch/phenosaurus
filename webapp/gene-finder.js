@@ -24,161 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import * as d3 from 'd3';
-
-import {geneSelectionEditor} from './gene-selection';
-import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
-import {readMyFile} from "./script";
-
-let nextGeneLineID = 1000;
-let geneLines = [];
-
-export class GeneLine {
-	constructor(gene) {
-		const template = $("#plot > tbody > tr:first");
-		const id = 'gene-' + nextGeneLineID++;
-		const line = template.clone(true);
-
-		line.attr("id", id)
-			.prop("geneLine", this)
-			.appendTo(template.parent())
-			.show();
-
-		this.line = line;
-		this.row = line[0];
-		this.input = $("input", line);
-		this.data = [];
-
-		$("a", line)
-			.on('click', () => this.sort());
-
-		this.input
-			.on('change', () => this.changed())
-			.trigger('focus');
-
-		// const td = d3.select($("td:nth-child(2)", line)[0]);
-		const td = d3.select(this.row.cells[2]);
-
-		this.heatMap = new HeatMapPlot(td);
-		this.heatMap.recreateSVG();
-
-		this.dotPlot = new DotPlot(td);
-		this.dotPlot.recreateSVG();
-
-		if (gene === null)
-			gene = this.input.val();
-
-		if (gene !== "")
-			this.setGene(gene);
-
-		geneLines.push(this);
-	}
-
-	changed() {
-		const genes = this.input.val().split(/[ \t\r\n,;]+/).filter(e => e.length > 0);
-
-		this.input.removeClass("gene-not-found");
-
-		if (genes.length > 0) {
-			const gene = genes[0];
-			this.input.val(gene);
-
-			const options = geneSelectionEditor.getOptions();
-
-			fetch(`finder/${gene}`, {
-				method: 'post',
-				credentials: "include",
-				body: options
-			}).then(data => {
-				return data.json();
-			}).then(data => {
-				if (data.error != null)
-					throw data.error;
-
-				if (data.length === 0)
-					this.input.addClass("gene-not-found");
-
-				this.data = data;
-
-				Plot.preProcessData(data);
-
-				this.heatMap.processData(data, gene);
-				this.dotPlot.processData(data, gene);
-
-				// if (fishtail != null) {
-				// 	const color = fishtail.processData(data, gene);
-
-				// 	this.row.getElementsByClassName("swatch")[0]
-				// 		.style.backgroundColor = color;
-
-				// 	// this.spinnerTD.classList.remove("loading");
-				// }
-			}).catch(err => {
-
-				// if (err === "invalid-credentials") {
-				// 	showLoginDialog(null, () => this.changed());
-				// }
-				// else {
-					this.input.addClass("gene-not-found");
-					console.log(err)
-				// }
-			});
-
-			genes.splice(0, 1);
-			genes.forEach(id => new GeneLine(id));
-		}
-	}
-
-	setGene(id) {
-		this.input.val(id);
-		this.changed();
-	}
-
-	orderedScreens() {
-		return this.data
-			.sort((a, b) => b.y - a.y)
-			.map(a => a.screen);
-	}
-
-	sort() {
-		const newOrder = this.orderedScreens();
-
-		Screens.instance().reorder(newOrder);
-
-		$("#plot > tbody > tr:not(:first)")
-			.each((i, e) => {
-				const geneLine = $(e).prop("geneLine");
-				geneLine.rearrange();
-			});
-
-		LabelPlot.rearrange();
-	}
-
-	rearrange() {
-		this.heatMap.rearrange();
-		this.dotPlot.rearrange();
-	}
-}
-
-function addGeneLinesFromFile(evt) {
-	const file = evt.target.files[0];
-	if (file != null) {
-		readMyFile(file)
-			.then(text => {
-				text.split(/[ \t\n\r]/)
-					.filter(g => g.length > 0)
-					.forEach(value => {
-						try {
-							new GeneLine(value)
-						}
-						catch (err) {
-							console.log(err);
-						}
-					});
-			})
-			.catch(err => console.log(err));
-	}
-}
+import { GeneLine } from "./gene-line";
 
 window.addEventListener('load', () => {
 
@@ -194,16 +40,28 @@ window.addEventListener('load', () => {
 			)
 		: {}
 	
-	$("#localGeneFile")
-		.on("change", e => addGeneLinesFromFile(e));
+	const btn1 = document.querySelector("#localGeneFile")
+	if (btn1 != null)
+		btn1.addEventListener("change", (e) => addGeneLinesFromFile(e));
 	
-	$("#add-gene-line")
-		.on("click", () => new GeneLine());
+	const btn2 = document.querySelector("#add-gene-line")
+	if (btn2 != null)
+		btn2.addEventListener("click", () => new GeneLine());
+
+	const btn3 = document.querySelector("#reload-btn");
+	if (btn3)
+		btn3.addEventListener("click", () => {
+			[...document.querySelectorAll("#plot > tr")]
+			.forEach((e) => {
+				const geneLine = e.geneLine;
+				geneLine.changed();
+			});
+		});
 	
 	if (typeof params["gene"] === 'string') {
 		new GeneLine(params["gene"]);
 	}
-	else  {
+	else {
 		new GeneLine();
 	}
 })

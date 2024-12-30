@@ -3,102 +3,104 @@
 
 <head z2:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
 
-	<title>Fishtail Plot - Phenosaurus</title>
+	<title>Find Clusters - Phenosaurus</title>
 
-	<script defer="defer" src="/scripts/cluster-finder.js" type="application/ecmascript" z2:src="@{/dist/cluster-finder.js}"></script>
+	<script defer="defer" src="/scripts/cluster-finder.js" type="application/ecmascript"
+		z2:src="@{/dist/cluster-finder.js}"></script>
 
 	<script z2:inline="javascript">
 		const screenInfo = /*[[${screenInfo}]]*/ null;
 		const screenType = /*[[${screenType}]]*/ null;
 	</script>
 </head>
-<body>
+
+<body class="site">
 	<nav z2:replace="menu :: menu"></nav>
 
-	<div class="container-fluid mt-3">
+	<div class="container-fluid site-content">
 		<div class="option-row">
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					<input type="number" min="0" max="1" step="0.001" id="pv-cut-off" maxlength="8" size="5"
-							placeholder="0.05"
-							class="form-control" value="0.05"/>
+						placeholder="0.05" class="form-control" value="0.05" />
 				</div>
 			</div>
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for='eps'>&#x3B5;</label>
-					<input type="number" min="0" max="1" step="0.01" id="eps" maxlength="8" size="5"
-							placeholder="2"
-							class="form-control" value="0.4"/>
+					<input type="number" min="0" max="1" step="0.01" id="eps" maxlength="8" size="5" placeholder="2"
+						class="form-control" value="0.4" />
 				</div>
 			</div>
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for='nns'>SNN s</label>
-					<input type="number" min="1" step="1" id="nns" maxlength="8" size="5"
-							placeholder="2"
-							class="form-control" value="10"/>
+					<input type="number" min="1" step="1" id="nns" maxlength="8" size="5" placeholder="2"
+						class="form-control" value="10" />
 				</div>
 			</div>
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for='minPts'>Cluster size</label>
-					<input type="number" min="2" step="1" id="minPts" maxlength="8" size="5"
-							placeholder="3"
-							class="form-control" value="2"/>
-				</div>
-			</div>
-			
-			<div class="option-col" z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
-
-			<div class="option-col">
-				<div class="input-group input-group-sm">
-					<button class="btn btn-sm btn-primary" id="cluster-btn">Cluster</button>
+					<input type="number" min="2" step="1" id="minPts" maxlength="8" size="5" placeholder="3"
+						class="form-control" value="2" />
 				</div>
 			</div>
 
+			<div z2:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+
+			<button class="btn btn-sm btn-primary" id="cluster-btn">Cluster</button>
+		</div>
+
+		<div class="collapse container-fluid mt-4 mb-4" id="helpText">
+			<div class="alert alert-info">
+				<p>Clustering algorithm is DBSCAN, see <a href="https://en.wikipedia.org/wiki/DBSCAN"
+						target="_BLANK">DBSCAN @ Wikipedia</a> for more info.</p>
+				<p>Using secondary distance calculation (<a href="https://doi.org/10.1007%2F978-3-642-13818-8_34"
+						target="_BLANK">doi: 10.1007/978-3-642-13818-8_34</a>) unless NNs is zero.</p>
+			</div>
+		</div>
+
+		<div class="container-fluid mt-4 mb-4">
+			<div class="plot-title" style="display: none;">
+				<span class="loading">
+					<div class="spinner-border spinner-border-sm" role="status"></div> Searching for clusters
+				</span>
+				<span class="loaded">Cluster results</span>
+				<span class="failed">Cluster results could not be loaded.</span>
+				<span class="no-hits">No clusters found</span>
+			</div>
+		</div>
+
+		<template id="cluster-row-template">
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</template>
+
+		<div class="container-fluid">
+			<table id="cluster-tabel" class="table table-hover">
+				<thead>
+					<tr>
+						<th>nr</th>
+						<th>variance</th>
+						<th>cluster</th>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
 		</div>
 	</div>
 
-	<div class="collapse container-fluid mt-4 mb-4" id="helpText">
-		<div class="alert alert-info">
-			<p>Clustering algorithm is DBSCAN, see <a href="https://en.wikipedia.org/wiki/DBSCAN" target="_BLANK">DBSCAN @ Wikipedia</a> for more info.</p>
-			<p>Using secondary distance calculation (<a href="https://doi.org/10.1007%2F978-3-642-13818-8_34" target="_BLANK">doi: 10.1007/978-3-642-13818-8_34</a>) unless NNs is zero.</p>
-		</div>
-	</div>
-
-	<div class="container-fluid mt-4 mb-4">
-		<div class="plot-title">
-			<span class="loading"><div class="spinner-border spinner-border-sm" role="status"></div> Searching for clusters</span>
-			<span class="loaded">Cluster results</span>
-			<span class="failed">Cluster results could not be loaded.</span>
-			<span class="no-hits">No clusters found</span>
-		</div>
-	</div>
-
-	<div class="container-fluid">
-		<table id="cluster-tabel" class="table table-hover">
-			<thead>
-				<tr>
-					<th>nr</th>
-					<th>variance</th>
-					<th>cluster</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr style="display: none">
-					<td></td>
-					<td></td>
-					<td></td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
+	<footer z2:replace="footer :: content"></footer>
 
 	<!-- Modal -->
 	<div class="modal fade" id="displayClusterModal" tabindex="-1" role="dialog" aria-labelledby="screenModalLabel"
@@ -107,9 +109,7 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<h5 class="modal-title" id="exampleModalLabel">Cluster</h5>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
-						<span aria-hidden="true">&#xD7;</span>
-					</button>
+					<button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
 				<div class="modal-body">
 
@@ -117,10 +117,10 @@
 						<div class="row">
 							<div class="col-sm-1 mb-3">
 								<div class="col-sm-1 mb-3">
-									<div class="btn-group btn-group-sm" id="graphTypeBtns">
-										<input type="radio" name="graphType" id="heatmap" autocomplete="off" checked="checked" />
+									<div class="btn-group btn-group-sm" id="graphTypeBtns" role="group">
+										<input type="radio" class="btn-check" name="graphType" id="heatmap" autocomplete="off" checked="checked" />
 										<label for="heatmap" class="btn btn-sm btn-secondary">Heatmap</label>
-										<input type="radio" name="graphType" id="dotplot" autocomplete="off"/>
+										<input type="radio" class="btn-check" name="graphType" id="dotplot" autocomplete="off" />
 										<label for="dotplot" class="btn btn-sm btn-secondary">Dotplot</label>
 									</div>
 								</div>
@@ -129,7 +129,20 @@
 					</div>
 
 					<div class="container-fluid">
-						<table id="plot" cellpadding="0" cellspacing="0" class="heatmap gf-tabel no-anti table table-sm">
+
+						<template id="gene-row-template">
+							<tr>
+								<td><input type="text" readonly="readonly" class="form-control-plaintext" /></td>
+								<td class="screen-status">
+									<div class="swatch"></div>
+								</td>
+								<td class="svg-container"></td>
+								<td><a href="#"> <i class="bi bi-sort-up sort-screens"></i></a></td>
+							</tr>
+						</template>
+
+						<table id="plot" cellpadding="0" cellspacing="0"
+							class="heatmap gf-tabel no-anti table table-sm">
 							<thead>
 								<tr>
 									<th colspan="2">Gene</th>
@@ -138,14 +151,6 @@
 								</tr>
 							</thead>
 							<tbody>
-								<tr style="display: none">
-									<td><input type="text" readonly="readonly" class="form-control-plaintext" /></td>
-									<td class="screen-status">
-										<div class="swatch"></div>
-									</td>
-									<td class="svg-container"></td>
-									<td><a href="#"> <i class="bi bi-sort-up sort-screens"></i></a></td>
-								</tr>
 							</tbody>
 							<tfoot>
 								<tr>
@@ -160,7 +165,7 @@
 
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 				</div>
 			</div>
 		</div>

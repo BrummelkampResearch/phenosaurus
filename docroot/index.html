@@ -1,20 +1,23 @@
 <!DOCTYPE html SYSTEM "about:legacy-compat">
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
+
 <head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
 	<title>Phenosaurus</title>
 </head>
-<body>
+
+<body class="site">
 	<nav z:replace="menu :: menu"></nav>
 
-    <div class="container mt-5">
-        <div class="jumbotron">
-            <h3>Phenosaurus</h3>
-            <p>An interactive platform for visualization and analysis of haploid screens</p>
-        </div>
-    </div>
+	<div class="container mt-5 site-content">
+		<div class="jumbotron">
+			<h3>Phenosaurus</h3>
+			<p>An interactive platform for visualization and analysis of haploid screens</p>
+		</div>
+	</div>
 
 
-    <footer z:replace="~{footer :: content}"></footer>
+	<footer z:replace="~{footer :: content}"></footer>
 
 </body>
+
 </html>

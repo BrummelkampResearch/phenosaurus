@@ -46,7 +46,7 @@ class GeneLine {
 			: document.querySelector("#plot > tbody");
 
 		line.setAttribute("id", id);
-		line.setAttribute("geneLine", this);
+		line.geneLine = this;
 		parent.appendChild(line);
 
 		this.line = line;
@@ -107,9 +107,9 @@ class GeneLine {
 
 		Screens.instance().reorder(newOrder);
 
-		[...document.querySelectorAll("#plot > tbody:first-child > tr:not(:first-child), #plot > tbody:last-child > tr")]
+		[...document.querySelectorAll("#plot > tbody:first-of-type > tr, #plot > tbody:last-of-type > tr")]
 			.forEach((e) => {
-				const geneLine = e.getAttribute("geneLine");
+				const geneLine = e.geneLine;
 				geneLine.rearrange();
 			});
 

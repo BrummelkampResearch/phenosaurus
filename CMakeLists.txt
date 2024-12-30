@@ -118,6 +118,7 @@ set(webpack_input
 	webapp/list-screen.js
 	webapp/screen.js
 	webapp/gene-info.js
+	webapp/gene-line.js
 	webapp/screenPlot.js
 	webapp/sortable.js
 	webapp/pvformat.js

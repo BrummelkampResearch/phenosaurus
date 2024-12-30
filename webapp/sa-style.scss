@@ -17,6 +17,66 @@ $bootstrap-icons-font-dir: "~bootstrap-icons/font/fonts";
 @import './styles.css';
 @import './contextMenu.css';
 
+// Force footer to the bottom
+
+
+.site {
+	display: flex;
+	min-height: 100vh;
+	height: 100%;
+	flex-direction: column;
+
+	header,
+	footer {
+		flex: none;
+	}
+
+	header {
+		.navbar {
+			background-image: linear-gradient(#1d4853, #143435);
+
+			.navbar-brand img {
+				max-height: 2rem;
+			}
+		}
+	}
+
+	.site-content {
+		flex: 1 0 auto;
+		padding: var(--space) var(--space) 1rem;
+		width: 100%;
+
+		&::after {
+			content: '\00a0';
+			/* &nbsp; */
+			display: block;
+			margin-top: var(--space);
+			height: 0px;
+			visibility: hidden;
+		}
+	}
+
+	footer {
+		clear: both;
+		border-top: 1px solid #888;
+		padding: 0.5em;
+		margin-top: 2em;
+		font-size: small;
+		color: #555;
+		white-space: pre;
+	}
+}
+
+div.option-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em 1em;
+	margin: 1em;
+
+	.screen-selector {
+		width: 15em;
+	}
+}
 
 /*
 	For the gene info tooltip window

@@ -8,12 +8,12 @@
 	<script src="/scripts/screen.js" type="application/ecmascript" z:src="@{/dist/screen.js}"></script>
 </head>
 
-<body>
+<body class="site">
 	<nav z:replace="menu :: menu"></nav>
 
-	<div class="container-fluid mt-3">
+	<div class="container-fluid site-content">
 		<div class="option-row">
-			<div class="option-col option-col-screenselector">
+			<div class="screen-selector">
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for="screenList">screen</label>
 					<select class="form-select" id="screenList">
@@ -25,13 +25,13 @@
 				</div>
 			</div>
 
-			<div class="option-col" z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
+			<div z:insert="~{gene-selection::gene-selection-dialog(screenType)}"></div>
 
-			<div class="option-col" z:if="${not public}">
+			<div z:if="${not public}">
 				<div class="input-group input-group-sm">
 
 					<form name="graphTypeForm">
-						<div class="btn-group btn-group-sm" role="group" data-toggle="buttons">
+						<div class="btn-group btn-group-sm" role="group">
 							<input type="radio" class="btn-check" name="graphType" autocomplete="off"
 								data-type="regular" checked="checked" id="btn-type-regular" />
 							<label for="btn-type-regular" class="btn btn-secondary">Regular</label>
@@ -57,7 +57,7 @@
 				</div>
 			</div>
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<label class="input-group-text" for='pv-cut-off'>p-value</label>
 					<input type="number" min="0" max="1" step="0.01" id="pv-cut-off" maxlength="8" size="5"
@@ -65,7 +65,7 @@
 				</div>
 			</div>
 
-			<div class="option-col">
+			<div>
 				<div class="input-group input-group-sm">
 					<input type="text" id="highlightGene" size="10" placeholder="Enter genename..."
 						z:value="${#request.getParameter('gene')}" class="form-control form-control-sm" />
@@ -77,13 +77,9 @@
 				</div>
 			</div>
 
-			<div class="option-col" z:insert="~{gene-info::gene-info-dialog('ip')}"></div>
+			<div z:insert="~{gene-info::gene-info-dialog('ip')}"></div>
 
-			<div class="option-col">
-				<div class="input-group input-group-sm">
-					<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
-				</div>
-			</div>
+			<button class="btn btn-primary btn-sm" id="reload-btn">Reload</button>
 		</div>
 
 		<div class="plot-title mt-2" style="display: none;">
