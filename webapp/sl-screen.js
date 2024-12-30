@@ -213,6 +213,8 @@ class SLScreenPlot extends ScreenPlot {
 			const plotTitle = this.parentColumn.getElementsByClassName("plot-title")[0];
 			if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
 				return;
+			
+			plotTitle.style.display = "";
 			plotTitle.classList.add("plot-status-loading");
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 

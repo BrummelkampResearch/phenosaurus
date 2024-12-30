@@ -18,7 +18,6 @@ module.exports = (env) => {
 
 			'gene-selection': SCRIPTS + 'gene-selection.js',
 			'gene-finder': SCRIPTS + 'gene-finder.js',
-			// 'gene-info': SCRIPTS + 'gene-info.js',
 			'similar-finder': SCRIPTS + 'similar-finder.js',
 			'cluster-finder': SCRIPTS + 'cluster-finder.js',
 
@@ -68,10 +67,7 @@ module.exports = (env) => {
 				{
 					test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
 					include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
-					type: 'asset/resource',
-					generator: {
-						filename: '../fonts/[name][ext]'
-					}
+					type: 'asset/resource'
 				}
 			]
 		},

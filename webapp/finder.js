@@ -466,25 +466,34 @@ export class LabelPlot extends Plot {
 // }
 
 function selectPlotType(type) {
+	const plot = document.querySelector("#plot");
+	const fishtail = document.querySelector("#fishtailplot");
+
 	switch (type) {
 		case 'heatmap':
-			$("#plot").removeClass("dotplot fishtail").addClass("heatmap").width("unset");
-			$("#fishtailplot").hide();
+			plot.classList.remove("dotplot", "fishtail");
+			plot.classList.add("heatmap");
+			// .width("unset");
+			if (fishtail)
+				fishtail.style.display = "none";
 			break;
 
 		case 'dotplot':
-			$("#plot").removeClass("heatmap fishtail").addClass("dotplot").width("unset");
-			$("#fishtailplot").hide();
+			plot.classList.remove("heatmap", "fishtail");
+			plot.classList.add("dotplot");
+			// .width("unset");
+			if (fishtail)
+				fishtail.style.display = "none";
 			break;
 	}
 }
 
 window.addEventListener('load', () => {
 	const hb = document.getElementById("heatmap");
-	if (hb) hb.onchange = () => selectPlotType('heatmap');
+	if (hb) hb.addEventListener("change", () => selectPlotType('heatmap'));
 
 	const db = document.getElementById("dotplot");
-	if (db) db.onchange = () => selectPlotType('dotplot');
+	if (db) db.addEventListener("change", () => selectPlotType('dotplot'));
 
 	// labels
 	LabelPlot.init(d3.select("td.label-container"));

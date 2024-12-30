@@ -26,7 +26,7 @@
 
 import * as d3 from 'd3';
 
-import {geneSelectionEditor} from './gene-selection';
+import { geneSelectionEditor } from './gene-selection';
 import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
 
 let nextGeneLineID = 1000;
@@ -34,30 +34,29 @@ let geneLines = [];
 
 class GeneLine {
 	constructor(hit) {
-		const template = $("#plot > tbody:first > tr:first");
+		const template = document.querySelector("#gene-line-template");
+		const clone = template.content.cloneNode(true);
+		const line = clone.querySelector("tr");
+
 		const id = 'gene-' + nextGeneLineID++;
-		const line = template.clone(true);
 		const gene = hit.gene;
 
-		const parent = hit.anti ? $("#plot > tbody.anti") : template.parent();
+		const parent = hit.anti
+			? document.querySelector("#plot > tbody.anti")
+			: document.querySelector("#plot > tbody");
 
-		line.attr("id", id)
-			.prop("geneLine", this)
-			.appendTo(parent)
-			.show();
+		line.setAttribute("id", id);
+		line.setAttribute("geneLine", this);
+		parent.appendChild(line);
 
 		this.line = line;
-		this.row = line[0];
 		this.data = [];
 
-		this.row.cells[0].innerText = gene;
-		this.row.cells[1].innerText = parseFloat(hit.zscore).toFixed(2);
+		line.querySelector("td:first-of-type").innerText = gene;
+		line.querySelector("td:nth-of-type(2)").innerText = parseFloat(hit.zscore).toFixed(2);
+		line.querySelector("a").addEventListener("click", () => this.sort());
 
-		$("a", line)
-			.click(() => this.sort());
-
-		// const td = d3.select($("td:nth-child(2)", line)[0]);
-		const td = d3.select(this.row.querySelector(".svg-container"));
+		const td = d3.select(line.querySelector(".svg-container"));
 
 		this.heatMap = new HeatMapPlot(td);
 		this.heatMap.recreateSVG();
@@ -67,33 +66,34 @@ class GeneLine {
 
 		geneLines.push(this);
 
+		this.fetchData(hit);		
+	}
+
+	async fetchData(hit) {
 		const uri = `finder/${hit.gene}`;
 		const options = geneSelectionEditor.getOptions();
 
-		fetch(uri,
-			{
-				credentials: "include",
-				method: 'post',
-				body: options
-			})
-			.then(data => {
-				if (data.ok)
-					return data.json();
+		try {
+			const response = await fetch(uri,
+				{
+					credentials: "include",
+					method: 'post',
+					body: options
+				});
+			
+			if (response.ok && response.status === 200) {
+				const data = await response.json();
 
-				if (data.status == 403)
-					throw "invalid-credentials";
-			})
-			.then(data => {
 				this.data = data;
 
 				Plot.preProcessData(data);
-
+	
 				this.heatMap.processData(data, gene);
 				this.dotPlot.processData(data, gene);
-			})
-			.catch(err => {
-				console.log(err)
-			});
+			}
+		} catch (error) {
+			console.log(error);
+		}
 	}
 
 	orderedScreenIDs() {
@@ -107,9 +107,9 @@ class GeneLine {
 
 		Screens.instance().reorder(newOrder);
 
-		$("#plot > tbody:first > tr:not(:first), #plot > tbody:last > tr")
-			.each((i, e) => {
-				const geneLine = $(e).prop("geneLine");
+		[...document.querySelectorAll("#plot > tbody:first-child > tr:not(:first-child), #plot > tbody:last-child > tr")]
+			.forEach((e) => {
+				const geneLine = e.getAttribute("geneLine");
 				geneLine.rearrange();
 			});
 
@@ -122,22 +122,26 @@ class GeneLine {
 	}
 }
 
-function doSearch() {
+async function doSearch() {
 
-	let plotTitle = $(".plot-title");
-	if (plotTitle.hasClass("plot-status-loading"))  // avoid multiple runs
+	let plotTitle = document.querySelector(".plot-title");
+	if (plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
 		return;
+	
+	plotTitle.style.display = "";
 
 	const geneName = document.getElementById("gene").value;
-	$(".gene-name").text(geneName);
-	plotTitle.addClass("plot-status-loading")
-		.removeClass("plot-status-loaded")
-		.removeClass("plot-status-failed")
-		.removeClass("plot-status-no-hits");
+	[...document.querySelectorAll(".gene-name")].forEach(e => e.textContent = geneName);
 
-	$("#plot > tbody:first > tr:not(:first-child)").remove();
-	$("#plot > tbody:last > tr").remove();
-	document.getElementById("plot").classList.add("no-anti");
+	plotTitle.classList.add("plot-status-loading");
+	plotTitle.classList.remove("plot-status-loaded");
+	plotTitle.classList.remove("plot-status-failed");
+	plotTitle.classList.remove("plot-status-no-hits");
+
+	const plot = document.getElementById("plot");
+	plot.querySelector("tbody:first-of-type").replaceChildren();
+	plot.querySelector("tbody:last-of-type").replaceChildren();
+	plot.classList.add("no-anti");
 
 	const options = geneSelectionEditor.getOptions();
 	options.append("pv-cutoff", document.getElementById("pv-cut-off").value);
@@ -145,20 +149,20 @@ function doSearch() {
 
 	const uri = `similar/${document.getElementById("gene").value}`;
 
-	fetch(uri, {
-		body: options,
-		method: 'POST',
-		credentials: "include"
-	})
-	.then(response => {
-		if (response.ok)
-			return response.json();
+	try {
+		const response = await fetch(uri, {
+			body: options,
+			method: 'POST',
+			credentials: "include"
+		});
 
-		response.json()
-			.then(err => { throw err.error; })
-			.catch(err => { throw err; });
-	})
-	.then(data => {
+		if (response.ok == false) {
+			err = await response.json();
+			throw err.error;
+		}
+
+		const data = await response.json();
+
 		if (data.findIndex((v) => v.anti) >= 0)
 			document.getElementById("plot").classList.remove("no-anti");
 
@@ -166,14 +170,15 @@ function doSearch() {
 			new GeneLine(d);
 		});
 
-		plotTitle.removeClass("plot-status-loading")
-			.toggleClass("plot-status-loaded", data.length > 0)
-			.toggleClass("plot-status-no-hits", data.length === 0);
-	})
-	.catch(err => {
+		plotTitle.classList.remove("plot-status-loading");
+		plotTitle.classList.toggle("plot-status-loaded", data.length > 0);
+		plotTitle.classList.toggle("plot-status-no-hits", data.length === 0);
+	}
+	catch (err) {
 		console.log(err);
-		plotTitle.removeClass("plot-status-loading").addClass("plot-status-failed");
-	});
+		plotTitle.classList.remove("plot-status-loading");
+		plotTitle.classList.add("plot-status-failed");
+	};
 }
 
 window.addEventListener('load', () => {
@@ -190,15 +195,13 @@ window.addEventListener('load', () => {
 			)
 		: {}
 
-	document.getElementById("gene").onchange = doSearch;
-	document.getElementById("pv-cut-off").onchange = () => {
-		doSearch();
-	};
-	document.getElementById("zscore-cut-off").onchange = doSearch;
-	document.getElementById("gene").onkeydown = (e) => {
+	document.getElementById("gene").addEventListener("change", doSearch);
+	document.getElementById("pv-cut-off").addEventListener("change", doSearch);
+	document.getElementById("zscore-cut-off").addEventListener("change", doSearch);
+	document.getElementById("gene").addEventListener("keydown", (e) => {
 		if (e.key === 'Enter')
 			doSearch();
-	};
+	});
 
 	// start search?
 	if (typeof params["gene"] === 'string') {

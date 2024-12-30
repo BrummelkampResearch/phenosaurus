@@ -37,11 +37,11 @@
                     <td th:text="${user.firstname}"></td>
                     <td th:text="${user.lastname}"></td>
                     <td th:text="${user.email}"></td>
-                    <td><i th:if="${user.active}" class="fa fa-check"></i></td>
-                    <td><i th:if="${user.admin}" class="fa fa-check"></i></td>
-                    <td class="edit-user-btn" th:attr="data-id=${user.id}"><i class="fa fa-edit"></i></td>
+                    <td><i th:if="${user.active}" class="bi bi-check"></i></td>
+                    <td><i th:if="${user.admin}" class="bi bi-check"></i></td>
+                    <td class="edit-user-btn" th:attr="data-id=${user.id}"><i class="bi bi-pencil"></i></td>
                     <td class="delete-user-btn" th:attr="data-id=${user.id},data-name=${user.username}"><i
-                            class="fa fa-trash"></i></td>
+                            class="bi bi-trash"></i></td>
                 </tr>
             </tbody>
         </table>
@@ -82,7 +82,7 @@
                             <div class="col-sm-8"><input class="form-control" id="id_password" maxlength="254"
                                     name="password" type="password" /></div>
                             <div class="col-sm-1 show-password-btn"><abbr title="Show password"><i
-                                        class="fa fa-eye"></i></abbr></div>
+                                        class="bi bi-eye-fill"></i></abbr></div>
                         </div>
                         <div class="form-group row">
                             <div class="col-sm-2"></div>

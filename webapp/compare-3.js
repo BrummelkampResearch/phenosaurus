@@ -242,7 +242,7 @@ window.addEventListener('load', () => {
 	for (let btn of document.getElementsByClassName("graph-color-btn")) {
 		if (btn.checked)
 			colorMap.selectPlotColor(btn.dataset.colortype);
-		btn.onchange = () => colorMap.selectPlotColor(btn.dataset.colortype);
+		btn.addEventListener("change", () => colorMap.selectPlotColor(btn.dataset.colortype));
 	}
 
 });

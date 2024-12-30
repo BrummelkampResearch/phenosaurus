@@ -43,7 +43,7 @@ class CanvasPlot {
 		for (let btn of document.graphTypeForm.graphType) {
 			if (btn.checked)
 				this.graphType = btn.dataset.type;
-			btn.onchange = (e) => this.selectGraphType(e.target.dataset.type);
+			btn.addEventListener("change", (e) => this.selectGraphType(e.target.dataset.type));
 		}
 
 		const boxWidth = this.plotContainer.node().getBoundingClientRect().width;

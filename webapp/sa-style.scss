@@ -9,7 +9,9 @@ $navbar-padding-x: 1rem;
 $navbar-padding-y: 0.5rem;
 
 @import "bootstrap/scss/bootstrap";
-// @import "bootstrap-icons/font/bootstrap-icons.css";
+
+$bootstrap-icons-font-dir: "~bootstrap-icons/font/fonts";   
+@import "~bootstrap-icons/font/bootstrap-icons.scss";       
 
 @import './signin.css';
 @import './styles.css';
@@ -51,21 +53,32 @@ div.plot-title {
 
 	&.plot-status-loading {
 		span.failed,
-		span.loaded {
+		span.loaded,
+		span.no-hits {
 			display: none;
 		}
 	}
 
 	&.plot-status-loaded {
 		span.failed,
-		span.loading {
+		span.loading,
+		span.no-hits {
 			display: none;
 		}
 	}
 
 	&.plot-status-failed {
 		span.loading,
-		span.loaded {
+		span.loaded,
+		span.no-hits {
+			display: none;
+		}
+	}
+
+	&.plot-status-no-hits {
+		span.loading,
+		span.loaded,
+		span.failed {
 			display: none;
 		}
 	}

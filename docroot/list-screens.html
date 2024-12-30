@@ -58,14 +58,14 @@
 								<div z:case="*" z:text="${screen.status.status}"></div>
 							</div>
 						</td>
-						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg19' and m.trim-length == 50}" class="fa fa-check"></i></span></td>
-						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg38' and m.trim-length == 50}" class="fa fa-check"></i></span></td>
-						<td style="text-align: center"><i z:if="${screen.ignore}" class="fa fa-check"></i></td>
-						<td style="text-align: center"><i z:if="${#list.contains(screen.groups, 'public')}" class="fa fa-check"></i></td>
+						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg19' and m.trim-length == 50}" class="bi bi-check"></i></span></td>
+						<td><span z:each="m: ${screen.mapped}"><i z:if="${m.assembly == 'hg38' and m.trim-length == 50}" class="bi bi-check"></i></span></td>
+						<td style="text-align: center"><i z:if="${screen.ignore}" class="bi bi-check"></i></td>
+						<td style="text-align: center"><i z:if="${#list.contains(screen.groups, 'public')}" class="bi bi-check"></i></td>
 						<td class="edit-screen-btn" z:attr="data-id=${screen.name}">
-							<i class="fa fa-edit"></i></td>
+							<i class="bi bi-pencil"></i></td>
 						<td><span class="delete-screen-btn" z:attr="data-id=${screen.name}"
-								z:if="${#security.hasRole('ADMIN') or screen.scientist == #security.username()}"><i class="fa fa-trash"></i></span></td>
+								z:if="${#security.hasRole('ADMIN') or screen.scientist == #security.username()}"><i class="bi bi-trash"></i></span></td>
 					</tr>
 				</tbody>
 			</table>

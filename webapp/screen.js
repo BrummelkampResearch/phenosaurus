@@ -30,8 +30,7 @@ import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
 import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";
 import { format_pv } from './pvformat';
-
-import { fillTable } from './index';
+import { fillTable } from './table-utils';
 
 const positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;
@@ -49,7 +48,7 @@ class ScreenPlotRegular extends ScreenPlot {
 			for (let btn of document.graphTypeForm.graphType) {
 				if (btn.checked)
 					this.graphType = btn.dataset.type;
-				btn.onchange = (e) => this.selectColouring(e.target.dataset.type);
+				btn.addEventListener("change", (e) => this.selectColouring(e.target.dataset.type));
 			}
 		}
 	}
@@ -156,6 +155,8 @@ class ScreenPlotRegular extends ScreenPlot {
 			let plotTitle = document.querySelector(".plot-title");
 			if (plotTitle === null || plotTitle.classList.contains("plot-status-loading"))  // avoid multiple runs
 				return;
+
+			plotTitle.style.display = "";
 			plotTitle.classList.add("plot-status-loading");
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
@@ -293,7 +294,8 @@ window.addEventListener('load', () => {
 		}
 	});
 
-	$("#reload-btn").on("click", (e) => {
+	const reloadBtn = document.getElementById("reload-btn");
+	reloadBtn.addEventListener("click", (e) => {
 		if (e && e.preventDefault)
 			e.preventDefault();
 

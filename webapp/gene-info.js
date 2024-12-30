@@ -26,12 +26,16 @@
 
 import * as d3 from "d3";
 import { format_pv } from "./pvformat";
-import { fillTable } from "./index";
+import { fillTable } from "./table-utils";
 
 class GeneInfo {
 	constructor() {
 		window.addEventListener("load", () => {
-			this.init();
+			try {
+				this.init();
+			} catch (error) {
+				console.error(error);
+			}
 		})
 	}
 
