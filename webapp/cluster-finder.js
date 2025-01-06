@@ -24,9 +24,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import "core-js/stable";
+import "regenerator-runtime/runtime";
+
 import { geneSelectionEditor } from './gene-selection';
 import { GeneLine } from './gene-line';
-import { Modal } from 'bootstrap';
+import * as bootstrap from 'bootstrap';
 
 const maxGenes = 30;
 
@@ -61,7 +64,7 @@ class ClusterLine {
 	}
 
 	dblclicked() {
-		const dlog = new Modal(document.querySelector("#displayClusterModal"));
+		const dlog = new bootstrap.Modal(document.querySelector("#displayClusterModal"));
 		dlog.show();
 
 		const plot = document.querySelector("#plot");

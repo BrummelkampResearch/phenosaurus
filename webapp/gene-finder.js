@@ -26,6 +26,26 @@
 
 import { GeneLine } from "./gene-line";
 
+function addGeneLinesFromFile(evt) {
+	const file = evt.target.files[0];
+	if (file != null) {
+		readMyFile(file)
+			.then(text => {
+				text.split(/[ \t\n\r]/)
+					.filter(g => g.length > 0)
+					.forEach(value => {
+						try {
+							new GeneLine(value)
+						}
+						catch (err) {
+							console.log(err);
+						}
+					});
+			})
+			.catch(err => console.log(err));
+	}
+}
+
 window.addEventListener('load', () => {
 
 	const query = window.location.search;

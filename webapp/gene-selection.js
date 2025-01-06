@@ -24,8 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'bootstrap/js/dist/modal';
-
 export let geneSelectionEditor;
 
 class GeneSelectionEditor {

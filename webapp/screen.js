@@ -25,7 +25,7 @@
  */
 
 import * as d3 from 'd3';
-
+import 'bootstrap';
 import ScreenData from "./screenData";
 import GenomeViewer from "./genome-viewer";
 import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";

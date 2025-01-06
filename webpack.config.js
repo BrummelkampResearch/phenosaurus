@@ -12,6 +12,8 @@ module.exports = (env) => {
 	const webpackConf = {
 
 		entry: {
+			'style': SCRIPTS + 'sa-style.scss',
+
 			'index': SCRIPTS + "index.js",
 			'screen': SCRIPTS + "screen.js",
 			'sl-screen': SCRIPTS + "sl-screen.js",
@@ -77,7 +79,10 @@ module.exports = (env) => {
 		},
 
 		plugins: [
-			new MiniCssExtractPlugin({})
+			new MiniCssExtractPlugin({}),
+			new CleanWebpackPlugin({
+				verbose: true
+			})
 		],
 
 		optimization: {
@@ -88,12 +93,12 @@ module.exports = (env) => {
 	if (PRODUCTION) {
 		webpackConf.mode = "production";
 
-		webpackConf.plugins.push(
-			new CleanWebpackPlugin({
-				verbose: true
-			})/* ,
-			new MiniCssExtractPlugin({}) */
-		);
+		// webpackConf.plugins.push(
+		// 	new CleanWebpackPlugin({
+		// 		verbose: true
+		// 	})/* ,
+		// 	new MiniCssExtractPlugin({}) */
+		// );
 	} else {
 		webpackConf.mode = "development";
 		webpackConf.devtool = 'source-map';

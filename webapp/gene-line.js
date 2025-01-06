@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { geneSelectionEditor } from './gene-selection';
 import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
-import { readMyFile } from "./script";
+import { Modal } from "bootstrap";
 
 let nextGeneLineID = 1000;
 let geneLines = [];
@@ -37,7 +37,7 @@ export class GeneLine {
 		this.dotPlot.recreateSVG();
 
 		if (gene === null || gene === undefined)
-			gene = this.input || "";
+			gene = this.input ? this.input.value : "";
 
 		if (gene !== "")
 			this.setGene(gene);
@@ -120,22 +120,3 @@ export class GeneLine {
 	}
 }
 
-function addGeneLinesFromFile(evt) {
-	const file = evt.target.files[0];
-	if (file != null) {
-		readMyFile(file)
-			.then(text => {
-				text.split(/[ \t\n\r]/)
-					.filter(g => g.length > 0)
-					.forEach(value => {
-						try {
-							new GeneLine(value)
-						}
-						catch (err) {
-							console.log(err);
-						}
-					});
-			})
-			.catch(err => console.log(err));
-	}
-}
