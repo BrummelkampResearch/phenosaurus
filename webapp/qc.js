@@ -25,6 +25,7 @@
  */
 
 import * as d3 from 'd3';
+import * as bootstrap from 'bootstrap';
 
 /*global chromosomes screens $*/
 
@@ -36,7 +37,7 @@ class CanvasPlot {
 			this.chromosome = null;
 		this.zoomLevel = zoomLevel;
 
-		this.plotContainer = d3.select(".plot-container");
+		this.plotContainer = d3.select("#qc-plot");
 		this.skipScreenList = [];
 		this.graphType = "heatmap";
 
@@ -48,7 +49,7 @@ class CanvasPlot {
 
 		const boxWidth = this.plotContainer.node().getBoundingClientRect().width;
 
-		this.margin = {top: 30, right: 50, bottom: 40, left: 250};
+		this.margin = { top: 30, right: 50, bottom: 40, left: 250 };
 		this.width = boxWidth - this.margin.left - this.margin.right;
 
 		this.update();
@@ -79,7 +80,7 @@ class CanvasPlot {
 		// fd.append('winsorize', this.winsorize.checked ? 0.9 : 0.0);
 		fd.append("cluster", true);
 
-		fetch(`qc/${this.graphType}`, { credentials: "include", body: fd, method: 'POST'})
+		fetch(`qc/${this.graphType}`, { credentials: "include", body: fd, method: 'POST' })
 			.then(response => {
 				if (response.ok)
 					return response.json();
@@ -103,11 +104,10 @@ class CanvasPlot {
 				plotTitle.classList.add("plot-status-failed");
 			});
 	}
-	
-	init(info)
-	{
-        const data = Object.entries(info.data)
-            .map(d => { return { "screen": d[0], "zscores": d[1] }});
+
+	init(info) {
+		const data = Object.entries(info.data)
+			.map(d => { return { "screen": d[0], "zscores": d[1] } });
 
 		const chromStarts = new Map(info.chromosomeStarts.map(v => [v.start, v.chrom]));
 
@@ -140,18 +140,17 @@ class CanvasPlot {
 
 		const x = d3.scaleLinear()
 			.rangeRound([0, graphWidth])
-            .domain([0, binCount]);
-        
+			.domain([0, binCount]);
+
 		const y = d3.scaleBand()
 			.range([0, this.height])
 			.domain(info.screens)
 			.padding(0.25, 0.01);
-	
-		const xAxis = d3.axisBottom(x)
-				.tickSize(-this.height);
 
-		if (info.chromosomeStarts.length > 1)
-		{
+		const xAxis = d3.axisBottom(x)
+			.tickSize(-this.height);
+
+		if (info.chromosomeStarts.length > 1) {
 			xAxis
 				.tickValues(info.chromosomeStarts.map(v => v.start))
 				.tickFormat(v => chromStarts.get(v));
@@ -167,11 +166,10 @@ class CanvasPlot {
 				// g.select(".domain").remove();
 				// g.selectAll("line")
 				// 	.attr("stroke", "#ddd");
-				});
-		
+			});
+
 		}
-		else
-		{
+		else {
 			const binBaseCount = info.chromosomeStarts[0].binBaseCount;
 			xAxis.tickFormat(v => d3.format(",.0f")(v * binBaseCount));
 			xAxisG.call(xAxis);
@@ -180,7 +178,7 @@ class CanvasPlot {
 		const yAxis = d3.axisLeft(y);
 
 		yAxisG.call(yAxis);
-        
+
 		graphDiv.selectAll('canvas').remove();
 		const canvas = graphDiv.append('canvas')
 			.attr("class", "plot")
@@ -190,10 +188,10 @@ class CanvasPlot {
 
 		const context = canvas.node().getContext("2d");
 
-        const cellWidth = (x(binCount) - x(0)) / binCount;
-		
-        const colorScale = d3.scaleSequential(d3.interpolateRdBu)
-            .domain([-5, 5]);
+		const cellWidth = (x(binCount) - x(0)) / binCount;
+
+		const colorScale = d3.scaleSequential(d3.interpolateRdBu)
+			.domain([-5, 5]);
 
 		data.forEach(d => {
 			d.zscores.forEach((s, i) => {
@@ -255,7 +253,7 @@ window.addEventListener('load', () => {
 
 	const updateScreensBtn = document.getElementById('updateSelectedScreens');
 	updateScreensBtn.addEventListener('click', () => {
-		const screenList = screens.filter(s => ! document.getElementById(`screen-${s}`).checked);
+		const screenList = screens.filter(s => !document.getElementById(`screen-${s}`).checked);
 		plot.setScreenSkipList(screenList);
 		$('#selectScreensModal').modal('hide');
 	});

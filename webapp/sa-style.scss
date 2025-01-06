@@ -10,8 +10,8 @@ $navbar-padding-y: 0.5rem;
 
 @import "bootstrap/scss/bootstrap";
 
-$bootstrap-icons-font-dir: "~bootstrap-icons/font/fonts";   
-@import "~bootstrap-icons/font/bootstrap-icons.scss";       
+$bootstrap-icons-font-dir: "~bootstrap-icons/font/fonts";
+@import "~bootstrap-icons/font/bootstrap-icons.scss";
 
 @import './signin.css';
 @import './styles.css';
@@ -41,14 +41,14 @@ $bootstrap-icons-font-dir: "~bootstrap-icons/font/fonts";
 
 	.site-content {
 		flex: 1 0 auto;
-		padding: var(--space) var(--space) 1rem;
+		// padding: var(--space) var(--space) 1rem;
 		width: 100%;
 
 		&::after {
 			content: '\00a0';
 			/* &nbsp; */
 			display: block;
-			margin-top: var(--space);
+			// margin-top: var(--space);
 			height: 0px;
 			visibility: hidden;
 		}
@@ -80,7 +80,7 @@ div.option-row {
 	For the gene info tooltip window
  */
 
- #gene-info-dialog {
+#gene-info-dialog {
 	position: absolute;
 	z-index: 9;
 	/*border: solid 1px black;*/
@@ -88,7 +88,7 @@ div.option-row {
 	/*margin: 0.5em;*/
 	box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
 	display: none;
-box-sizing: border-box;
+	box-sizing: border-box;
 
 	.content {
 		background-color: white;
@@ -110,6 +110,7 @@ div.plot-title {
 	margin-bottom: 1em;
 
 	&.plot-status-loading {
+
 		span.failed,
 		span.loaded,
 		span.no-hits {
@@ -118,6 +119,7 @@ div.plot-title {
 	}
 
 	&.plot-status-loaded {
+
 		span.failed,
 		span.loading,
 		span.no-hits {
@@ -126,6 +128,7 @@ div.plot-title {
 	}
 
 	&.plot-status-failed {
+
 		span.loading,
 		span.loaded,
 		span.no-hits {
@@ -134,6 +137,7 @@ div.plot-title {
 	}
 
 	&.plot-status-no-hits {
+
 		span.loading,
 		span.loaded,
 		span.failed {
@@ -149,7 +153,7 @@ div.plot-title {
 	position: absolute;
 	z-index: 10;
 	background-color: #fff;
-	
+
 	&.active {
 		display: block;
 	}

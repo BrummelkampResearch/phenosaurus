@@ -13,10 +13,10 @@
 	</script>
 </head>
 
-<body>
+<body class="site">
 	<nav z2:replace="menu :: menu"></nav>
 
-	<div class="container-fluid mt-3">
+	<div class="container-fluid mt-3 site-content">
 		<div class="option-row">
 			<div class="option-col">
 				<div class="input-group input-group-sm mb-3">
@@ -61,18 +61,21 @@
 				</div>
 			</div>
 		</div>
+
+		<div class="container-fluid plot-title">
+			<span class="loading">
+				<div class="spinner-border spinner-border-sm" role="status"></div> Loading data
+				for <span class="chr-name"></span>
+			</span>
+			<span class="loaded">Quality plot for <span class="chr-name"></span></span>
+			<span class="failed">Quality plot for <span class="chr-name"></span> could not be loaded.</span>
+		</div>
+	
+		<div id="qc-plot"></div>
 	</div>
 
-	<div class="container-fluid plot-title">
-		<span class="loading">
-			<div class="spinner-border spinner-border-sm" role="status"></div> Loading data
-			for <span class="chr-name"></span>
-		</span>
-		<span class="loaded">Quality plot for <span class="chr-name"></span></span>
-		<span class="failed">Quality plot for <span class="chr-name"></span> could not be loaded.</span>
-	</div>
+	<footer z2:replace="~{footer :: content}"></footer>
 
-	<div class="container-fluid plot-container"></div>
 
 	<!-- Modal -->
 	<div class="modal fade" id="selectScreensModal" tabindex="-1" role="dialog" aria-labelledby="screenModalLabel"

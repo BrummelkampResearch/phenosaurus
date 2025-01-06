@@ -26,6 +26,7 @@
 
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+import * as bootstrap from 'bootstrap';
 
 function attachEventListeners() {
 	[...document.getElementsByClassName('edit-screen-btn')]
