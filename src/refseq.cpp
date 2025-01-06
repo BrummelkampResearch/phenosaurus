@@ -346,7 +346,7 @@ std::vector<Transcript> loadGenes(std::istream& in, bool completeOnly, bool know
 						{
 							ts.geneName.erase(b, ts.geneName.end());
 							if (VERBOSE)
-								std::cerr << "Replacing gene name " << f << " with " << ts.geneName << std::endl;
+								std::cerr << "Replacing gene name " << f << " with " << ts.geneName << '\n';
 						}
 
 						break;
@@ -393,7 +393,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, const std::string
 	if (not gRefSeqFile.empty())
 	{
 		if (VERBOSE > 1)
-			std::cerr << "Loading genes from " << gRefSeqFile.string() << std::endl;
+			std::cerr << "Loading genes from " << gRefSeqFile.string() << '\n';
 
 		std::ifstream in(gRefSeqFile);
 		return loadGenes(in, completeOnly, knownOnly);
@@ -401,7 +401,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, const std::string
 	else if (transcript_selection.empty() or transcript_selection == "default")
 	{
 		if (VERBOSE > 1)
-			std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt" << std::endl;
+			std::cerr << "Loading genes from ncbi-genes-" << assembly << ".txt\n";
 
 		mrsrc::rsrc refseq("ncbi-genes-" + assembly + ".txt");
 
@@ -415,7 +415,7 @@ std::vector<Transcript> loadGenes(const std::string& assembly, const std::string
 	else
 	{
 		if (VERBOSE > 1)
-			std::cerr << "Loading genes from " << transcript_selection << std::endl;
+			std::cerr << "Loading genes from " << transcript_selection << '\n';
 
 		std::ifstream in(screen_service::instance().get_transcripts_dir() / (transcript_selection + ".tsv"));
 		
@@ -738,7 +738,7 @@ std::vector<Transcript> loadTranscripts(const std::string& assembly, const std::
 	auto transcripts = loadGenes(assembly, transcript_selection, true, true);
 
 	if (VERBOSE)
-		std::cerr << "Loaded " << transcripts.size() << " transcripts" << std::endl;
+		std::cerr << "Loaded " << transcripts.size() << " transcripts\n";
 
 	filterTranscripts(transcripts, mode, startPos, endPos, cutOverlap);
 

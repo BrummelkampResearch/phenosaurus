@@ -80,7 +80,7 @@ find_package(Threads)
 find_package(zeep 6.0.16 REQUIRED)
 find_package(Boost REQUIRED)
 find_package(gxrio REQUIRED)
-find_package(mcfp REQUIRED)
+find_package(libmcfp REQUIRED)
 find_package(libpqxx 7.7.4 REQUIRED)
 
 pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
@@ -177,7 +177,7 @@ add_executable(screen-analyzer
 
 target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
-	PRIVATE zeep::zeep squeeze::squeeze mcfp::mcfp gxrio::gxrio Boost::headers
+	PRIVATE zeep::zeep squeeze::squeeze libmcfp::mcfp gxrio::gxrio Boost::headers
 	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB libpqxx::pqxx
 	std::filesystem ${CMAKE_THREAD_LIBS_INIT})
 

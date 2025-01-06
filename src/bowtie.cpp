@@ -320,7 +320,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				int r = writev(fd, v, 8);
 				if (r < 0)
 				{
-					std::cerr << "Error writing to bowtie: " << strerror(errno) << std::endl;
+					std::cerr << "Error writing to bowtie: " << strerror(errno) << '\n';
 					break;
 				}
 			}
@@ -328,7 +328,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			close(fd);
 
 			if (skipped > 0)
-				std::cerr << "skipped " << skipped << " short sequences" << std::endl;
+				std::cerr << "skipped " << skipped << " short sequences\n";
 		}
 		catch (const std::exception& ex)
 		{
@@ -369,10 +369,10 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			}
 			catch (const std::exception& e)
 			{
-				std::cerr << std::endl
-						  << "Exception parsing " << fastq << e.what() << std::endl
-						  << line << std::endl
-						  << std::endl;
+				std::cerr << '\n'
+						  << "Exception parsing " << fastq << e.what() << '\n'
+						  << line << '\n'
+						  << '\n';
 			}
 
 			line.clear();
@@ -393,8 +393,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 		}
 		catch (const std::exception& e)
 		{
-			std::cerr << e.what() << std::endl
-					  << line << std::endl;
+			std::cerr << e.what() << '\n'
+					  << line << '\n';
 		}
 	}
 
@@ -490,7 +490,7 @@ std::string bowtieVersion(std::filesystem::path bowtie)
 		pid = fork();
 
 		if (pid == -1)
-			std::cerr << "Fork failed" << std::endl;
+			std::cerr << "Fork failed\n";
 
 		if (pid != 0)
 			_exit(0);

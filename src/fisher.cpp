@@ -488,14 +488,14 @@ int main(int argc, char *const argv[])
 		p[1][0] = std::stol(argv[3]);
 		p[1][1] = std::stol(argv[4]);
 
-		std::cout << "less      " << fisherTest2x2(p, FisherAlternative::Left) << std::endl
-				  << "two.sided " << fisherTest2x2(p, FisherAlternative::TwoSided) << std::endl
-				  << "greater   " << fisherTest2x2(p, FisherAlternative::Right) << std::endl;
+		std::cout << "less      " << fisherTest2x2(p, FisherAlternative::Left) << '\n'
+				  << "two.sided " << fisherTest2x2(p, FisherAlternative::TwoSided) << '\n'
+				  << "greater   " << fisherTest2x2(p, FisherAlternative::Right) << '\n';
 
 		// odds
-		std::cout << "less      " << FishersExactTest(p, FisherAlternative::Left).oddsRatio() << std::endl
-				  << "two.sided " << FishersExactTest(p, FisherAlternative::TwoSided).oddsRatio() << std::endl
-				  << "greater   " << FishersExactTest(p, FisherAlternative::Right).oddsRatio() << std::endl;
+		std::cout << "less      " << FishersExactTest(p, FisherAlternative::Left).oddsRatio() << '\n'
+				  << "two.sided " << FishersExactTest(p, FisherAlternative::TwoSided).oddsRatio() << '\n'
+				  << "greater   " << FishersExactTest(p, FisherAlternative::Right).oddsRatio() << '\n';
 
 	}
 
@@ -503,14 +503,14 @@ int main(int argc, char *const argv[])
 	// auto a = adjustFDR_BH(pv);
 
 	// for (size_t i = 0; i < pv.size(); ++i)
-	// 	std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << std::endl;
+	// 	std::cout << "i: " << i << " p: " << pv[i] << " => " << a[i] << '\n';
 
 	// auto f = [](double x)
 	// {
 	// 	return 1.0 / (x - 3.0) - 6.0;
 	// };
 
-	// std::cout << zeroin(f, 3, 4) << std::endl;
+	// std::cout << zeroin(f, 3, 4) << '\n';
 
 
 	return 0;

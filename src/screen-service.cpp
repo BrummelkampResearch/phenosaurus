@@ -210,7 +210,7 @@ ip_screen_data_cache::ip_screen_data_cache(const std::vector<screen_info> &scree
 		}
 		catch (const std::exception &ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << ex.what() << '\n';
 		}
 	}
 }
@@ -860,7 +860,7 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 	for (auto &screen : m_screens)
 	{
 		if (VERBOSE)
-			std::cerr << "loading " << screen.name << std::endl;
+			std::cerr << "loading " << screen.name << '\n';
 
 		try
 		{
@@ -939,7 +939,7 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 		}
 		catch (const std::exception &ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << ex.what() << '\n';
 		}
 	};
 }
@@ -1257,7 +1257,7 @@ std::vector<screen_info> screen_service::get_all_screens() const
 		}
 		catch (const std::exception &e)
 		{
-			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << '\n';
 		}
 	}
 
@@ -1353,7 +1353,7 @@ std::set<std::string> screen_service::get_allowed_screens_for_user(const user &u
 		}
 		catch (const std::exception &e)
 		{
-			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << '\n';
 		}
 	}
 
@@ -1388,7 +1388,7 @@ bool screen_service::is_owner(const std::string &name, const std::string &userna
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << ex.what() << std::endl;
+		std::cerr << ex.what() << '\n';
 	}
 
 	return result;
@@ -1427,7 +1427,7 @@ bool screen_service::is_allowed(const std::string &screenname, const std::string
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << ex.what() << std::endl;
+		std::cerr << ex.what() << '\n';
 		result = false;
 	}
 
@@ -1528,7 +1528,7 @@ void screen_service::refresh_manifest_all()
 		}
 		catch (const std::exception &e)
 		{
-			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << std::endl;
+			std::cerr << "Could not load screen: " << si.path().filename() << ": " << e.what() << '\n';
 		}
 	}
 }

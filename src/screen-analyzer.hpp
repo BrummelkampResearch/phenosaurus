@@ -26,11 +26,25 @@
 
 #pragma once
 
-// #include <boost/program_options.hpp>
+#include <mcfp.hpp>
 
-// boost::program_options::options_description get_config_options();
+template <typename... Options>
+mcfp::config &load_and_init_config(std::string_view usage, Options... options)
+{
+	auto &config = mcfp::config::instance();
 
-// boost::program_options::variables_map load_options(int argc, char* const argv[], const char* description,
-// 	std::initializer_list<boost::program_options::option_description> options,
-// 	std::initializer_list<std::string> required = {},
-// 	std::initializer_list<std::string> positional = { "screen-name" });
+	config.init(usage,
+		mcfp::make_option("version", "Show version number"),
+		mcfp::make_option("verbose,v", "Show verbose output"),
+
+		mcfp::make_option("help,h", "Display help message"),
+		mcfp::make_option("quiet", "Do not produce warnings or status messages"),
+
+		mcfp::make_option<std::string>("config", "screen-analyzer.conf", "Configuration file to use"),
+
+		options...);
+
+	return config;
+}
+
+void parse_argv(int argc, char *const argv[], mcfp::config &config);

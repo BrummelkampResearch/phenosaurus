@@ -24,8 +24,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include "bowtie.hpp"
 #include "db-connection.hpp"
+#include "screen-analyzer.hpp"
 #include "screen-data.hpp"
 #include "screen-server.hpp"
 #include "user-service.hpp"
@@ -33,7 +35,6 @@
 
 #include "revision.hpp"
 
-#include <mcfp.hpp>
 #include <zeep/crypto.hpp>
 #include <zeep/http/daemon.hpp>
 
@@ -53,7 +54,7 @@ int VERBOSE = 0;
 // recursively print exception whats:
 void print_what(const std::exception &e)
 {
-	std::cerr << e.what() << std::endl;
+	std::cerr << e.what() << '\n';
 	try
 	{
 		std::rethrow_if_nested(e);
@@ -66,25 +67,6 @@ void print_what(const std::exception &e)
 }
 
 // --------------------------------------------------------------------
-
-template <typename... Options>
-mcfp::config &load_and_init_config(std::string_view usage, Options... options)
-{
-	auto &config = mcfp::config::instance();
-
-	config.init(usage,
-		mcfp::make_option("version", "Show version number"),
-		mcfp::make_option("verbose,v", "Show verbose output"),
-
-		mcfp::make_option("help,h", "Display help message"),
-		mcfp::make_option("quiet", "Do not produce warnings or status messages"),
-
-		mcfp::make_option<std::string>("config", "screen-analyzer.conf", "Configuration file to use"),
-
-		options...);
-
-	return config;
-}
 
 void parse_argv(int argc, char *const argv[], mcfp::config &config)
 {
@@ -240,7 +222,7 @@ Examples:
 		and the maximum txEnd plus 1000 basepairs as end. This obviously
 		includes both 5' UTR and 3' UTR.
 
-)" << std::endl;
+)";
 		exit(config.count("help") ? 0 : 1);
 	}
 
@@ -280,14 +262,14 @@ Examples:
 
 	// -----------------------------------------------------------------------
 
-	std::cerr << std::endl
-			  << std::string(get_terminal_width(), '-') << std::endl
-			  << "Low: " << std::endl
-			  << " sense      : " << std::setw(10) << lowSenseCount << std::endl
-			  << " anti sense : " << std::setw(10) << lowAntiSenseCount << std::endl
-			  << "High: " << std::endl
-			  << " sense      : " << std::setw(10) << highSenseCount << std::endl
-			  << " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
+	std::cerr << '\n'
+			  << std::string(get_terminal_width(), '-') << '\n'
+			  << "Low: \n"
+			  << " sense      : " << std::setw(10) << lowSenseCount << '\n'
+			  << " anti sense : " << std::setw(10) << lowAntiSenseCount << '\n'
+			  << "High: \n"
+			  << " sense      : " << std::setw(10) << highSenseCount << '\n'
+			  << " anti sense : " << std::setw(10) << highAntiSenseCount << '\n';
 
 	Direction direction = Direction::Sense;
 	if (config.count("direction"))
@@ -300,7 +282,7 @@ Examples:
 			direction = Direction::Both;
 		else
 		{
-			std::cerr << "invalid direction" << std::endl;
+			std::cerr << "invalid direction\n";
 			exit(1);
 		}
 	}
@@ -310,7 +292,7 @@ Examples:
 			  << "high" << '\t'
 			  << "pv" << '\t'
 			  << "fcpv" << '\t'
-			  << "log2(mi)" << std::endl;
+			  << "log2(mi)\n";
 
 	for (auto &dp : screenData.dataPoints(transcripts, lowInsertions, highInsertions, direction))
 	{
@@ -319,7 +301,7 @@ Examples:
 				  << dp.high << '\t'
 				  << dp.pv << '\t'
 				  << dp.fcpv << '\t'
-				  << std::log2(dp.mi) << std::endl;
+				  << std::log2(dp.mi) << '\n';
 	}
 
 	return 0;
@@ -336,7 +318,8 @@ int analyze_sl(SLScreenData &screenData, SLScreenData &controlData)
 Start and end should be either 'cds' or 'tx' with an optional offset 
 appended. Optionally you can also specify cdsStart, cdsEnd, txStart
 or txEnd to have the start at the cdsEnd e.g.
-)" << std::endl;
+
+)";
 		exit(config.count("help") ? 0 : 1);
 	}
 
@@ -410,7 +393,7 @@ or txEnd to have the start at the cdsEnd e.g.
 			// << "effect";
 		}
 
-		std::cout << std::endl;
+		std::cout << '\n';
 	}
 
 	for (auto &dp : r)
@@ -458,7 +441,7 @@ or txEnd to have the start at the cdsEnd e.g.
 				<< c.ref_pv[3] << '\t';
 		}
 
-		std::cout << std::endl;
+		std::cout << '\n';
 	}
 
 	return 0;
@@ -680,7 +663,7 @@ Command should be either:
 	else
 	{
 		secret = zeep::encode_base64(zeep::random_hash());
-		std::cerr << "starting with created secret " << secret << std::endl;
+		std::cerr << "starting with created secret " << secret << '\n';
 	}
 
 	std::string context_name;
@@ -722,7 +705,7 @@ Command should be either:
 
 	if (command == "start")
 	{
-		std::cout << "starting server at http://" << address << ':' << port << '/' << std::endl;
+		std::cout << "starting server at http://" << address << ':' << port << '/' << '\n';
 
 		if (config.count("no-daemon"))
 			result = server.run_foreground(address, port);
@@ -737,7 +720,7 @@ Command should be either:
 		result = server.reload();
 	else
 	{
-		std::cerr << "Invalid command" << std::endl;
+		std::cerr << "Invalid command\n";
 		result = 1;
 	}
 
@@ -776,7 +759,7 @@ Command should be either:
 
 // Overlap: in case of both, all genes will be added, in case of neither
 // the parts with overlap will be left out.
-// )" << std::endl;
+// )\n";
 // 		exit(vm.count("help") ? 0 : 1);
 // 	}
 
@@ -819,7 +802,7 @@ Command should be either:
 // 				<< range.end << '\t'
 // 				<< transcript.geneName << '\t'
 // 				<< 0 << '\t'
-// 				<< transcript.strand << std::endl;
+// 				<< transcript.strand << '\n';
 // 		}
 // 	}
 
@@ -876,7 +859,7 @@ int main(int argc, char *const argv[])
 
 	std::set_terminate([]()
 		{
-		std::cerr << "Unhandled exception" << std::endl;
+		std::cerr << "Unhandled exception\n";
 		std::abort(); });
 
 	// initialize enums
@@ -931,6 +914,7 @@ Where command is one of
   analyze -- analyze mapped reads
   server  -- start/stop server process
   dump    -- dump the raw data of a screen
+  passwd  -- Reset password for an optionally new user
 
 The following options are always recognized:
 )";
@@ -971,6 +955,8 @@ The following options are always recognized:
 			result = server_main(argc - 1, argv + 1);
 		else if (command == "dump")
 			result = dump_main(argc - 1, argv + 1);
+		else if (command == "passwd")
+			result = passwd_main(argc - 1, argv + 1);
 		else
 		{
 			std::cerr << "Unknown command " << std::quoted(command) << "\n\n"
@@ -980,8 +966,7 @@ The following options are always recognized:
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << std::endl
-				  << "Fatal exception" << std::endl;
+		std::cerr << "\nFatal exception\n";
 
 		print_what(ex);
 		result = 1;

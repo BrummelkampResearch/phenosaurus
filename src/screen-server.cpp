@@ -835,7 +835,7 @@ zh::server *createServer(const fs::path &docroot,
 {
 	std::set_terminate([]()
 		{
-		std::cerr << "Unhandled exception in server" << std::endl;
+		std::cerr << "Unhandled exception in server\n";
 		std::abort(); });
 
 	// init screen_service
@@ -898,7 +898,7 @@ zh::server *createPublicServer(const fs::path &docroot,
 {
 	std::set_terminate([]()
 		{
-		std::cerr << "Unhandled exception in server" << std::endl;
+		std::cerr << "Unhandled exception in server\n";
 		std::abort(); });
 
 	// init screen_service

@@ -81,7 +81,7 @@ RefSeqInfo::RefSeqInfo(size_t binSize)
 		if (chr == INVALID)
 		{
 			if (VERBOSE > 1)
-				std::cout << "skipping chrom: " << ci["name"].as<std::string>() << std::endl;
+				std::cout << "skipping chrom: " << ci["name"].as<std::string>() << '\n';
 
 			continue;
 		}
@@ -92,7 +92,7 @@ RefSeqInfo::RefSeqInfo(size_t binSize)
 		binStart += back().end / binSize + 1;
 
 		if (VERBOSE > 1)
-			std::cout << "chrom: " << chr << " bin-start: " << chromToBinStart[chr] << " next bin-start: " << binStart << std::endl;
+			std::cout << "chrom: " << chr << " bin-start: " << chromToBinStart[chr] << " next bin-start: " << binStart << '\n';
 	}
 
 	binCount = std::accumulate(begin(), end(), 0UL, [binSize](size_t sum, const ChromosomeInfo &ci)
@@ -173,7 +173,7 @@ float InsertionCounts::zscore(const std::string &screen, size_t bin) const
 InsertionCounts createIndex(RefSeqInfo &refseq, std::vector<std::tuple<std::string, fs::path>> &files, size_t nrOfThreads)
 {
 	if (VERBOSE)
-		std::cout << "About to read " << files.size() << " files" << std::endl;
+		std::cout << "About to read " << files.size() << " files\n";
 
 	// std::unordered_map<std::string,ChromosomeInfo> ciMap;
 	// for (auto ci: refseq)
@@ -222,8 +222,8 @@ InsertionCounts createIndex(RefSeqInfo &refseq, std::vector<std::tuple<std::stri
 				}
 				catch(const std::exception& e)
 				{
-					std::cerr << "Error parsing file " << file << std::endl
-						 << e.what() << std::endl;
+					std::cerr << "Error parsing file " << file << '\n'
+						 << e.what() << '\n';
 				}
 			} });
 	}
@@ -231,13 +231,13 @@ InsertionCounts createIndex(RefSeqInfo &refseq, std::vector<std::tuple<std::stri
 	for (size_t ti = 0; ti < nrOfThreads; ++ti)
 		t[ti].join();
 
-	std::cout << std::endl
+	std::cout << '\n'
 			  << "calculating statistics...";
 	std::cout.flush();
 
 	inscnt.calculateStats();
 
-	std::cout << " done" << std::endl;
+	std::cout << " done\n";
 
 	return inscnt;
 }

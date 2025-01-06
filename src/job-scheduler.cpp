@@ -112,7 +112,7 @@ void job_scheduler::run()
 		}
 		catch (const std::exception& ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << ex.what() << '\n';
 			m_current->set_status(job_status_type::failed);
 		}
 

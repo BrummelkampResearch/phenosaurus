@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -28,14 +28,15 @@
 
 #include <zeep/crypto.hpp>
 
-#include <mailio/smtp.hpp>
 #include <mailio/message.hpp>
+#include <mailio/smtp.hpp>
 
 #include "mrsrc.hpp"
 
-#include "user-service.hpp"
-#include "screen-service.hpp"
 #include "db-connection.hpp"
+#include "screen-analyzer.hpp"
+#include "screen-service.hpp"
+#include "user-service.hpp"
 
 // --------------------------------------------------------------------
 
@@ -45,19 +46,126 @@ const int
 
 // --------------------------------------------------------------------
 
+void SetStdinEcho(bool inEnable)
+{
+	struct termios tty;
+	::tcgetattr(STDIN_FILENO, &tty);
+	if (not inEnable)
+		tty.c_lflag &= ~ECHO;
+	else
+		tty.c_lflag |= ECHO;
+
+	(void)::tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+}
+
+bool askYesNo(const std::string &msg, bool defaultYes)
+{
+	std::string yesno;
+	std::cout << msg << (defaultYes ? " [Y/n]: " : " [y/N]: ");
+	std::cout.flush();
+	std::getline(std::cin, yesno);
+
+	return yesno.empty() ? defaultYes : zeep::iequals(yesno, "y") or zeep::iequals(yesno, "yes");
+}
+
+std::string ask(const std::string &msg, std::string defaultAnswer = {})
+{
+	std::cout << msg;
+	if (defaultAnswer.empty())
+		std::cout << ": ";
+	else
+		std::cout << " [" << defaultAnswer << "]: ";
+	std::cout.flush();
+
+	std::string answer;
+	std::getline(std::cin, answer);
+	return answer.empty() ? defaultAnswer : answer;
+}
+
+std::string askPassword(const std::string &old_password = "")
+{
+	std::string password;
+
+	for (;;)
+	{
+		for (;;)
+		{
+			std::cout << "Password ";
+			if (not old_password.empty())
+				std::cout << "[********]: ";
+			else
+				std::cout << ": ";
+			std::cout.flush();
+			SetStdinEcho(false);
+			std::getline(std::cin, password);
+			std::cout << '\n';
+			if (password.empty())
+				password = old_password;
+			if (not password.empty())
+				break;
+			std::cout << "Empty passwords are not allowed\n";
+		}
+
+		if (not user_service::isValidPassword(password))
+		{
+			std::cout << "Not a valid password, should be at least 8 characters long and contain letters, digits and special characters\n";
+			continue;
+		}
+
+		if (password != old_password)
+		{
+			std::string pwcheck;
+			std::cout << "Password (check): ";
+			std::cout.flush();
+			SetStdinEcho(false);
+			std::getline(std::cin, pwcheck);
+			std::cout << '\n';
+
+			if (password != pwcheck)
+			{
+				std::cout << "passwords do not match\n";
+				continue;
+			}
+		}
+
+		break;
+	}
+
+	SetStdinEcho(true);
+
+	return password;
+}
+
+std::string askPasswordSimple()
+{
+	std::string password;
+
+	std::cout << "Password: ";
+	std::cout.flush();
+	SetStdinEcho(false);
+	std::getline(std::cin, password);
+	std::cout << '\n';
+
+	SetStdinEcho(true);
+
+	return password;
+}
+
+// --------------------------------------------------------------------
+
 std::unique_ptr<user_service> user_service::s_instance;
 
-void user_service::init(const std::string& smtp_server, uint16_t smtp_port, const std::string& smtp_user, const std::string& smtp_password)
+void user_service::init(const std::string &smtp_server, uint16_t smtp_port, const std::string &smtp_user, const std::string &smtp_password)
 {
 	s_instance.reset(new user_service(smtp_server, smtp_port, smtp_user, smtp_password));
 }
 
-user_service& user_service::instance()
+user_service &user_service::instance()
 {
 	return *s_instance;
 }
 
-zeep::http::user_details user_service::load_user(const std::string& username) const
+zeep::http::user_details user_service::load_user(const std::string &username) const
 {
 	zeep::http::user_details result;
 
@@ -68,7 +176,8 @@ zeep::http::user_details user_service::load_user(const std::string& username) co
 		auto r = tx.exec1(
 			"SELECT password, admin "
 			"FROM public.users "
-			"WHERE username = " + tx.quote(username) + " AND active = true");
+			"WHERE username = " +
+			tx.quote(username) + " AND active = true");
 		tx.commit();
 
 		result.username = username;
@@ -76,18 +185,17 @@ zeep::http::user_details user_service::load_user(const std::string& username) co
 		result.roles.insert("USER");
 		if (r.at("admin").as<bool>())
 			result.roles.insert("ADMIN");
-
 	}
-	catch (const std::exception& ex)
+	catch (const std::exception &ex)
 	{
-		std::cerr << "Error loading user << " << username << ": " << ex.what() << std::endl;
-		throw;
+		std::clog << "Error loading user " << std::quoted(username) << ": " << ex.what() << '\n';
+		throw unknown_user();
 	}
 
 	return result;
 }
 
-std::string user_service::create_password_hash(const std::string& password)
+std::string user_service::create_password_hash(const std::string &password)
 {
 	zeep::http::pbkdf2_sha256_password_encoder enc(kIterations, kKeyLength);
 	return enc.encode(password);
@@ -98,9 +206,9 @@ std::vector<user> user_service::get_all_users()
 	pqxx::transaction tx(db_connection::instance());
 
 	std::vector<user> users;
-	for (auto const& [id, username, firstname, lastname, email, active, admin]:
-		tx.stream<uint32_t, std::string,std::optional<std::string>,std::optional<std::string>,std::string,bool,bool>(
-		"SELECT id, username, first_name, last_name, email, active, admin FROM public.users"))
+	for (auto const &[id, username, firstname, lastname, email, active, admin] :
+		tx.stream<uint32_t, std::string, std::optional<std::string>, std::optional<std::string>, std::string, bool, bool>(
+			"SELECT id, username, first_name, last_name, email, active, admin FROM public.users"))
 	{
 		users.emplace_back(user{ id, username, firstname.value_or(""), lastname.value_or(""), email, {}, active, admin });
 	}
@@ -116,12 +224,12 @@ std::vector<group> user_service::get_all_groups()
 
 	std::vector<group> groups;
 
-	for (auto const& [id, name, member]:
+	for (auto const &[id, name, member] :
 		tx.stream<uint32_t, std::string, std::optional<std::string>>(
 			"SELECT g.id, g.name, u.username FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id LEFT JOIN public.users u ON m.user_id = u.id ORDER BY g.name"))
 	{
 		if (groups.empty() or groups.back().id != id)
-			groups.emplace_back(group{id, name});
+			groups.emplace_back(group{ id, name });
 
 		if (member)
 			groups.back().members.push_back(*member);
@@ -132,7 +240,7 @@ std::vector<group> user_service::get_all_groups()
 	return groups;
 }
 
-bool user_service::user_exists(const std::string& username)
+bool user_service::user_exists(const std::string &username)
 {
 	pqxx::transaction tx(db_connection::instance());
 	auto row = tx.exec1("SELECT COUNT(*) FROM public.users WHERE username = " + tx.quote(username));
@@ -161,8 +269,8 @@ user user_service::retrieve_user(uint32_t id)
 	user.active = row.at("active").as<bool>();
 
 	pqxx::transaction tx2(db_connection::instance());
-	for (auto const& [name]: tx2.stream<std::string>(
-			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	for (auto const &[name] : tx2.stream<std::string>(
+			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
 	{
 		user.groups.push_back(name);
 	}
@@ -171,7 +279,7 @@ user user_service::retrieve_user(uint32_t id)
 	return user;
 }
 
-user user_service::retrieve_user(const std::string& name)
+user user_service::retrieve_user(const std::string &name)
 {
 	pqxx::transaction tx(db_connection::instance());
 
@@ -189,8 +297,8 @@ user user_service::retrieve_user(const std::string& name)
 	user.active = row.at("active").as<bool>();
 
 	pqxx::transaction tx2(db_connection::instance());
-	for (auto const& [name]: tx2.stream<std::string>(
-			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	for (auto const &[name] : tx2.stream<std::string>(
+			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
 	{
 		user.groups.push_back(name);
 	}
@@ -217,8 +325,8 @@ user user_service::retrieve_user_by_email(const std::string &email)
 	user.active = row.at("active").as<bool>();
 
 	pqxx::transaction tx2(db_connection::instance());
-	for (auto const& [name]: tx2.stream<std::string>(
-			"SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	for (auto const &[name] : tx2.stream<std::string>(
+			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
 	{
 		user.groups.push_back(name);
 	}
@@ -227,7 +335,7 @@ user user_service::retrieve_user_by_email(const std::string &email)
 	return user;
 }
 
-uint32_t user_service::create_user(const user& user)
+uint32_t user_service::create_user(const user &user)
 {
 	if (not user.password or user.password->empty() or not isValidPassword(*user.password))
 		throw std::runtime_error("Invalid password");
@@ -237,7 +345,7 @@ uint32_t user_service::create_user(const user& user)
 
 	if (user_exists(user.username))
 		throw std::runtime_error("User already exists");
-	
+
 	if (not isValidEmail(user.email))
 		throw std::runtime_error("Invalid e-mail address");
 
@@ -246,14 +354,15 @@ uint32_t user_service::create_user(const user& user)
 	pqxx::transaction tx(db_connection::instance());
 	auto r = tx.exec1(
 		"INSERT INTO public.users (username, password, email, first_name, last_name, active, admin) "
-	 	"VALUES(" + tx.quote(user.username) + ", " +
-					tx.quote(pw) + ", " +
-					tx.quote(user.email) + ", " +
-					tx.quote(user.firstname) + ", " +
-					tx.quote(user.lastname) + ", " +
-					tx.quote(user.active) + ", " +
-					tx.quote(user.admin) + ") "
-		"RETURNING id");
+		"VALUES(" +
+		tx.quote(user.username) + ", " +
+		tx.quote(pw) + ", " +
+		tx.quote(user.email) + ", " +
+		tx.quote(user.firstname) + ", " +
+		tx.quote(user.lastname) + ", " +
+		tx.quote(user.active) + ", " +
+		tx.quote(user.admin) + ") "
+							   "RETURNING id");
 
 	uint32_t id = r[0].as<uint32_t>();
 	tx.commit();
@@ -261,30 +370,39 @@ uint32_t user_service::create_user(const user& user)
 	return id;
 }
 
-void user_service::update_user(uint32_t id, const user& user)
+void user_service::update_user(uint32_t id, const user &user)
 {
 	pqxx::transaction tx(db_connection::instance());
 
 	if (not user.password)
 		tx.exec0(
 			"UPDATE public.users SET email = " + tx.quote(user.email) + ", "
-							 " first_name = " + tx.quote(user.firstname) + ", " 
-							  " last_name = " + tx.quote(user.lastname) + ", "
-							  " active = " + tx.quote(user.active) + ", " 
-						   " admin = " + tx.quote(user.admin) + 
-						 " WHERE id = " + std::to_string(id));
+																		" first_name = " +
+			tx.quote(user.firstname) + ", "
+									   " last_name = " +
+			tx.quote(user.lastname) + ", "
+									  " active = " +
+			tx.quote(user.active) + ", "
+									" admin = " +
+			tx.quote(user.admin) +
+			" WHERE id = " + std::to_string(id));
 	else if (user.password->empty() or not isValidPassword(*user.password))
 		throw std::runtime_error("Invalid password");
 	else
 	{
 		tx.exec0(
-			"UPDATE public.users SET email = " + tx.quote(user.email) + ", " 
-							   " password = " + tx.quote(user_service::create_password_hash(*user.password)) + ", "
-							 " first_name = " + tx.quote(user.firstname) + ", " 
-							  " last_name = " + tx.quote(user.lastname) + ", " 
-							  " active = " + tx.quote(user.active) + ", " 
-						   " admin = " + tx.quote(user.admin) + 
-						 " WHERE id = " + std::to_string(id));
+			"UPDATE public.users SET email = " + tx.quote(user.email) + ", "
+																		" password = " +
+			tx.quote(user_service::create_password_hash(*user.password)) + ", "
+																		   " first_name = " +
+			tx.quote(user.firstname) + ", "
+									   " last_name = " +
+			tx.quote(user.lastname) + ", "
+									  " active = " +
+			tx.quote(user.active) + ", "
+									" admin = " +
+			tx.quote(user.admin) +
+			" WHERE id = " + std::to_string(id));
 	}
 
 	tx.commit();
@@ -299,25 +417,27 @@ void user_service::delete_user(uint32_t id)
 
 // --------------------------------------------------------------------
 
-uint32_t user_service::create_group(const group& group)
+uint32_t user_service::create_group(const group &group)
 {
 	pqxx::transaction tx1(db_connection::instance());
 
 	auto r = tx1.exec1(
 		"INSERT INTO public.groups (name) "
-	 	"VALUES(" + tx1.quote(group.name) + ") "
-		"RETURNING id");
+		"VALUES(" +
+		tx1.quote(group.name) + ") "
+								"RETURNING id");
 
 	uint32_t group_id = r[0].as<uint32_t>();
 	tx1.commit();
 
-	for (auto& m: group.members)
+	for (auto &m : group.members)
 	{
 		pqxx::transaction tx(db_connection::instance());
 		tx.exec0(
 			"INSERT INTO public.members (group_id, user_id) "
-			"VALUES(" + std::to_string(group_id) + ", " +
-						"(SELECT id FROM public.users WHERE username = " + tx.quote(m) + "))");
+			"VALUES(" +
+			std::to_string(group_id) + ", " +
+			"(SELECT id FROM public.users WHERE username = " + tx.quote(m) + "))");
 		tx.commit();
 	}
 
@@ -337,8 +457,8 @@ group user_service::retrieve_group(uint32_t id)
 	group.id = id;
 
 	pqxx::transaction tx2(db_connection::instance());
-	for (const auto& [member]: tx2.stream<std::string>(
-		"SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+	for (const auto &[member] : tx2.stream<std::string>(
+			 "SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
 	{
 		group.members.push_back(member);
 	}
@@ -367,14 +487,15 @@ void user_service::update_group(uint32_t id, group group)
 			group.members.begin(), group.members.end(),
 			current.members.begin(), current.members.end(),
 			std::back_inserter(diff));
-		
-		for (auto& member: diff)
+
+		for (auto &member : diff)
 		{
 			pqxx::transaction tx(db_connection::instance());
 			tx.exec0(
 				"INSERT INTO public.members (group_id, user_id) "
-				"VALUES(" + std::to_string(id) + ", " +
-							"(SELECT id FROM public.users WHERE username = " + tx.quote(member) + "))");
+				"VALUES(" +
+				std::to_string(id) + ", " +
+				"(SELECT id FROM public.users WHERE username = " + tx.quote(member) + "))");
 			tx.commit();
 		}
 
@@ -385,12 +506,12 @@ void user_service::update_group(uint32_t id, group group)
 			group.members.begin(), group.members.end(),
 			std::back_inserter(diff));
 
-		for (auto& member: diff)
+		for (auto &member : diff)
 		{
 			pqxx::transaction tx(db_connection::instance());
 			tx.exec0(
 				"DELETE FROM public.members WHERE group_id = " + tx.quote(id) +
-					" AND user_id = (SELECT id FROM public.users WHERE username = " + tx.quote(member) + ")");
+				" AND user_id = (SELECT id FROM public.users WHERE username = " + tx.quote(member) + ")");
 			tx.commit();
 		}
 	}
@@ -405,16 +526,16 @@ void user_service::delete_group(uint32_t id)
 
 // --------------------------------------------------------------------
 
-bool user_service::isValidUsername(const std::string& name)
+bool user_service::isValidUsername(const std::string &name)
 {
 	std::regex rx("^[-a-z0-9_.]{4,30}$", std::regex::icase);
 	return std::regex_match(name, rx);
 }
 
-bool user_service::isValidPassword(const std::string& password)
+bool user_service::isValidPassword(const std::string &password)
 {
 	int special = 0, numbers = 0, upper = 0, lower = 0;
-	for (auto ch: password)
+	for (auto ch : password)
 	{
 		if (std::isupper(ch))
 			upper = 1;
@@ -429,7 +550,7 @@ bool user_service::isValidPassword(const std::string& password)
 	return password.length() >= 6 and (upper + lower + numbers + special) >= 3;
 }
 
-bool user_service::isValidEmail(const std::string& email)
+bool user_service::isValidEmail(const std::string &email)
 {
 	std::regex rx(R"((?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\]))", std::regex::icase);
 	return std::regex_match(email, rx);
@@ -471,9 +592,10 @@ std::string user_service::generate_password()
 		if (result.length() >= length)
 		{
 			if (result.length() > length or
-					includeDigits != hasDigits or
-					includeSymbols != hasSymbols or
-					includeCapitals != hasCapitals) {
+				includeDigits != hasDigits or
+				includeSymbols != hasSymbols or
+				includeCapitals != hasCapitals)
+			{
 				result.clear();
 				hasDigits = hasSymbols = hasCapitals = false;
 				continue;
@@ -500,7 +622,7 @@ std::string user_service::generate_password()
 
 		if (includeCapitals and (result.length() == s.length() or vowel == false) and (rng() % 10) < 2)
 		{
-			for (auto& ch: s)
+			for (auto &ch : s)
 				ch = std::toupper(ch);
 			hasCapitals = true;
 		}
@@ -520,7 +642,8 @@ std::string user_service::generate_password()
 		if (hasDigits == false and includeDigits and (rng() % 10) < 3)
 		{
 			std::string ch;
-			do ch = (rng() % 10) + '0';
+			do
+				ch = (rng() % 10) + '0';
 			while (noAmbiguous and kAmbiguous.count(ch));
 
 			result += ch;
@@ -528,12 +651,40 @@ std::string user_service::generate_password()
 		}
 		else if (hasSymbols == false and includeSymbols and (rng() % 10) < 2)
 		{
-			std::vector<char> kSymbols
-					{
-							'!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+',
-							',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@',
-							'[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
-					};
+			std::vector<char> kSymbols{
+				'!',
+				'"',
+				'#',
+				'$',
+				'%',
+				'&',
+				'\'',
+				'(',
+				')',
+				'*',
+				'+',
+				',',
+				'-',
+				'.',
+				'/',
+				':',
+				';',
+				'<',
+				'=',
+				'>',
+				'?',
+				'@',
+				'[',
+				'\\',
+				']',
+				'^',
+				'_',
+				'`',
+				'{',
+				'|',
+				'}',
+				'~',
+			};
 
 			result += kSymbols[rng() % kSymbols.size()];
 			hasSymbols = true;
@@ -543,23 +694,23 @@ std::string user_service::generate_password()
 	return result;
 }
 
-void user_service::send_new_password_for(const std::string& email)
+void user_service::send_new_password_for(const std::string &email)
 {
-	std::cerr << "Request reset password for " << email << std::endl;
+	std::cerr << "Request reset password for " << email << '\n';
 
 	if (not isValidEmail(email))
-		std::cerr << "Not a valid e-mail address" << std::endl;
+		std::cerr << "Not a valid e-mail address\n";
 	else if (not isExistingEmail(email))
-		std::cerr << "Not a known e-mail adress" << std::endl;
+		std::cerr << "Not a known e-mail adress\n";
 	else
 	{
 		std::string newPassword = generate_password();
 		std::string newPasswordHash = create_password_hash(newPassword);
 
-		std::cerr << "Reset password for " << email << " to " << newPasswordHash << std::endl;
+		std::cerr << "Reset password for " << email << " to " << newPasswordHash << '\n';
 
 		// --------------------------------------------------------------------
-		
+
 		pqxx::transaction tx(db_connection::instance());
 		tx.exec0("UPDATE public.users SET password = " + tx.quote(newPasswordHash) + " WHERE email = " + tx.quote(email));
 
@@ -581,7 +732,7 @@ void user_service::send_new_password_for(const std::string& email)
 			auto i = line.find("^1");
 			if (i != std::string::npos)
 				line.replace(i, 2, newPassword);
-			content << line << std::endl;
+			content << line << '\n';
 		}
 
 		msg.content(content.str());
@@ -592,19 +743,19 @@ void user_service::send_new_password_for(const std::string& email)
 		{
 			mailio::smtp conn(m_smtp_server, m_smtp_port);
 			conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtp::auth_method_t::NONE : mailio::smtp::auth_method_t::LOGIN);
-			conn.submit(msg);	
+			conn.submit(msg);
 		}
 		else if (m_smtp_port == 465)
 		{
 			mailio::smtps conn(m_smtp_server, m_smtp_port);
 			conn.authenticate(m_smtp_user, m_smtp_password, m_smtp_user.empty() ? mailio::smtps::auth_method_t::NONE : mailio::smtps::auth_method_t::LOGIN);
-			conn.submit(msg);	
+			conn.submit(msg);
 		}
 		else if (m_smtp_port == 587 and not m_smtp_user.empty())
 		{
 			mailio::smtps conn(m_smtp_server, m_smtp_port);
 			conn.authenticate(m_smtp_user, m_smtp_password, mailio::smtps::auth_method_t::START_TLS);
-			conn.submit(msg);	
+			conn.submit(msg);
 		}
 		else
 			throw std::runtime_error("Unable to send message, smtp configuration error");
@@ -623,7 +774,7 @@ user_service_html_controller::user_service_html_controller()
 	mount("reset-password", &user_service_html_controller::handle_reset_password);
 }
 
-void user_service_html_controller::handle_reset_password(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void user_service_html_controller::handle_reset_password(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	if (request.get_method() == "GET")
 		get_template_processor().create_reply_from_template("reset-password", scope, reply);
@@ -635,9 +786,9 @@ void user_service_html_controller::handle_reset_password(const zeep::http::reque
 
 			user_service::instance().send_new_password_for(email);
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception &ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << ex.what() << '\n';
 		}
 
 		reply = zeep::http::reply::redirect("login");
@@ -653,7 +804,7 @@ user_admin_html_controller::user_admin_html_controller()
 	mount("groups", &user_admin_html_controller::handle_group_admin);
 }
 
-void user_admin_html_controller::handle_user_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void user_admin_html_controller::handle_user_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -665,7 +816,7 @@ void user_admin_html_controller::handle_user_admin(const zeep::http::request& re
 	get_template_processor().create_reply_from_template("admin-users.html", sub, reply);
 }
 
-void user_admin_html_controller::handle_group_admin(const zeep::http::request& request, const zeep::http::scope& scope, zeep::http::reply& reply)
+void user_admin_html_controller::handle_group_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
 
@@ -698,7 +849,7 @@ user_admin_rest_controller::user_admin_rest_controller()
 	map_delete_request("group/{id}", &user_admin_rest_controller::delete_group, "id");
 }
 
-uint32_t user_admin_rest_controller::create_user(const user& user)
+uint32_t user_admin_rest_controller::create_user(const user &user)
 {
 	return user_service::instance().create_user(user);
 }
@@ -708,7 +859,7 @@ user user_admin_rest_controller::retrieve_user(uint32_t id)
 	return user_service::instance().retrieve_user(id);
 }
 
-void user_admin_rest_controller::update_user(uint32_t id, const user& user)
+void user_admin_rest_controller::update_user(uint32_t id, const user &user)
 {
 	user_service::instance().update_user(id, user);
 }
@@ -718,7 +869,7 @@ void user_admin_rest_controller::delete_user(uint32_t id)
 	user_service::instance().delete_user(id);
 }
 
-uint32_t user_admin_rest_controller::create_group(const group& group)
+uint32_t user_admin_rest_controller::create_group(const group &group)
 {
 	return user_service::instance().create_group(group);
 }
@@ -728,7 +879,7 @@ group user_admin_rest_controller::retrieve_group(uint32_t id)
 	return user_service::instance().retrieve_group(id);
 }
 
-void user_admin_rest_controller::update_group(uint32_t id, const group& group)
+void user_admin_rest_controller::update_group(uint32_t id, const group &group)
 {
 	user_service::instance().update_group(id, group);
 }
@@ -738,3 +889,95 @@ void user_admin_rest_controller::delete_group(uint32_t id)
 	user_service::instance().delete_group(id);
 }
 
+// --------------------------------------------------------------------
+
+int passwd_main(int argc, char *const argv[])
+{
+	load_and_init_config(
+		R"(usage: screen-analyzer passwd [options] <username>)",
+		mcfp::make_option<std::string>("db-host", "Database host"),
+		mcfp::make_option<std::string>("db-port", "Database port"),
+		mcfp::make_option<std::string>("db-dbname", "Database name"),
+		mcfp::make_option<std::string>("db-user", "Database user name"),
+		mcfp::make_option<std::string>("db-password", "Database password"),
+		mcfp::make_option<std::string>("smtp-server", "SMTP server address for sending out new passwords"),
+		mcfp::make_option<uint16_t>("smtp-port", "SMTP server port for sending out new passwords"),
+		mcfp::make_option<std::string>("smtp-user", "SMTP server user name for sending out new passwords"),
+		mcfp::make_option<std::string>("smtp-password", "SMTP server password name for sending out new passwords"));
+
+	auto &config = mcfp::config::instance();
+	parse_argv(argc, argv, config);
+
+	if (config.operands().size() != 1)
+	{
+		std::cerr << "Missing argument (username)\n"
+				  << config;
+		exit(1);
+	}
+
+	// --------------------------------------------------------------------
+
+	std::string username = config.operands().front();
+	if (not user_service::isValidUsername(username))
+		throw std::runtime_error("Not a valid username");
+
+	// --------------------------------------------------------------------
+
+	std::vector<std::string> vConn;
+	for (std::string opt : { "db-host", "db-port", "db-dbname", "db-user", "db-password" })
+	{
+		if (config.count(opt) == 0)
+			continue;
+
+		vConn.push_back(opt.substr(3) + "=" + config.get(opt));
+	}
+
+	db_connection::init(zeep::join(vConn, " "));
+
+	// --------------------------------------------------------------------
+
+	std::string smtpServer = config.get("smtp-server");
+	uint16_t smtpPort = config.get<uint16_t>("smtp-port");
+	std::string smtpUser, smtpPassword;
+	if (config.count("smtp-user"))
+		smtpUser = config.get("smtp-user");
+	if (config.count("smtp-password"))
+		smtpPassword = config.get("smtp-password");
+
+	user_service::init(smtpServer, smtpPort, smtpUser, smtpPassword);
+
+	auto &user_service = user_service::instance();
+
+	// --------------------------------------------------------------------
+
+	if (user_service.user_exists(username))
+	{
+		auto user = user_service.retrieve_user(username);
+		user.password = askPassword("");
+		user_service.update_user(user.id, user);
+	}
+	else if (zeep::iequals(ask("\nUser unknown, add as new? [y/N]", "n"), "y"))
+	{
+		std::cout << "adding new user\n";
+
+		user user{ .username = username };
+		user.firstname = ask("First name of user");
+		user.lastname = ask("Last name of user");
+
+		while (not user_service::isValidEmail(user.email))
+		{
+			if (not user.email.empty())
+				std::cerr << "Invalid e-mail address\n";
+			user.email = ask("E-mail address");
+		}
+		
+		user.password = askPassword("");
+		
+		user.active = zeep::iequals(ask("User is active [Y/n]", "y"), "y");
+		user.admin = zeep::iequals(ask("User is administrator [y/N]", "n"), "y");
+		
+		user_service.create_user(user);
+	}
+
+	return 0;
+}

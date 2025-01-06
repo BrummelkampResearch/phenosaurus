@@ -31,7 +31,6 @@
 #include "screen-creator.hpp"
 #include "user-service.hpp"
 
-#include <mcfp.hpp>
 #include <zeep/json/element.hpp>
 #include <zeep/unicode-support.hpp>
 
@@ -44,71 +43,6 @@
 namespace fs = std::filesystem;
 
 using json = zeep::json::element;	
-
-// --------------------------------------------------------------------
-
-void SetStdinEcho(bool inEnable)
-{
-	struct termios tty;
-	::tcgetattr(STDIN_FILENO, &tty);
-	if(not inEnable)
-		tty.c_lflag &= ~ECHO;
-	else
-		tty.c_lflag |= ECHO;
-
-	(void)::tcsetattr(STDIN_FILENO, TCSANOW, &tty);
-}
-
-bool askYesNo(const std::string& msg, bool defaultYes)
-{
-	std::string yesno;
-	std::cout << msg << (defaultYes ? " [Y/n]: " : " [y/N]: "); std::cout.flush();
-	std::getline(std::cin, yesno);
-
-	return yesno.empty() ? defaultYes : zeep::iequals(yesno, "y") or zeep::iequals(yesno, "yes");
-}
-
-std::string ask(const std::string& msg, std::string defaultAnswer = {})
-{
-	if (defaultAnswer.empty())
-		std::cout << msg << ": ";
-	else
-		std::cout << msg << " [" << defaultAnswer << "]: ";
-	std::cout.flush();
-
-	std::string answer;
-	std::getline(std::cin, answer);
-	return answer.empty() ? defaultAnswer : answer;
-}
-
-std::string ask_mandatory(const std::string& msg, std::string defaultAnswer = {})
-{
-	std::string answer;
-	for (;;)
-	{
-		answer = ask(msg, defaultAnswer);
-		if (answer.empty())
-		{
-			std::cout << "This information is required" << std::endl;
-			continue;
-		}
-		break;
-	}
-	return answer;
-}
-
-std::string askPasswordSimple()
-{
-	std::string password;
-
-	std::cout << "Password: "; std::cout.flush(); SetStdinEcho(false);
-	std::getline(std::cin, password);
-	std::cout << std::endl;
-
-	SetStdinEcho(true);
-
-	return password;
-}
 
 // // --------------------------------------------------------------------
 
@@ -168,7 +102,7 @@ std::string askPasswordSimple()
 // 		screen.type = zeep::value_serializer<ScreenType>::from_string(s);
 // 		if (screen.type == ScreenType::Unspecified)
 // 		{
-// 			std::cout << "Unknown screen type" << std::endl;
+// 			std::cout << "Unknown screen type\n";
 // 			continue;
 // 		}
 // 		break;
@@ -335,7 +269,7 @@ std::string askPasswordSimple()
 // 		and the maximum txEnd plus 1000 basepairs as end. This obviously
 // 		includes both 5' UTR and 3' UTR.
 
-// )"				<< std::endl;
+// )"				<< '\n';
 // 		exit(vm.count("help") ? 0 : 1);
 // 	}
 
@@ -377,14 +311,14 @@ std::string askPasswordSimple()
 
 // 	// -----------------------------------------------------------------------
 	
-// 	std::cerr << std::endl
-// 			<< std::string(get_terminal_width(), '-') << std::endl
-// 			<< "Low: " << std::endl
-// 			<< " sense      : " << std::setw(10) << lowSenseCount << std::endl
-// 			<< " anti sense : " << std::setw(10) << lowAntiSenseCount << std::endl
-// 			<< "High: " << std::endl
-// 			<< " sense      : " << std::setw(10) << highSenseCount << std::endl
-// 			<< " anti sense : " << std::setw(10) << highAntiSenseCount << std::endl;
+// 	std::cerr << '\n'
+// 			<< std::string(get_terminal_width(), '-') << '\n'
+// 			<< "Low: \n"
+// 			<< " sense      : " << std::setw(10) << lowSenseCount << '\n'
+// 			<< " anti sense : " << std::setw(10) << lowAntiSenseCount << '\n'
+// 			<< "High: \n"
+// 			<< " sense      : " << std::setw(10) << highSenseCount << '\n'
+// 			<< " anti sense : " << std::setw(10) << highAntiSenseCount << '\n';
 
 // 	Direction direction = Direction::Sense;
 // 	if (vm.count("direction"))
@@ -397,7 +331,7 @@ std::string askPasswordSimple()
 // 			direction = Direction::Both;
 // 		else
 // 		{
-// 			std::cerr << "invalid direction" << std::endl;
+// 			std::cerr << "invalid direction\n";
 // 			exit(1);
 // 		}
 // 	}
@@ -407,7 +341,7 @@ std::string askPasswordSimple()
 // 			  << "high" << '\t'
 // 			  << "pv" << '\t'
 // 			  << "fcpv" << '\t'
-// 			  << "log2(mi)" << std::endl;
+// 			  << "log2(mi)\n";
 
 // 	for (auto& dp: screenData.dataPoints(transcripts, lowInsertions, highInsertions, direction))
 // 	{
@@ -416,7 +350,7 @@ std::string askPasswordSimple()
 // 				<< dp.high << '\t'
 // 				<< dp.pv << '\t'
 // 				<< dp.fcpv << '\t'
-// 				<< std::log2(dp.mi) << std::endl;
+// 				<< std::log2(dp.mi) << '\n';
 // 	}
 
 // 	return 0;
@@ -431,7 +365,7 @@ std::string askPasswordSimple()
 // Start and end should be either 'cds' or 'tx' with an optional offset 
 // appended. Optionally you can also specify cdsStart, cdsEnd, txStart
 // or txEnd to have the start at the cdsEnd e.g.
-// )"				<< std::endl;
+// )"				<< '\n';
 // 		exit(vm.count("help") ? 0 : 1);
 // 	}
 
@@ -496,7 +430,7 @@ std::string askPasswordSimple()
 // 			  << "pv_control_4" << '\t'
 // 			  << "sense + antisense" << '\t'
 // 			  << "(sense_normalized + 1) / (sense_normalized + antisense_normalized + 2)"
-// 			  << std::endl;
+// 			  << '\n';
 
 // 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, pvCutOff, binom_fdrCutOff, oddsRatio);
 
@@ -526,7 +460,7 @@ std::string askPasswordSimple()
 // 				  << dp.ref_pv[3] << '\t'
 // 				  << (dp.sense + dp.antisense) << '\t'
 // 				  << ((dp.sense_normalized + 1.0f) / (dp.sense_normalized + dp.antisense_normalized + 2.0f))
-// 				  << std::endl;
+// 				  << '\n';
 // 	}
 
 // 	return 0;

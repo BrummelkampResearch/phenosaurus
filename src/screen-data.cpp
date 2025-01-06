@@ -205,8 +205,8 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 
 		std::ofstream logFile(bowtieLogFile, std::ios::app);
 		if (logFile.is_open())
-			logFile << std::endl
-					<< "Unique hits in " << name << " channel: " << hits.size() << std::endl;
+			logFile << '\n'
+					<< "Unique hits in " << name << " channel: " << hits.size() << '\n';
 
 		write_insertions(assembly, trimLength, name, hits);
 
@@ -368,7 +368,7 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 				<< pos + 1 << '\t'
 				<< file << '\t'
 				<< 0 << '\t'
-				<< strand << std::endl;
+				<< strand << '\n';
 	}
 
 	return result.release();
@@ -515,7 +515,7 @@ void ScreenData::refreshManifest(screen_info &info, const std::filesystem::path 
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << "Error retrieving mapped info for screen " << info.name << ": " << ex.what() << std::endl;
+		std::cerr << "Error retrieving mapped info for screen " << info.name << ": " << ex.what() << '\n';
 	}
 
 	if (info.mappedInfo.size() > 1)
@@ -558,7 +558,7 @@ void ScreenData::dump_map(const std::string &assembly, unsigned readLength, cons
 	for (auto &&[chr, strand, pos] : bwt)
 	{
 		assert(chr != CHROM::INVALID);
-		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << std::endl;
+		std::cout << zeep::value_serializer<CHROM>::to_string(chr) << "\t" << strand << "\t" << pos << '\n';
 	}
 }
 
@@ -694,7 +694,7 @@ void IPPAScreenData::analyze(const std::string &assembly, unsigned readLength, c
 						while (t != transcripts.end() and t->chrom == chr and t->start() <= pos)
 						{
 							if (VERBOSE >= 3)
-								std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+								std::cerr << "hit " << t->geneName << " " << lh << " " << (strand == t->strand ? "sense" : "anti-sense") << '\n';
 
 							for (auto &r : t->ranges)
 							{
@@ -1230,7 +1230,7 @@ void SLScreenData::count_insertions(const std::string &replicate, const std::str
 				if (pos >= r.start and pos < r.end)
 				{
 					if (VERBOSE >= 3)
-						std::cerr << "hit\t" << t->geneName << "\t" << pos << "\t" << (strand == t->strand ? "sense" : "anti-sense") << std::endl;
+						std::cerr << "hit\t" << t->geneName << "\t" << pos << "\t" << (strand == t->strand ? "sense" : "anti-sense") << '\n';
 
 					if (strand == t->strand)
 						insertions[t - transcripts.begin()].sense += 1;
