@@ -25,7 +25,7 @@
  */
 
 import * as d3 from "d3";
-import ScreenColorMap from "./screenColorMap";
+import ScreenColorMap from "./screen-color-map";
 import { gene } from "./gene-info";
 import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
@@ -52,9 +52,12 @@ export default class ScreenPlot {
 		this.uniqueScale = d3.scaleSequential(d3.interpolatePiYG).domain([0, 9]);
 
 		this.svg.node().addEventListener('wheel', (evt) => {
-			evt.stopPropagation();
-			evt.preventDefault();
-			return false;
+			if (evt.ctrlKey)
+			{
+				evt.stopPropagation();
+				evt.preventDefault();
+				return false;
+			}
 		}, false);
 
 		const showGridLinesCB = document.getElementById("show-gridlines");
@@ -600,7 +603,7 @@ export default class ScreenPlot {
 
 		const link = document.createElement("a");
 		link.href = url;
-		link.download = this.screenID + "-plot.svg";
+		link.download = this.screen + "-plot.svg";
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);

@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { highlightedGenes } from "./screenPlot";
+import { highlightedGenes } from "./screen-plot";
 import { significantGenes } from "./sl-screen";
 import Dot from './dot';
 

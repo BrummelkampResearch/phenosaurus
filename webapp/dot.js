@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import { highlightedGenes } from "./screenPlot";
+import { highlightedGenes } from "./screen-plot";
 
 // The container for the data in a dot on the screen.
 // Dots can contain more than one value since more than one gene

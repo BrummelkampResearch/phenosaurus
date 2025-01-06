@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-const contextMenuActive = "context-menu--active";
+const contextMenuActive = "active";
 
 let current;
 
@@ -130,6 +130,8 @@ export default class ContextMenu {
 	}
 
 	handleContext(e, view) {
+		console.log("context", e);
+
 		this.target = this.clickIsInsideTarget(e);
 
 		if (this.target && this.view === view) {
@@ -143,6 +145,8 @@ export default class ContextMenu {
 	}
 
 	handleClick(e) {
+		console.log("click", e);
+
 		if (current !== this)
 			return;
 

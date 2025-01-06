@@ -19,11 +19,11 @@ module.exports = (env) => {
 			'sl-screen': SCRIPTS + "sl-screen.js",
 
 			'gene-selection': SCRIPTS + 'gene-selection.js',
-			'gene-finder': SCRIPTS + 'gene-finder.js',
-			'similar-finder': SCRIPTS + 'similar-finder.js',
-			'cluster-finder': SCRIPTS + 'cluster-finder.js',
+			'find-gene': SCRIPTS + 'find-gene.js',
+			'find-similar': SCRIPTS + 'find-similar.js',
+			'find-cluster': SCRIPTS + 'find-cluster.js',
 
-			'compare-3': SCRIPTS + "compare-3.js",
+			'compare-screens': SCRIPTS + "compare-screens.js",
 
 			'admin-user': SCRIPTS + "admin-user.js",
 			'admin-group': SCRIPTS + "admin-group.js",

@@ -26,9 +26,10 @@
 
 import * as d3 from 'd3';
 
-import ScreenData from "./screenData";
-import ScreenPlot, { pvCutOff, highlightedGenes } from "./screenPlot";
+import ScreenData from "./screen-data";
+import ScreenPlot, { pvCutOff, highlightedGenes } from "./screen-plot";
 import { geneSelectionEditor } from './gene-selection';
+import * as bootstrap from 'bootstrap';
 
 const neutral = "#aaa";
 

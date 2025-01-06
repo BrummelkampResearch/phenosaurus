@@ -5,7 +5,7 @@
 
 <head z2:replace="head :: head(~{::title}, ~{}, ~{::script})">
 	<title>Compare 3 - Phenosaurus</title>
-	<script src="/scripts/compare-3.js" type="application/ecmascript" z2:src="@{/dist/compare-3.js}"></script>
+	<script src="/scripts/compare-screens.js" type="application/ecmascript" z2:src="@{/dist/compare-screens.js}"></script>
 </head>
 
 <body>
@@ -76,7 +76,7 @@
 			</div>
 		</div>
 	</div>
-	<div z2:replace="~{contextMenu :: contextMenuNav}"></div>
+	<div z2:replace="~{context-menu :: contextMenuNav}"></div>
 	<footer z2:replace="~{footer :: content}"></footer>
 </body>
 

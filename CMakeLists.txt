@@ -6,10 +6,10 @@
 # modification, are permitted provided that the following conditions are met:
 
 # 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer
+# list of conditions and the following disclaimer
 # 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
 
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 # ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -48,7 +48,7 @@ find_package(Filesystem REQUIRED)
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers")
 elseif(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 endif()
 
 # Create a revision file, containing the current git version info
@@ -91,41 +91,38 @@ add_git_submodule(mailio EXCLUDE_FROM_ALL)
 find_program(YARN yarn REQUIRED)
 
 # yarn rules for javascripts
-
 set(webpack_input
-	webapp/context-menu.js
-	webapp/dot.js
-	webapp/genome-viewer.js
-	webapp/index.js
-	webapp/multidot.js
-	webapp/screenColorMap.js
-	webapp/screenData.js
-	webapp/script.js
-	webapp/tooltip.js
-	webapp/admin-group.js
 	webapp/admin-user.js
-	webapp/gene-selection.js
-	webapp/gene-finder.js
-	webapp/finder.js
-	webapp/similar-finder.js
-	webapp/cluster-finder.js
-	webapp/compare-3.js
-	webapp/genome-browser.js
-	webapp/qc.js
+	webapp/compare-screens.js
+	webapp/context-menu.js
 	webapp/create-screen.js
 	webapp/dot-context-menu.js
+	webapp/dot.js
 	webapp/edit-screen.js
-	webapp/list-screen.js
-	webapp/screen.js
+	webapp/find-cluster.js
+	webapp/finder.js
+	webapp/find-gene.js
+	webapp/find-similar.js
 	webapp/gene-info.js
 	webapp/gene-line.js
-	webapp/screenPlot.js
-	webapp/sortable.js
+	webapp/gene-selection.js
+	webapp/genome-browser.js
+	webapp/genome-viewer.js
+	webapp/index.js
+	webapp/list-screen.js
+	webapp/multidot.js
 	webapp/pvformat.js
+	webapp/qc.js
+	webapp/screen-color-map.js
+	webapp/screen-data.js
+	webapp/screen.js
+	webapp/screen-plot.js
+	webapp/script.js
 	webapp/sl-dot.js
 	webapp/sl-screen.js
-
-	webapp/contextMenu.css
+	webapp/sortable.js
+	webapp/table-utils.js
+	webapp/tooltip.js
 	webapp/sa-style.scss
 	webapp/signin.css
 	webapp/styles.css)
@@ -134,7 +131,7 @@ set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/dist/index.js)
 
 add_custom_command(
 	OUTPUT ${webpack_output}
-	BYPRODUCTS 
+	BYPRODUCTS
 	DEPENDS ${webpack_input}
 	COMMAND ${YARN} run build
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -188,5 +185,5 @@ if(USE_RSRC)
 endif()
 
 install(TARGETS screen-analyzer
-    RUNTIME DESTINATION ${BIN_INSTALL_DIR}
+	RUNTIME DESTINATION ${BIN_INSTALL_DIR}
 )

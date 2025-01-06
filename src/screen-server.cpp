@@ -469,7 +469,7 @@ class IPScreenHtmlController : public ScreenHtmlControllerBase
 		mount("cluster", &IPScreenHtmlController::cluster);
 		mount("compare-1", &IPScreenHtmlController::compare_1);
 		mount("compare-2", &IPScreenHtmlController::compare_2);
-		mount("compare-3", &IPScreenHtmlController::compare_3);
+		mount("compare-screens", &IPScreenHtmlController::compare_3);
 	}
 
 	void fishtail(const zh::request &request, const zh::scope &scope, zh::reply &reply);
@@ -518,7 +518,7 @@ void IPScreenHtmlController::compare_2(const zh::request &request, const zh::sco
 
 void IPScreenHtmlController::compare_3(const zh::request &request, const zh::scope &scope, zh::reply &reply)
 {
-	get_template_processor().create_reply_from_template("compare-3.html", scope, reply);
+	get_template_processor().create_reply_from_template("compare-screens.html", scope, reply);
 }
 
 // --------------------------------------------------------------------

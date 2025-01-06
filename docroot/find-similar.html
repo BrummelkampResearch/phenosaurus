@@ -2,11 +2,10 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:z2="http://www.hekkelman.com/libzeep/m2" xml:lang="en" lang="en">
 
 <head z2:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
-
 	<title>Find Similar - Phenosaurus</title>
 
-	<script defer="defer" src="/scripts/similar-finder.js" type="application/ecmascript"
-		z2:src="@{/dist/similar-finder.js}"></script>
+	<script defer="defer" src="/scripts/find-similar.js" type="application/ecmascript"
+		z2:src="@{/dist/find-similar.js}"></script>
 
 	<script z2:inline="javascript">
 		const screenInfo = /*[[${screenInfo}]]*/ null;

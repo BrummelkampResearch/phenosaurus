@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screenPlot';
+import ScreenPlot, { neutral, highlight, pvCutOff, highlightedGenes } from './screen-plot';
 import { geneSelectionEditor } from './gene-selection';
 import SLDot from './sl-dot';
 import { gene } from "./gene-info";

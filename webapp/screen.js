@@ -26,9 +26,9 @@
 
 import * as d3 from 'd3';
 import 'bootstrap';
-import ScreenData from "./screenData";
+import ScreenData from "./screen-data";
 import GenomeViewer from "./genome-viewer";
-import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screenPlot";
+import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screen-plot";
 import { format_pv } from './pvformat';
 import { fillTable } from './table-utils';
 

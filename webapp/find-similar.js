@@ -26,8 +26,9 @@
 
 import * as d3 from 'd3';
 
-import { geneSelectionEditor } from './gene-selection';
+import { geneSelectionEditor } from './gene-selection.js';
 import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
+import * as bootstrap from 'bootstrap';
 
 let nextGeneLineID = 1000;
 let geneLines = [];

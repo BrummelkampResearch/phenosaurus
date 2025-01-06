@@ -54,7 +54,7 @@ export default class DotContextMenu extends ContextMenu {
 		}
 
 		if (el != null) {
-			let action = this.menu.getElementsByClassName("gene-finder-action");
+			let action = this.menu.getElementsByClassName("find-gene-action");
 			if (action && action.length === 1)
 				action[0].classList.toggle("disabled", values == null);
 
@@ -72,7 +72,7 @@ export default class DotContextMenu extends ContextMenu {
 		const genes = v ? v.map(g => g.gene).join(';') : null;
 
 		switch (action) {
-			case 'gene-finder':
+			case 'find-gene':
 				window.open("finder?gene=" + genes, "_blank");
 				break;
 

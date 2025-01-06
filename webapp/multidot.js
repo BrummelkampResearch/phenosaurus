@@ -25,7 +25,7 @@
  */
 
 import * as d3 from 'd3';
-import { highlightedGenes, radius, neutral } from './screenPlot';
+import { highlightedGenes, radius, neutral } from './screen-plot';
 import {gene} from "./gene-info";
 
 // --------------------------------------------------------------------
