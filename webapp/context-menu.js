@@ -130,8 +130,6 @@ export default class ContextMenu {
 	}
 
 	handleContext(e, view) {
-		console.log("context", e);
-
 		this.target = this.clickIsInsideTarget(e);
 
 		if (this.target && this.view === view) {
@@ -145,8 +143,6 @@ export default class ContextMenu {
 	}
 
 	handleClick(e) {
-		console.log("click", e);
-
 		if (current !== this)
 			return;
 

@@ -47,8 +47,7 @@ const colorMap = new class ScreenColorMapSBS {
 			data.data
 				.filter(d => d.fcpv <= pvCutOff)
 				.map(d => [d.gene, d]));
-		if (this.colorType === 'unique' || this.colorType === 'total-unique')
-		{
+		if (this.colorType === 'unique' || this.colorType === 'total-unique') {
 			const options = geneSelectionEditor.getOptions();
 			options.append("pv-cut-off", pvCutOff);
 			options.append("single-sided", this.colorType === 'unique');
@@ -98,17 +97,17 @@ const colorMap = new class ScreenColorMapSBS {
 
 			switch (this.colorType) {
 				case "gradient":
-				{
-					const mi = d3.extent(g.map(d => d.log2mi));``
-					return plot.getPattern(this.miScale(mi[0]), this.miScale(mi[1]));
-				}
+					{
+						const mi = d3.extent(g.map(d => d.log2mi)); ``
+						return plot.getPattern(this.miScale(mi[0]), this.miScale(mi[1]));
+					}
 
 				case "unique":
 				case "total-unique":
-						{
-					const u = d3.extent(g.map(d => d.unique));
-					return plot.getPattern(this.uniqueScale(u[0]), this.uniqueScale(u[1]));
-				}
+					{
+						const u = d3.extent(g.map(d => d.unique));
+						return plot.getPattern(this.uniqueScale(u[0]), this.uniqueScale(u[1]));
+					}
 			}
 		};
 	}
@@ -133,14 +132,14 @@ const colorMap = new class ScreenColorMapSBS {
 				break;
 			case 'unique':
 			case 'total-unique':
-			{
-				this.colorType = 'unique';
-				const options = geneSelectionEditor.getOptions();
-				options.append("pv-cut-off", pvCutOff);
-				options.append("single-sided", colorType === 'unique');
-				await this.data.loadUnique(options);
-				break;
-			}
+				{
+					this.colorType = 'unique';
+					const options = geneSelectionEditor.getOptions();
+					options.append("pv-cut-off", pvCutOff);
+					options.append("single-sided", colorType === 'unique');
+					await this.data.loadUnique(options);
+					break;
+				}
 		}
 
 		const btns = document.getElementById("graphColorBtns");
@@ -207,44 +206,36 @@ window.addEventListener('load', () => {
 	const svg2 = d3.select("#plot-2");
 	const plot2 = new ScreenPlotCompareSBSSecondary(svg2, plot1);
 
-	$("select").chosen().on('change', function() {
-		const selected = this.selectedOptions;
-		if (selected.length == 1) {
-			const screen = selected.item(0).dataset.screen;
-			const screenData = new ScreenData(screen);
-			// this.spinnerTD.classList.add("loading");
+	[...document.querySelectorAll("select")].forEach(select => {
+		select.addEventListener("change", () => {
+			if (select.selectedIndex >= 1) {
+				const screen = select.item(select.selectedIndex).dataset.screen;
+				const screenData = new ScreenData(screen);
+				const options = geneSelectionEditor.getOptions();
 
-			const options = geneSelectionEditor.getOptions();
-
-			screenData.load(options)
-				.then(() => {
-					switch (this.id) {
-						case 'select-screen-1':
-							plot1.add(screenData, this.screenNr);
-							break;
-						case 'select-screen-2':
-							plot2.add(screenData, this.screenNr);
-							break;
-					}
-
-					// this.spinnerTD.classList.remove("loading");
-				})
-				.catch(err => {
-					// this.spinnerTD.classList.remove("loading");
-					console.log(err);
-					alert(err);
-				});
-		}
+				screenData.load(options)
+					.then(() => {
+						switch (select.id) {
+							case 'select-screen-1':
+								plot1.add(screenData, 1);
+								break;
+							case 'select-screen-2':
+								plot2.add(screenData, 2);
+								break;
+						}
+					})
+					.catch(err => {
+						console.log(err);
+						alert(err);
+					});
+			}
+		});
 	});
-
-	// ['gradient', 'unique'].forEach(id =>
-	// 	document.getElementById(id).addEventListener("change", () => colorMap.selectPlotColor(id)));
 
 	for (let btn of document.getElementsByClassName("graph-color-btn")) {
 		if (btn.checked)
 			colorMap.selectPlotColor(btn.dataset.colortype);
 		btn.addEventListener("change", () => colorMap.selectPlotColor(btn.dataset.colortype));
 	}
-
 });
 
