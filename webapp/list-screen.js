@@ -24,9 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "core-js/stable";
-import "regenerator-runtime/runtime";
-import * as bootstrap from 'bootstrap';
+import * as bootstrap from "bootstrap";
 
 function attachEventListeners() {
 	[...document.getElementsByClassName('edit-screen-btn')]
@@ -73,33 +71,23 @@ window.addEventListener("load", () => {
 	
 	attachEventListeners();
 
+	const parent = document.getElementById("screen-table-container");
+
 	// refresh the list every 30 seconds
-	const table = document.getElementById('screen-table');
-	const iv = setInterval(() => {
-		fetch('screen-table', { credentials: 'include' })
-		.then(r => {
-			if (r.ok)
-				return r.text();
-			throw 'no data';
-		}).then(t => {
-			if (typeof t !== "string" || t.length == 0)
-				throw 'empty string?';
-
-			const container = document.createElement('div');
-			container.innerHTML = t;
-			
-			const tbody = table.tBodies[0];
-			[...tbody.querySelectorAll("tr")]
-				.forEach(tr => tbody.removeChild(tr));
-
-			[...container.querySelectorAll('tbody > tr')]
-				.forEach(tr => {
-					// tr.parentElement().removeChild(tr);
-					tbody.appendChild(tr);
-				});
-			
-			attachEventListeners();
-		}).catch(err => console.log(err));
+	setInterval(async () => {
+		try {
+			const reply = await fetch('screen-table', { credentials: 'include' });
+			if (reply.ok) {
+				const t = await reply.text();
+	
+				const container = document.createElement('div');
+				container.innerHTML = t || "";
+	
+				parent.replaceChildren(container);
+				attachEventListeners();
+			}
+		} catch (error) {
+			console.log(error);
+		}
 	}, 15000);
-
 });

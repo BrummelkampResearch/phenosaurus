@@ -15,26 +15,26 @@
 	<nav z:replace="~{menu :: menu}"></nav>
 	
 	<form id="create-screen-form" method="post" enctype="multipart/form-data" name="create-screen-form" class="container mt-5">
-		<div class="form-row">
+		<div class="row mb-3">
 
-			<div z:switch="${#security.hasRole('ADMIN')}" class="col-md-6">
+			<div z:switch="${#security.hasRole('ADMIN')}" class="col-sm-6">
 				<div z:case="true">
-					<label for="scientist" class="form-label">Scientist</label>
+					<label for="scientist" class="col-form-label">Scientist</label>
 					<select class="form-control custom-select" id="scientist" aria-describedby="scientistHelp" name="scientist">
 						<option z:each="user: ${users}" z:value="${user.username}" z:text="${user.username}" z:selected="${user.username == #security.username()}"></option>
 					</select>
 					<div id="scientistHelp" class="form-text text-muted">Select the user that 'created' the screen</div>
 				</div>
 				<div z:case="false">
-					<label for="scientist2" class="form-label">Scientist</label>
+					<label for="scientist2" class="col-form-label">Scientist</label>
 					<input type="text" disabled="disabled" class="form-control" id="scientist2" z:value="${#security.username()}"
 						aria-describedby="scientistHelp2" name="scientist" />
 					<div id="scientistHelp2" class="form-text text-muted">Only admin can assign screens to other users</div>
 				</div>
 			</div>
 	
-			<div class="col-md-6">
-				<label for="screen-type">Screen Type</label>
+			<div class="col-sm-6">
+				<label class="col-form-label" for="screen-type">Screen Type</label>
 				<select class="form-select custom-select" id="screen-type" name="screen-type">
 					<option value="ip">Intracellular Phenotype</option>
 					<option value="pa">Intracellular Phenotype Activation</option>
@@ -46,31 +46,31 @@
 
 		<hr/>
 
-		<div class="form-row">
+		<div class="row mb-3">
 
-			<div class="mb-3 col-md-3">
-				<label for="detected-signal" class="form-label">Detected signal</label>
+			<div class="col-sm-3">
+				<label for="detected-signal" class="col-form-label">Detected signal</label>
 				<input type="text" class="form-control" id="detected-signal" required="required"
 					aria-describedby="detectedSignalHelp" name="detected-signal" />
 				<div id="detectedSignalHelp" class="form-text text-muted">First part of the screen name</div>
 			</div>
 	
-			<div class="mb-3 col-md-3">
-				<label for="genotype" class="form-label">Genotype</label>
+			<div class="col-sm-3">
+				<label for="genotype" class="col-form-label">Genotype</label>
 				<input type="text" class="form-control" id="genotype" required="required"
 					aria-describedby="genotypeHelp" name="genotype" />
 				<div id="genotypeHelp" class="form-text text-muted">Second part of the screen name</div>
 			</div>
 	
-			<div class="mb-3 col-md-3">
-				<label for="treatment" class="form-label">Treatment</label>
+			<div class="col-sm-3">
+				<label for="treatment" class="col-form-label">Treatment</label>
 				<input type="text" class="form-control" id="treatment"
 					aria-describedby="treatmentHelp" name="treatment" />
 				<div id="treatmentHelp" class="form-text text-muted">Optional</div>
 			</div>
 
-			<div class="mb-3 col-md-3">
-				<label for="cell-line-clone" class="form-label">Cell line clone</label>
+			<div class="col-sm-3">
+				<label for="cell-line-clone" class="col-form-label">Cell line clone</label>
 				<input type="text" class="form-control" id="cell-line-clone" pattern="TB[0-9]+" placeholder="TB...."
 					aria-describedby="cell-line-cloneHelp" name="cell-line-clone" required="required" />
 				<div id="cell-line-cloneHelp" class="form-text text-muted">Cryobase number</div>
@@ -79,24 +79,24 @@
 		</div>
 
 		<div class="mb-3">
-			<label for="screen-name" class="form-label">Screen name</label>
+			<label for="screen-name" class="col-form-label">Screen name</label>
 			<input type="text" disabled="disabled" class="form-control" id="screen-name"
 				aria-describedby="screenName" name="screen-name" />
 		</div>
 
 		<div class="mb-3 d-none">
-			<label for="treatment-details" class="form-label">Treatment details</label>
+			<label for="treatment-details" class="col-form-label">Treatment details</label>
 			<input type="text" class="form-control" id="treatment-details"
 				name="treatment-details" />
 		</div>
 
 		<div class="mb-3">
-			<label for="description" class="form-label">Description</label>
+			<label for="description" class="col-form-label">Description</label>
 			<textarea class="form-control" id="description" name="description" rows="3"></textarea>
 		</div>
 
-		<div class="form-row mb-3">
-			<div class="col-md-6 form-check form-check-inline">
+		<div class="row mb-3">
+			<div class="col-sm-6 form-check form-check-inline">
 				<input type="checkbox" class="form-check-input" id="ignore"
 					aria-describedby="ignoreHelp" name="ignore" />
 				<label for="ignore" class="form-check-label">Inactive screen <span  class="text-muted">ignore in uniqueness e.g.</span></label>
@@ -105,16 +105,16 @@
 
 		<hr/>
 
-		<div class="form-row" id='fastq-ip'>
-			<div class="mb-3 col-md-6">
-				<label for="fastq-low" class="form-label">FastQ file for low</label>
+		<div class="row mb-3" id='fastq-ip'>
+			<div class="col-sm-6">
+				<label for="fastq-low" class="col-form-label">FastQ file for low</label>
 				<input type="text" class="form-control" id="fastq-low" required="required"
 					aria-describedby="fastQLowHelp" name="fastq-low" />
 				<div id="fastQLowHelp" class="form-text text-muted">Full path to the FastQ file for the low channel</div>
 			</div>
 
-			<div class="mb-3 col-md-6">
-				<label for="fastq-high" class="form-label">FastQ file for high</label>
+			<div class="col-sm-6">
+				<label for="fastq-high" class="col-form-label">FastQ file for high</label>
 				<input type="text" class="form-control" id="fastq-high" required="required"
 					aria-describedby="fastQhighHelp" name="fastq-high" />
 				<div id="fastQhighHelp" class="form-text text-muted">Full path to the FastQ file for the high channel</div>
@@ -122,32 +122,32 @@
 		</div>
 
 		<div id='fastq-sl'>
-			<div class="form-row">
-				<div class="mb-3 col-md-6">
-					<label for="fastq-replicate-1" class="form-label">FastQ file for replicate-1</label>
+			<div class="row mb-3">
+				<div class="col-sm-6">
+					<label for="fastq-replicate-1" class="col-form-label">FastQ file for replicate-1</label>
 					<input type="text" class="form-control" id="fastq-replicate-1"
 						aria-describedby="fastQreplicate-1Help" name="fastq-replicate-1" />
 					<div id="fastQreplicate-1Help" class="form-text text-muted">Full path to the FastQ file for the replicate-1 channel</div>
 				</div>
 	
-				<div class="mb-3 col-md-6">
-					<label for="fastq-replicate-2" class="form-label">FastQ file for replicate-2</label>
+				<div class="col-sm-6">
+					<label for="fastq-replicate-2" class="col-form-label">FastQ file for replicate-2</label>
 					<input type="text" class="form-control" id="fastq-replicate-2"
 						aria-describedby="fastQreplicate-2Help" name="fastq-replicate-2" />
 					<div id="fastQreplicate-2Help" class="form-text text-muted">Full path to the FastQ file for the replicate-2 channel</div>
 				</div>
 			</div>
 
-			<div class="form-row">
-				<div class="mb-3 col-md-6">
-					<label for="fastq-replicate-3" class="form-label">FastQ file for replicate-3</label>
+			<div class="row mb-3">
+				<div class="col-sm-6">
+					<label for="fastq-replicate-3" class="col-form-label">FastQ file for replicate-3</label>
 					<input type="text" class="form-control" id="fastq-replicate-3"
 						aria-describedby="fastQreplicate-3Help" name="fastq-replicate-3" />
 					<div id="fastQreplicate-3Help" class="form-text text-muted">Full path to the FastQ file for the replicate-3 channel</div>
 				</div>
 	
-				<div class="mb-3 col-md-6">
-					<label for="fastq-replicate-4" class="form-label">FastQ file for replicate-4</label>
+				<div class="col-sm-6">
+					<label for="fastq-replicate-4" class="col-form-label">FastQ file for replicate-4</label>
 					<input type="text" class="form-control" id="fastq-replicate-4"
 						aria-describedby="fastQreplicate-4Help" name="fastq-replicate-4" />
 					<div id="fastQreplicate-4Help" class="form-text text-muted">Full path to the FastQ file for the replicate-4 channel</div>
@@ -157,10 +157,9 @@
 
 		<hr/>
 
-		<div class="clearfix container-fluid">
+		<div class="flex">
 			<button id='cancel-btn' class="btn btn-secondary" onclick="js:window.location='screens'">Cancel</button>
-			<button id="submit-btn" type="submit" form="create-screen-form"
-				class="btn btn-primary float-right">Create</button>
+			<button id="submit-btn" type="submit" form="create-screen-form" class="btn btn-primary float-right">Create</button>
 		</div>
 	</form>
 

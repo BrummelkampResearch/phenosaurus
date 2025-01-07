@@ -254,27 +254,33 @@ bool user_service::user_exists(const std::string &username)
 user user_service::retrieve_user(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
+	user user{ .id = id };
 
-	auto row = tx.exec1("SELECT * FROM public.users WHERE id = " + std::to_string(id));
-	tx.commit();
-
-	user user;
-
-	user.username = row.at("username").as<std::string>();
-	user.id = id;
-	user.email = row.at("email").as<std::string>();
-	user.firstname = row.at("first_name").as<std::string>("");
-	user.lastname = row.at("last_name").as<std::string>("");
-	user.admin = row.at("admin").as<bool>();
-	user.active = row.at("active").as<bool>();
-
-	pqxx::transaction tx2(db_connection::instance());
-	for (auto const &[name] : tx2.stream<std::string>(
-			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	try
 	{
-		user.groups.push_back(name);
+		auto row = tx.exec1("SELECT * FROM public.users WHERE id = " + std::to_string(id));
+		tx.commit();
+
+		user.username = row.at("username").as<std::string>();
+		user.id = id;
+		user.email = row.at("email").as<std::string>();
+		user.firstname = row.at("first_name").as<std::string>("");
+		user.lastname = row.at("last_name").as<std::string>("");
+		user.admin = row.at("admin").as<bool>();
+		user.active = row.at("active").as<bool>();
+
+		pqxx::transaction tx2(db_connection::instance());
+		for (auto const &[name] : tx2.stream<std::string>(
+				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+		{
+			user.groups.push_back(name);
+		}
+		tx2.commit();
 	}
-	tx2.commit();
+	catch (const pqxx::unexpected_rows &e)
+	{
+		std::throw_with_nested(unknown_user());
+	}
 
 	return user;
 }
@@ -282,27 +288,32 @@ user user_service::retrieve_user(uint32_t id)
 user user_service::retrieve_user(const std::string &name)
 {
 	pqxx::transaction tx(db_connection::instance());
+	user user{ .username = name };
 
-	auto row = tx.exec1("SELECT * FROM public.users WHERE username = " + tx.quote(name));
-	tx.commit();
-
-	user user;
-
-	user.username = name;
-	user.id = row.at("id").as<uint32_t>();
-	user.email = row.at("email").as<std::string>();
-	user.firstname = row.at("first_name").as<std::string>("");
-	user.lastname = row.at("last_name").as<std::string>("");
-	user.admin = row.at("admin").as<bool>();
-	user.active = row.at("active").as<bool>();
-
-	pqxx::transaction tx2(db_connection::instance());
-	for (auto const &[name] : tx2.stream<std::string>(
-			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	try
 	{
-		user.groups.push_back(name);
+		auto row = tx.exec1("SELECT * FROM public.users WHERE username = " + tx.quote(name));
+		tx.commit();
+
+		user.id = row.at("id").as<uint32_t>();
+		user.email = row.at("email").as<std::string>();
+		user.firstname = row.at("first_name").as<std::string>("");
+		user.lastname = row.at("last_name").as<std::string>("");
+		user.admin = row.at("admin").as<bool>();
+		user.active = row.at("active").as<bool>();
+
+		pqxx::transaction tx2(db_connection::instance());
+		for (auto const &[name] : tx2.stream<std::string>(
+				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+		{
+			user.groups.push_back(name);
+		}
+		tx2.commit();
 	}
-	tx2.commit();
+	catch (const pqxx::unexpected_rows &e)
+	{
+		std::throw_with_nested(unknown_user());
+	}
 
 	return user;
 }
@@ -311,26 +322,33 @@ user user_service::retrieve_user_by_email(const std::string &email)
 {
 	pqxx::transaction tx(db_connection::instance());
 
-	auto row = tx.exec1("SELECT * FROM public.users WHERE email = " + tx.quote(email));
-	tx.commit();
-
 	user user;
 
-	user.username = row.at("name").as<std::string>();
-	user.id = row.at("id").as<uint32_t>();
-	user.email = row.at("email").as<std::string>();
-	user.firstname = row.at("first_name").as<std::string>("");
-	user.lastname = row.at("last_name").as<std::string>("");
-	user.admin = row.at("admin").as<bool>();
-	user.active = row.at("active").as<bool>();
-
-	pqxx::transaction tx2(db_connection::instance());
-	for (auto const &[name] : tx2.stream<std::string>(
-			 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+	try
 	{
-		user.groups.push_back(name);
+		auto row = tx.exec1("SELECT * FROM public.users WHERE email = " + tx.quote(email));
+		tx.commit();
+
+		user.username = row.at("name").as<std::string>();
+		user.id = row.at("id").as<uint32_t>();
+		user.email = row.at("email").as<std::string>();
+		user.firstname = row.at("first_name").as<std::string>("");
+		user.lastname = row.at("last_name").as<std::string>("");
+		user.admin = row.at("admin").as<bool>();
+		user.active = row.at("active").as<bool>();
+
+		pqxx::transaction tx2(db_connection::instance());
+		for (auto const &[name] : tx2.stream<std::string>(
+				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+		{
+			user.groups.push_back(name);
+		}
+		tx2.commit();
 	}
-	tx2.commit();
+	catch (const pqxx::unexpected_rows &e)
+	{
+		std::throw_with_nested(unknown_user());
+	}
 
 	return user;
 }
@@ -447,20 +465,25 @@ uint32_t user_service::create_group(const group &group)
 group user_service::retrieve_group(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
+	group group{ .id = id };
 
-	auto row = tx.exec1("SELECT * FROM public.groups WHERE id = " + std::to_string(id));
-	tx.commit();
-
-	group group;
-
-	group.name = row.at("name").as<std::string>();
-	group.id = id;
-
-	pqxx::transaction tx2(db_connection::instance());
-	for (const auto &[member] : tx2.stream<std::string>(
-			 "SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+	try
 	{
-		group.members.push_back(member);
+		auto row = tx.exec1("SELECT * FROM public.groups WHERE id = " + std::to_string(id));
+		tx.commit();
+
+		group.name = row.at("name").as<std::string>();
+
+		pqxx::transaction tx2(db_connection::instance());
+		for (const auto &[member] : tx2.stream<std::string>(
+				 "SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+		{
+			group.members.push_back(member);
+		}
+	}
+	catch (const pqxx::unexpected_rows &e)
+	{
+		std::throw_with_nested(unknown_group());
 	}
 
 	return group;
@@ -970,12 +993,12 @@ int passwd_main(int argc, char *const argv[])
 				std::cerr << "Invalid e-mail address\n";
 			user.email = ask("E-mail address");
 		}
-		
+
 		user.password = askPassword("");
-		
+
 		user.active = zeep::iequals(ask("User is active [Y/n]", "y"), "y");
 		user.admin = zeep::iequals(ask("User is administrator [y/N]", "n"), "y");
-		
+
 		user_service.create_user(user);
 	}
 
