@@ -1653,6 +1653,38 @@ class screen_analyzer_list_utility_object : public zeep::http::expression_utilit
 
 // --------------------------------------------------------------------
 
+class screen_analyzer_mapped_utility_object : public zeep::http::expression_utility_object<screen_analyzer_mapped_utility_object>
+{
+  public:
+	static constexpr const char *name() { return "mapped"; }
+
+	virtual zeep::http::object evaluate(const zeep::http::scope &scope, const std::string &methodName,
+		const std::vector<zeep::http::object> &parameters) const
+	{
+		zeep::http::object result;
+
+		if (methodName == "contains" and parameters.size() == 2)
+		{
+			auto mapped = parameters[0];
+			auto q = parameters[1];
+
+			for (const auto &i : mapped)
+			{
+				if (i["assembly"] != q)
+					continue;
+
+				result = true;
+				break;
+			}
+		}
+
+		return result;
+	}
+
+} s_screen_analyzer_mapped_utility_object;
+
+// --------------------------------------------------------------------
+
 screen_html_controller::screen_html_controller()
 	: zeep::http::html_controller("/")
 {
@@ -1716,16 +1748,6 @@ void screen_html_controller::handle_screen_user(const zeep::http::request &reque
 void screen_html_controller::handle_screen_table(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
 	zeep::http::scope sub(scope);
-
-	// zeep::json::element users;
-	// auto u = user_service::instance().get_all_users();
-	// to_element(users, u);
-	// sub.put("users", users);
-
-	// zeep::json::element groups;
-	// auto g = user_service::instance().get_all_groups();
-	// to_element(groups, g);
-	// sub.put("groups", groups);
 
 	auto credentials = get_credentials();
 	auto username = credentials["username"].as<std::string>();
