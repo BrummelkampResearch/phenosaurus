@@ -25,8 +25,11 @@
  */
 
 import * as d3 from 'd3';
+import * as bootstrap from 'bootstrap';
 
 /*global chromosomes screens $*/
+
+let selectGeneDialog;
 
 class CanvasPlot {
 	constructor(chromosome, zoomLevel) {
@@ -253,10 +256,13 @@ window.addEventListener('load', () => {
 		}
 	});
 
+	selectGeneDialog = new bootstrap.Modal("#selectScreensModal");
+
 	const updateScreensBtn = document.getElementById('updateSelectedScreens');
 	updateScreensBtn.addEventListener('click', () => {
 		const screenList = screens.filter(s => ! document.getElementById(`screen-${s}`).checked);
 		plot.setScreenSkipList(screenList);
-		$('#selectScreensModal').modal('hide');
+
+		selectGeneDialog.hide();
 	});
 });

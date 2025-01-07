@@ -24,12 +24,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'bootstrap/js/dist/modal';
+import * as bootstrap from 'bootstrap';
 
 class GroupEditor {
 
 	constructor() {
-		this.dialog = document.getElementById("group-dialog");
+		this.dialog = new bootstrap.Modal("#group-dialog");
 		this.form = document.getElementById("group-edit-form");
 		this.csrf =
 			this.form.elements['_csrf'].value || document.logoutForm.elements['_csrf'].value;
@@ -41,42 +41,39 @@ class GroupEditor {
 			showPassword.addEventListener("click", () => this.toggleShowPassword());
 	}
 
-	editGroup(id) {
+	async editGroup(id) {
 		this.id = id;
 
-		$(this.dialog).modal();
+		try {
+			const reply = await fetch(`./group/${id}`, {credentials: "include", method: "get"});
+			const data = await reply.json();
 
-		fetch(`./group/${id}`, {credentials: "include", method: "get"})
-			.then(async response => {
-				if (response.ok)
-					return response.json();
+			if (!reply.ok)
+				throw data.error || "Error fetching data";
+			
+			this.group = data;
+	
+			const members = new Set(data.members);
 
-				const error = await response.json();
-				console.log(error);
-				throw error.error;
-			})
-			.then(data => {
+			this.dialog.show();
 
-				this.group = data;
-
-				const members = new Set(data.members);
-
-				for (let key in this.form.elements) {
-					const input = this.form.elements[key];
-					switch (input.type) {
-						case 'checkbox':
-							input.checked = members.has(input.name);
-							break;
-						case 'text':
-							input.value = data[input.name];
-							break;
-					}
+			for (let key in this.form.elements) {
+				const input = this.form.elements[key];
+				switch (input.type) {
+					case 'checkbox':
+						input.checked = members.has(input.name);
+						break;
+					case 'text':
+						input.value = data[input.name];
+						break;
 				}
-			})
-			.catch(err => alert(err));
+			}
+		} catch (error) {
+			alert(error);
+		}
 	}
 
-	saveGroup(e) {
+	async saveGroup(e) {
 		if (e)
 			e.preventDefault();
 
@@ -98,28 +95,28 @@ class GroupEditor {
 		const url = this.id ? `./group/${this.id}` : `./group`;
 		const method = this.id ? 'put' : 'post';
 
-		fetch(url, {
-			credentials: "include",
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-CSRF-Token': this.csrf
-			},
-			method: method,
-			body: JSON.stringify(this.group)
-		}).then(async response => {
-			if (response.ok)
-				return response.json();
+		try {
+			const reply = await fetch(url, {
+				credentials: "include",
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+					'X-CSRF-Token': this.csrf
+				},
+				method: method,
+				body: JSON.stringify(this.group)
+			});
 
-			const error = await response.json();
-			console.log(error);
-			throw error.error;
-		}).then(r => {
-			console.log(r);
-			$(this.dialog).modal('hide');
+			const data = await reply.json();
 
+			if (!reply.ok)
+				throw data.error || "Error fetching data";
+			
+			this.dialog.hide();
 			window.location.reload();
-		}).catch(err => alert(err));
+		} catch (error) {
+			alert(error);
+		}
 	}
 
 	toggleShowPassword() {
@@ -134,7 +131,7 @@ class GroupEditor {
 		this.id = null;
 		this.group = {};
 
-		$(this.dialog).modal();
+		this.dialog.show();
 
 		Array.from(this.form.elements)
 			.filter(i => i.tagName === 'INPUT')

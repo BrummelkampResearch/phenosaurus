@@ -10,9 +10,9 @@
     <script src="/scripts/admin-group.js" th:src="@{/dist/admin-group.js}" defer="defer"></script>
 </head>
 
-<body>
+<body class="site">
     <nav th:replace="~{menu :: menu}"></nav>
-    <div class="container">
+    <div class="container site-content">
         <div class="container row mt-3 mb-3">
             <div class="col-10">
                 <h1>Groups</h1>
@@ -44,7 +44,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="dialog-label">Group editor</h5>
-                    <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="group-edit-form" th:action="@{/admin/group}" method="post" name="group-edit-form">
@@ -54,10 +54,6 @@
                                     placeholder="Group name" type="text" required="" /></div>
                         </div>
                         <div class="form-group"><label for="selected-members">Members</label>
-                            <!--                                            <select multiple class="form-control" id="selected-members">-->
-
-                            <!--                                                    <option th:each="user: ${users}" th:text="${user.username}" th:value="${user.username}"></option>-->
-                            <!--                                            </select>-->
                             <div class="group-members-table m-3">
                                 <table class="table table-sm" id="selected-members">
                                     <tbody>
@@ -73,7 +69,6 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <!--<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
                     <button type="submit" form="group-edit-form" class="btn btn-primary">Save</button></div>
             </div>
         </div>

@@ -73,7 +73,16 @@ class unknown_user : public std::runtime_error
 {
   public:
 	unknown_user()
-		: std::runtime_error("Unknown username")
+		: std::runtime_error("Unknown user")
+	{
+	}
+};
+
+class unknown_group : public std::runtime_error
+{
+  public:
+	unknown_group()
+		: std::runtime_error("Unknown group")
 	{
 	}
 };

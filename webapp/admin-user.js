@@ -24,66 +24,60 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import 'bootstrap/js/dist/modal';
+import * as bootstrap from "bootstrap";
 
 /*global context_name */
 
 class UserEditor {
 
 	constructor() {
-		this.dialog = document.getElementById("user-dialog");
+		this.dialog = new bootstrap.Modal("#user-dialog");
 		this.form = document.getElementById("user-edit-form");
 		this.csrf = this.form.elements['_csrf'].value;
 
 		this.form.addEventListener("submit", (evt) => this.saveUser(evt));
-
-		const showPassword = this.form.querySelector(".show-password-btn");
-		if (showPassword)
-			showPassword.addEventListener("click", () => this.toggleShowPassword());
 	}
 
-	editUser(id) {
+	async editUser(id) {
 		this.id = id;
 
-		$(this.dialog).modal();
+		document.getElementById("id_username").disabled = true;
+		document.getElementById("id_firstname").focus();
 
-		document.getElementById("id_username").focus();
+		try {
+			const reply = await fetch(`./user/${id}`, { credentials: "include", method: "get" });
+			const data = await reply.json();
 
-		fetch(`./user/${id}`, {credentials: "include", method: "get"})
-			.then(async response => {
-				if (response.ok)
-					return response.json();
+			if (!reply.ok)
+				throw data.error || "Error fetching data";
 
-				const error = await response.json();
-				console.log(error);
-				throw error.error;
-			})
-			.then(data => {
+			this.dialog.show();
+			this.user = data;
 
-				this.user = data;
+			for (let key in data) {
+				const input = this.form.elements[key];
+				if (input == null)
+					continue;
 
-				for (let key in data) {
-					const input = this.form.elements[key];
-					if (input == null)
-						continue;
-
-					switch (input.type) {
-						case 'checkbox':
-							input.checked = !!data[key];
-							break;
-						case 'password':
-							input.value = '';
-							break;
-						default:
-							input.value = data[key];
-							break;
-					}
+				switch (input.type) {
+					case 'checkbox':
+						input.checked = !!data[key];
+						break;
+					case 'password':
+						input.value = '';
+						break;
+					default:
+						input.value = data[key];
+						break;
 				}
-			})
-			.catch(err => alert(err));
+			}
+
+		} catch (error) {
+			alert(error);
+		}
 	}
 
-	saveUser(e) {
+	async saveUser(e) {
 		if (e)
 			e.preventDefault();
 
@@ -111,36 +105,27 @@ class UserEditor {
 		const url = this.id ? `./user/${this.id}` : `./user`;
 		const method = this.id ? 'put' : 'post';
 
-		fetch(url, {
-			credentials: "include",
-			headers: {
-				'Accept': 'application/json',
-				'Content-Type': 'application/json',
-				'X-CSRF-Token': this.csrf
-			},
-			method: method,
-			body: JSON.stringify(this.user)
-		}).then(async response => {
-			if (response.ok)
-				return response.json();
+		try {
+			const reply = await fetch(url, {
+				credentials: "include",
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json',
+					'X-CSRF-Token': this.csrf
+				},
+				method: method,
+				body: JSON.stringify(this.user)
+			});
+			const data = await reply.json();
 
-			const error = await response.json();
-			console.log(error);
-			throw error.error;
-		}).then(r => {
-			console.log(r);
-			$(this.dialog).modal('hide');
+			if (!reply.ok)
+				throw data.error || "Error in request";
 
+			this.dialog.hide();
 			window.location.reload();
-		}).catch(err => alert(err));
-	}
-
-	toggleShowPassword() {
-		const pwField = this.form.elements['password'];
-		if (pwField.type === 'password')
-			pwField.type = 'text';
-		else
-			pwField.type = 'password';
+		} catch (error) {
+			alert(error);
+		}
 	}
 
 	createUser() {
@@ -152,34 +137,34 @@ class UserEditor {
 			.forEach(input => this.user[input.name] = '');
 
 		this.form.reset();
-		$(this.dialog).modal();
+		this.dialog.show();
 
+		document.getElementById("id_username").disabled = false;
 		document.getElementById("id_username").focus();
 	}
 
-	deleteUser(id, name) {
+	async deleteUser(id, name) {
 		if (confirm(`Are you sure you want to delete user ${name}?`)) {
-			fetch(`./user/${id}`, {
-				credentials: "include",
-				method: "delete",
-				headers: {
-					'Accept': 'application/json',
-					// 'Content-Type': 'application/json',
-					'X-CSRF-Token': this.csrf
-				}
-			}).then(async response => {
-				if (response.ok)
-					return response.json();
 
-				const error = await response.json();
-				console.log(error);
-				throw error.error;
-			}).then(data => {
-				console.log(data);
+			try {
+				const reply = fetch(`./user/${id}`, {
+					credentials: "include",
+					method: "delete",
+					headers: {
+						'Accept': 'application/json',
+						// 'Content-Type': 'application/json',
+						'X-CSRF-Token': this.csrf
+					}
+				});
+				const data = await reply.json();
+
+				if (!reply.ok)
+					throw data.error || "Error in request";
 
 				window.location.reload();
-			})
-			.catch(err => alert(err));
+			} catch (error) {
+				alert(error);
+			}
 		}
 	}
 }
@@ -192,18 +177,8 @@ window.addEventListener("load", () => {
 		.forEach(btn => btn.addEventListener("click", () => editor.editUser(btn.dataset.id)));
 
 	Array.from(document.getElementsByClassName("delete-user-btn"))
-		.forEach(btn => btn.addEventListener("click", () => {
-			return editor.deleteUser(btn.dataset.id, btn.dataset.name);
-		}));
+		.forEach(btn => btn.addEventListener("click", () => editor.deleteUser(btn.dataset.id, btn.dataset.name)));
 
 	document.getElementById("add-user-btn")
 		.addEventListener("click", () => editor.createUser());
-
-
-	// Array.from(document.getElementById('user-table').tBodies[0].rows)
-	// 	.forEach(tr => {
-	// 		tr.addEventListener("dblclick", () => {
-	// 			editor.editUser(tr.dataset.uid);
-	// 		})
-	// 	});
 });
