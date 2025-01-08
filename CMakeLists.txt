@@ -138,6 +138,14 @@ add_custom_command(
 
 add_custom_target(webpack DEPENDS ${webpack_output})
 
+set(CONFIG_PATH "${CMAKE_INSTALL_FULL_SYSCONFDIR}")
+set(CONFIG_FILE "${CMAKE_INSTALL_FULL_SYSCONFDIR}/screen-analyzer.conf")
+set(SCREEN_ANALYZER_EXE "${CMAKE_INSTALL_FULL_SBINDIR}/screen-analyzer")
+set(SCREEN_ANALYZER_PID "/var/run/screen-analyzer")
+
+configure_file(${PROJECT_SOURCE_DIR}/src/config.hpp.in
+	${PROJECT_SOURCE_DIR}/src/config.hpp @ONLY)
+
 add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/refseq.cpp
 	${CMAKE_SOURCE_DIR}/src/job-scheduler.cpp
@@ -184,6 +192,8 @@ if(USE_RSRC)
 	mrc_target_resources(screen-analyzer ${CMAKE_SOURCE_DIR}/docroot/ ${CMAKE_SOURCE_DIR}/rsrc/)
 endif()
 
-install(TARGETS screen-analyzer
-	RUNTIME DESTINATION ${BIN_INSTALL_DIR}
-)
+install(TARGETS screen-analyzer DESTINATION ${CMAKE_INSTALL_SBINDIR})
+
+configure_file(screen-analyzer.service.in ${CMAKE_CURRENT_BINARY_DIR}/screen-analyzer.service @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/screen-analyzer.service" DESTINATION "/etc/systemd/system")

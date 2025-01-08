@@ -24,6 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.hpp"
 
 #include "bowtie.hpp"
 #include "db-connection.hpp"
@@ -91,8 +92,10 @@ void parse_argv(int argc, char *const argv[], mcfp::config &config)
 
 	config.set_ignore_unknown(true);
 
+	fs::path default_config_file = CONFIG_PATH;
+
 	std::error_code ec;
-	config.parse_config_file("config", "screen-analyzer.conf", { fs::current_path().string(), "/etc" }, ec);
+	config.parse_config_file("config", default_config_file.filename().string(), { fs::current_path().string(), default_config_file.parent_path().string() }, ec);
 	if (ec and ec != mcfp::config_error::config_file_not_found)
 		throw std::system_error(ec, "Error parsing config file");
 }
@@ -677,15 +680,19 @@ Command should be either:
 	std::string address = config.get("address");
 	uint16_t port = config.get<uint16_t>("port");
 
-	std::string access_log = "/var/log/screen-analyzer/access";
-	std::string error_log = "/var/log/screen-analyzer/error";
-	std::string pid_file = "/var/run/screen-analyzer";
+	std::string access_log, error_log, pid_file;
 
 	if (config.count("public"))
 	{
-		access_log += "-public";
-		error_log += "-public";
-		pid_file += "-public";
+		access_log = "/var/log/screen-analyzer/access-public";
+		error_log = "/var/log/screen-analyzer/error-public";
+		pid_file = PID_FILE "-public";
+	}
+	else
+	{
+		access_log = "/var/log/screen-analyzer/access";
+		error_log = "/var/log/screen-analyzer/error";
+		pid_file = PID_FILE;
 	}
 
 	access_log += ".log";

@@ -1,0 +1,15 @@
+[Unit]
+Description=The phenosaurus web service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Restart=on-failure
+Type=forking
+PIDFile=@SCREEN_ANALYZER_PID@
+ExecStart=@SCREEN_ANALYZER_EXE@ server start
+ExecReload=@SCREEN_ANALYZER_EXE@ server reload
+ExecStop=@SCREEN_ANALYZER_EXE@ server stop
+
+[Install]
+WantedBy=multi-user.target
