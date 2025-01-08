@@ -7,9 +7,9 @@ Wants=network-online.target
 Restart=on-failure
 Type=forking
 PIDFile=@SCREEN_ANALYZER_PID@
-ExecStart=@SCREEN_ANALYZER_EXE@ server start
-ExecReload=@SCREEN_ANALYZER_EXE@ server reload
-ExecStop=@SCREEN_ANALYZER_EXE@ server stop
+ExecStart=@SCREEN_ANALYZER_EXE@ server start --config=@CONFIG_FILE@
+ExecReload=@SCREEN_ANALYZER_EXE@ server reload --config=@CONFIG_FILE@
+ExecStop=@SCREEN_ANALYZER_EXE@ server stop --config=@CONFIG_FILE@
 
 [Install]
 WantedBy=multi-user.target
