@@ -160,8 +160,7 @@ class ScreenPlotRegular extends ScreenPlot {
 			plotTitle.classList.add("plot-status-loading");
 			plotTitle.classList.remove("plot-status-loaded", "plot-status-failed");
 
-			const screenName = document.querySelector(".screen-name");
-			screenName.textContent = screen;
+			[...document.querySelectorAll(".screen-name")].forEach(sn => sn.textContent = screen);
 
 			const assembly = options.get("assembly");
 
@@ -173,7 +172,7 @@ class ScreenPlotRegular extends ScreenPlot {
 					return r.json();
 			}).then(d => {
 				if (typeof (d.description) === "string")
-					screenName.textContent = d.description;
+					[...document.querySelectorAll(".screen-name")].forEach(sn => sn.textContent = screen);
 			});
 
 			const screenData = new ScreenData(screen);
