@@ -101,7 +101,11 @@ class bowtie_parameters
 	std::filesystem::path bowtie() const { return m_bowtie; }
 	std::filesystem::path bowtieIndex(const std::string &assembly) const
 	{
-		return m_assemblyIndices.at(assembly);
+		auto ai = m_assemblyIndices.find(assembly);
+		if (ai == m_assemblyIndices.end())
+			throw std::runtime_error("Bowtie index for assembly '" + assembly + "' not specified");
+
+		return ai->second;
 	}
 	unsigned threads() const { return m_threads; }
 	unsigned trimLength() const { return m_trimLength; }
