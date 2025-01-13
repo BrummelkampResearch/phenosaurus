@@ -128,30 +128,31 @@ class ScreenCreator {
 		}
 	}
 
-validateScreenName() {
-	return new Promise((resolve, reject) => {
+	async validateScreenName() {
 		const screenName = this.form['screen-name'];
 		const fd = new FormData();
 		fd.append('name', screenName);
 
-		fetch(`screen/validate/name?name=${screenName.value}`, {
+		const r = await fetch(`screen/validate/name?name=${screenName.value}`, {
 			credentials: "include", method: 'POST', body: fd
-		}).then(r => {
-			if (r.ok == false)
-				reject('Invalid response from server');
-			else
-				return r.json();
-		}).then(r => {
-			r === true ? resolve() : reject(`unexpected result from server: ${r}`);
 		});
-	});
-}
 
-submitForm(e) {
-	if (e) e.preventDefault();
+		if (r.ok) {
+			const v = await r.json();
+			return v === true;
+		}
 
-	this.validateScreenName()
-		.then(() => {
+		return false;
+	}
+
+	async submitForm(e) {
+		if (e) e.preventDefault();
+
+		try {
+			const validName = await this.validateScreenName();
+
+			if (!validName)
+				throw "Invalid screen name";
 
 			const screen = {
 				name: this.form['screen-name'].value,
@@ -184,8 +185,7 @@ submitForm(e) {
 				}
 			}
 
-			let wasOK;
-			fetch(`screen`, {
+			const r = await fetch(`screen`, {
 				body: JSON.stringify(screen),
 				credentials: "include",
 				method: 'POST',
@@ -193,27 +193,22 @@ submitForm(e) {
 					'X-CSRF-Token': this.csrf,
 					'Content-Type': 'application/json'
 				}
-			}).then(r => {
-				wasOK = r.ok;
-				return r.json();
-			}).then(r => {
-				if (r.error)
-					throw r.error;
-				if (wasOK == false)
-					throw 'server returned an error';
-
-				// this.form.reset();
-				window.location = 'screens';
-			}).catch(err => {
-				console.log(err);
-				alert(`Failed to submit form: ${err}`);
 			});
-		})
-		.catch(err => {
-			console.log(err);
-			alert("The screen name is not valid, is it unique?");
-		});
-}
+
+			const d = await r.json();
+
+			if (typeof d.error == "string") {
+				throw d.error;
+			}
+
+			if (r.ok)
+				window.location = 'screens';
+			else
+				throw r.statusText;
+		} catch (error) {
+			alert(`Error in submitting screen: ${error}`);
+		}
+	}
 }
 
 window.addEventListener("load", () => {

@@ -150,7 +150,7 @@
 					<td z:text="${m.trim-length}"></td>
 					<td z:switch="${m.insertion-counts.length}">
 						<i z:case="*" class="bi bi-check"></i>
-						<button z:case="0" class="btn btn-sm btn-secondary" z:data-assembly="${m.assembly}">map</button>
+						<button z:case="0" type="button" class="btn btn-sm btn-outline-primary btn-map-screen" z:data-assembly="${m.assembly}">map</button>
 					</td>
 					<td class="insertion-counts">
 						<z:block z:each="f: ${m.insertion-counts}"><span z:text="|${f.file}: ${f.count}|"></span><br/></z:block>
@@ -158,7 +158,6 @@
 				</tr>
 			</tbody>
 		</table>
-
 
 		<hr/>
 

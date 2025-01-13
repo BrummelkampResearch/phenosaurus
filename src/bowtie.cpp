@@ -263,7 +263,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			progress p(fs::file_size(fastq), fastq.string());
 			p.set_action(fastq.filename().string());
 
-			gxrio::ifstream file(fastq, std::ios::binary);
+			gxrio::ifstream file(fastq);
 
 			if (not file.is_open())
 				throw std::runtime_error("Could not open file " + fastq.string());

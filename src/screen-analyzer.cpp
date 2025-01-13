@@ -149,9 +149,9 @@ int map_main(int argc, char *const argv[])
 	auto &config = mcfp::config::instance();
 	parse_argv(argc, argv, config);
 
-	if (config.operands().size() != 2)
+	if (config.operands().size() != 1)
 	{
-		std::cerr << "Missing arguments\n"
+		std::cerr << "Missing argument\n"
 				  << config;
 		exit(1);
 	}
