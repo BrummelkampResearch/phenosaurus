@@ -635,7 +635,7 @@ Command should be either:
 	{
 		if (config.count("bowtie-index-"s + assembly) == 0)
 			continue;
-		assemblyIndices["assembly"] = config.get("bowtie-index-"s + assembly);
+		assemblyIndices[assembly] = config.get("bowtie-index-"s + assembly);
 	}
 
 	unsigned trimLength = config.get<unsigned>("trim-length");
