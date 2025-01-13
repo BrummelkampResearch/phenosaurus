@@ -1,3 +1,9 @@
+Version 3.0.1
+- Fix reading config for bowtie
+- Display correct screen name
+- Updated node modules
+- Corrected systemd service file
+
 Version 3.0.0
 - Remove most of Boost dependencies
 - Upgrade node modules to latest, safe versions

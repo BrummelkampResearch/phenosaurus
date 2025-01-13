@@ -25,7 +25,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 # set the project name
-project(phenosaurus VERSION 3.0.0 LANGUAGES CXX C)
+project(phenosaurus VERSION 3.0.1 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
