@@ -265,13 +265,16 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			progress p(fs::file_size(fastq), fastq.string());
 			p.set_action(fastq.filename().string());
 
-			gxrio::ifstream file(fastq);
+			std::ifstream file(fastq);
 
 			if (not file.is_open())
 				throw std::runtime_error("Could not open file " + fastq.string());
 
 			progress_filter pf(file.rdbuf(), p);
-			std::istream in(&pf);
+			gxrio::basic_igzip_streambuf<char, std::char_traits<char>> gb;
+			gb.init(&pf);
+
+			std::istream in(&gb);
 
 			char nl[1] = { '\n' };
 
