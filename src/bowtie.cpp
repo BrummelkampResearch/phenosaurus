@@ -44,8 +44,6 @@
 #include <filesystem>
 #include <functional>
 
-#include <boost/iostreams/filtering_stream.hpp>
-
 #include <gxrio.hpp>
 
 #include "bowtie.hpp"
@@ -54,7 +52,6 @@
 #include "bsd-closefrom.h"
 
 namespace fs = std::filesystem;
-namespace io = boost::iostreams;
 using namespace std::literals;
 
 extern int VERBOSE;
@@ -143,29 +140,34 @@ Insertion parseLine(const char* line, unsigned readLength)
 
 // --------------------------------------------------------------------
 
-struct progress_filter
+class progress_filter : public std::streambuf
 {
-	progress_filter() = delete;
-	progress_filter(progress& p) : m_progress(p) {}
-	
-	progress_filter(const progress_filter& cf)
-		: m_progress(const_cast<progress&>(cf.m_progress)) {}
-
-	progress_filter& operator=(const progress_filter& cf) = delete;
-
-	typedef char char_type;
-	typedef io::multichar_input_filter_tag category;
-
-	template<typename Source>
-	std::streamsize read(Source& src, char* s, std::streamsize n)
+  public:
+	progress_filter(std::streambuf *next, progress &p)
+		: m_next(*next)
+		, m_progress(p)
 	{
-		auto r = boost::iostreams::read(src, s, n);
-		if (r > 0)
+		setg(nullptr, nullptr, nullptr);
+	}
+
+	int_type underflow() override
+	{
+		traits_type::int_type r = m_next.sgetn(m_buffer, sizeof(m_buffer));
+
+		if (r == 0)
+			r = traits_type::eof();
+		else if (r != traits_type::eof())
+		{
 			m_progress.consumed(r);
-		
+			setg(m_buffer, m_buffer, m_buffer + r);
+		}
+
 		return r;
 	}
 
+  private:
+	std::streambuf &m_next;
+	char m_buffer[1024];
 	progress& m_progress;
 };
 
@@ -268,11 +270,8 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 			if (not file.is_open())
 				throw std::runtime_error("Could not open file " + fastq.string());
 
-			io::filtering_stream<io::input> in;
-
-			in.push(progress_filter(p));
-			
-			in.push(file);
+			progress_filter pf(file.rdbuf(), p);
+			std::istream in(&pf);
 
 			char nl[1] = { '\n' };
 
