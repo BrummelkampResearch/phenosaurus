@@ -89,8 +89,8 @@ class GeneLine {
 
 				Plot.preProcessData(data);
 	
-				this.heatMap.processData(data, gene);
-				this.dotPlot.processData(data, gene);
+				this.heatMap.processData(data, hit.gene);
+				this.dotPlot.processData(data, hit.gene);
 			}
 		} catch (error) {
 			console.log(error);
