@@ -18,9 +18,9 @@
 					<label class="input-group-text" for="screenList">screen</label>
 					<select class="form-select" id="screenList">
 						<option>Choose...</option>
-						<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}"
-						z:text="${public ? screen.published_name ?: screen.name : screen.name}"
-						z:selected="${screen.name==#request.getParameter('screen')}"></option>	
+						<option z:each="screen: ${screens}" z:attr="data-screen=${screen.name}" z:value="${screen.name}"
+							z:text="${public ? screen.published_name ?: screen.name : screen.name}"
+							z:selected="${screen.name==#request.getParameter('screen')}"></option>
 					</select>
 				</div>
 			</div>
