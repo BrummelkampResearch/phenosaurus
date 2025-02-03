@@ -69,11 +69,10 @@ struct user
 
 // --------------------------------------------------------------------
 
-class unknown_user : public std::runtime_error
+class unknown_user : public zeep::http::user_unknown_exception
 {
   public:
 	unknown_user()
-		: std::runtime_error("Unknown user")
 	{
 	}
 };
