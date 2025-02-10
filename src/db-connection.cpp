@@ -75,6 +75,8 @@ void db_connection::reset()
 
 bool db_error_handler::create_error_reply(const zeep::http::request& req, std::exception_ptr eptr, zeep::http::reply& reply)
 {
+	bool handled = false;
+
 	try
 	{
 		std::rethrow_exception(eptr);
@@ -83,10 +85,13 @@ bool db_error_handler::create_error_reply(const zeep::http::request& req, std::e
 	{
 		std::cerr << ex.what() << '\n';
 		db_connection::instance().reset();
+
+		zeep::http::error_handler::create_error_reply(req, zeep::http::unauthorized, "Error processing request, please try again", reply);
+		handled = true;
 	}
 	catch (...)
 	{
 	}
 	
-	return false;
+	return handled;
 }
