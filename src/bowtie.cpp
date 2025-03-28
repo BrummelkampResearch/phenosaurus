@@ -433,7 +433,7 @@ std::vector<Insertion> runBowtie(const std::filesystem::path& bowtie,
 	const std::filesystem::path& bowtieIndex, const std::filesystem::path& fastq,
 	const std::filesystem::path& logFile, unsigned threads, unsigned trimLength)
 {
-	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + '-' + zeep::encode_base64(zeep::random_hash()) + ".fastq");
+	fs::path m = fs::temp_directory_path() / ("mismatched-" + std::to_string(getpid()) + '-' + zeep::encode_hex(zeep::random_hash()) + ".fastq");
 
 	auto result = runBowtieInt(bowtie, bowtieIndex, fastq, logFile, threads, trimLength, 1, m);
 
