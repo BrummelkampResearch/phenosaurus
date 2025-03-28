@@ -188,7 +188,7 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 		"-v", v.c_str(),
 		"--best",
 		"-p", p.c_str(),
-		bowtieIndex.c_str(),
+		"-x", bowtieIndex.c_str(),
 		"-"
 	};
 
@@ -272,10 +272,17 @@ std::vector<Insertion> runBowtieInt(const std::filesystem::path& bowtie,
 				throw std::runtime_error("Could not open file " + fastq.string());
 
 			progress_filter pf(file.rdbuf(), p);
-			gxrio::basic_igzip_streambuf<char, std::char_traits<char>> gb;
-			gb.init(&pf);
+			std::streambuf *ib = &pf;
 
-			std::istream in(&gb);
+			gxrio::basic_igzip_streambuf<char, std::char_traits<char>> gb;
+
+			if (fastq.extension() == ".gz")
+			{
+				gb.init(&pf);
+				ib = &gb;
+			}
+
+			std::istream in(ib);
 
 			char nl[1] = { '\n' };
 
