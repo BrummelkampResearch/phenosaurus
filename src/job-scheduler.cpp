@@ -157,6 +157,9 @@ progress::progress(int64_t max, const std::string& action)
 
 void progress::consumed(int64_t n)	// consumed is relative
 {
+	if (not m_job)
+		return;
+
 	using namespace std::literals;
 
 	auto cur = m_cur += n;
@@ -176,6 +179,9 @@ void progress::consumed(int64_t n)	// consumed is relative
 
 void progress::set_progress(int64_t n)		// progress is absolute
 {
+	if (not m_job)
+		return;
+
 	using namespace std::literals;
 
 	auto cur = n;
