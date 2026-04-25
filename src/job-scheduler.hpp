@@ -26,15 +26,13 @@
 
 #pragma once
 
-#include <zeep/nvp.hpp>
-
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <optional>
-#include <queue>
 #include <thread>
-#include <vector>
+#include <zeep/nvp.hpp>
 
 // --------------------------------------------------------------------
 
@@ -60,7 +58,9 @@ struct job_status
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::name_value_pair("status", m_status) & zeep::name_value_pair("progress", m_progress) & zeep::name_value_pair("action", m_action);
+		ar &zeep::name_value_pair("status", m_status) //
+		 & zeep::name_value_pair("progress", m_progress) //
+		 & zeep::name_value_pair("action", m_action);
 	}
 };
 

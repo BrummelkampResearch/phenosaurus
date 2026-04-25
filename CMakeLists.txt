@@ -22,13 +22,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.28)
 
 # set the project name
 project(phenosaurus VERSION 3.0.1 LANGUAGES CXX C)
 
+cmake_policy(SET CMP0167 NEW)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(CPM)
 include(GNUInstallDirs)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
@@ -53,21 +56,21 @@ endif()
 
 # Create a revision file, containing the current git version info
 include(VersionString)
-write_version_header()
+write_version_header(${PROJECT_SOURCE_DIR}/src)
 
 # Optionally use mrc to create resources
-find_package(Mrc QUIET)
+find_package(mrc QUIET)
 
 if(MRC_FOUND)
 	option(USE_RSRC "Use mrc to create resources" ON)
 else()
-	message(STATUS "Not using resources since mrc was not found")
+	message(STATUS "screen-analyzer: Not using resources since mrc was not found")
 endif()
 
 if(USE_RSRC STREQUAL "ON")
 	set(USE_RSRC 1)
 
-	message("Using resources compiled with ${MRC}")
+	message(STATUS "screen-analyzer: Using resources compiled with ${MRC}")
 	add_compile_definitions(USE_RSRC WEBAPP_USES_RESOURCES)
 
 	mrc_write_header(${CMAKE_BINARY_DIR}/mrsrc.hpp)
@@ -77,7 +80,13 @@ set(CMAKE_THREAD_PREFER_PTHREAD)
 set(THREADS_PREFER_PTHREAD_FLAG)
 find_package(Threads)
 
-find_package(zeep 6.0.16 REQUIRED)
+CPMAddPackage(NAME date GIT_REPOSITORY https://github.com/HowardHinnant/date VERSION 3.0.4 EXCLUDE_FROM_ALL)
+
+CPMAddPackage(NAME zeep
+	GIT_REPOSITORY "https://forge.hekkelman.net/maarten/zeep.git"
+	VERSION 6.1.0
+	EXCLUDE_FROM_ALL YES)
+
 find_package(Boost REQUIRED)
 find_package(gxrio REQUIRED)
 find_package(mcfp REQUIRED)
@@ -180,7 +189,6 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-server.hpp
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.c)
 
-target_include_directories(screen-analyzer PRIVATE zeep::zeep squeeze::squeeze ${CMAKE_BINARY_DIR})
 target_link_libraries(screen-analyzer
 	PRIVATE zeep::zeep squeeze::squeeze mcfp::mcfp gxrio::gxrio Boost::headers
 	PkgConfig::PKG_PQ mailio::mailio ZLIB::ZLIB libpqxx::pqxx

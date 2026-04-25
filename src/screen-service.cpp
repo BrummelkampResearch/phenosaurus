@@ -25,20 +25,18 @@
  */
 
 #include "screen-service.hpp"
+
 #include "bowtie.hpp"
 #include "db-connection.hpp"
 #include "job-scheduler.hpp"
+#include "mrsrc.hpp"
 #include "user-service.hpp"
 #include "utils.hpp"
 
-#include "mrsrc.hpp"
-
-#include <pqxx/pqxx>
-
-#include <zeep/crypto.hpp>
-
 #include <filesystem>
 #include <iostream>
+#include <pqxx/pqxx>
+#include <zeep/crypto.hpp>
 
 namespace fs = std::filesystem;
 

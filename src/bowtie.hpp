@@ -31,11 +31,12 @@
 
 #pragma once
 
+#include "refseq.hpp"
+
 #include <filesystem>
 #include <map>
 #include <set>
-
-#include "refseq.hpp"
+#include <tuple>
 
 struct Insertions
 {

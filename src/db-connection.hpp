@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -26,44 +26,43 @@
 
 #pragma once
 
+#include <list>
 #include <mutex>
-
-#include <zeep/http/error-handler.hpp>
-
 #include <pqxx/pqxx>
+#include <zeep/http/error-handler.hpp>
 
 class db_connection
 {
   public:
-	using prepared_statement_factory = std::function<void(pqxx::connection&)>;
+	using prepared_statement_factory = std::function<void(pqxx::connection &)>;
 
-	static void init(const std::string& connection_string);
-	static db_connection& instance();
+	static void init(const std::string &connection_string);
+	static db_connection &instance();
 
 	static pqxx::work start_transaction()
 	{
 		return pqxx::work(instance());
 	}
 
-	pqxx::connection& get_connection();
+	pqxx::connection &get_connection();
 
-	operator pqxx::connection&()
+	operator pqxx::connection &()
 	{
 		return get_connection();
 	}
 
 	void reset();
 
-	void register_prepared_statement_factory(prepared_statement_factory&& psf)
+	void register_prepared_statement_factory(prepared_statement_factory &&psf)
 	{
 		m_prepared_statement_factories.emplace_back(std::move(psf));
 	}
 
   private:
-	db_connection(const db_connection&) = delete;
-	db_connection& operator=(const db_connection&) = delete;
+	db_connection(const db_connection &) = delete;
+	db_connection &operator=(const db_connection &) = delete;
 
-	db_connection(const std::string& connectionString);
+	db_connection(const std::string &connectionString);
 
 	std::string m_connection_string;
 
@@ -78,7 +77,5 @@ class db_connection
 class db_error_handler : public zeep::http::error_handler
 {
   public:
-
-	virtual bool create_error_reply(const zeep::http::request& req, std::exception_ptr eptr, zeep::http::reply& reply);
+	virtual bool create_error_reply(const zeep::http::request &req, std::exception_ptr eptr, zeep::http::reply &reply);
 };
-

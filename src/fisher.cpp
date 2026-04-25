@@ -27,10 +27,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <iostream>
-#include <iomanip>
 #include <numeric>
 #include <vector>
+#include <stdexcept>
 #include <tuple>
 
 #include "fisher.hpp"

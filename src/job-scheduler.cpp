@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -25,18 +25,19 @@
  */
 
 #include "job-scheduler.hpp"
-#include "screen-service.hpp"
 
-#include <zeep/value-serializer.hpp>
+#include "screen-service.hpp"
 
 #include <functional>
 #include <iostream>
+#include <zeep/value-serializer.hpp>
 
 // --------------------------------------------------------------------
 
-map_job::map_job(std::unique_ptr<ScreenData>&& screen, const std::string& assembly)
+map_job::map_job(std::unique_ptr<ScreenData> &&screen, const std::string &assembly)
 	: job(screen->name())
-	, m_screen(std::move(screen)), m_assembly(assembly)
+	, m_screen(std::move(screen))
+	, m_assembly(assembly)
 {
 }
 
@@ -62,13 +63,13 @@ void map_job::set_status(job_status_type status)
 job_scheduler::job_scheduler()
 	: m_thread(std::bind(&job_scheduler::run, this))
 {
-	zeep::value_serializer<job_status_type>::init("job-status", {
-		{ job_status_type::unknown, 	"unknown" },
-		{ job_status_type::queued, 		"queued" },
-		{ job_status_type::running, 	"running" },
-		{ job_status_type::failed, 		"failed" },
-		{ job_status_type::finished, 	"finished" }
-	});
+	zeep::value_serializer<job_status_type>::init("job-status",
+		{ //
+			{ job_status_type::unknown, "unknown" },
+			{ job_status_type::queued, "queued" },
+			{ job_status_type::running, "running" },
+			{ job_status_type::failed, "failed" },
+			{ job_status_type::finished, "finished" } });
 }
 
 job_scheduler::~job_scheduler()
@@ -77,7 +78,7 @@ job_scheduler::~job_scheduler()
 	m_thread.join();
 }
 
-job_scheduler& job_scheduler::instance()
+job_scheduler &job_scheduler::instance()
 {
 	static job_scheduler s_instance;
 	return s_instance;
@@ -91,7 +92,8 @@ void job_scheduler::run()
 
 		if (m_queue.empty())
 		{
-			m_cv.wait(lock, [this] { return not m_queue.empty(); });
+			m_cv.wait(lock, [this]
+				{ return not m_queue.empty(); });
 			continue;
 		}
 
@@ -110,7 +112,7 @@ void job_scheduler::run()
 			m_current->execute();
 			m_current->set_status(job_status_type::finished);
 		}
-		catch (const std::exception& ex)
+		catch (const std::exception &ex)
 		{
 			std::cerr << ex.what() << '\n';
 			m_current->set_status(job_status_type::failed);
@@ -126,7 +128,7 @@ std::shared_ptr<job> job_scheduler::current_job()
 	return m_current;
 }
 
-std::optional<job_status> job_scheduler::get_job_status_for_screen(const std::string& screen)
+std::optional<job_status> job_scheduler::get_job_status_for_screen(const std::string &screen)
 {
 	std::lock_guard lock(m_mutex);
 
@@ -136,7 +138,8 @@ std::optional<job_status> job_scheduler::get_job_status_for_screen(const std::st
 		result = m_current->get_status();
 	else
 	{
-		auto i = std::find_if(m_queue.begin(), m_queue.end(), [screen](auto job) { return job->name() == screen; });
+		auto i = std::find_if(m_queue.begin(), m_queue.end(), [screen](auto job)
+			{ return job->name() == screen; });
 
 		if (i != m_queue.end())
 			result = (*i)->get_status();
@@ -147,15 +150,16 @@ std::optional<job_status> job_scheduler::get_job_status_for_screen(const std::st
 
 // --------------------------------------------------------------------
 
-progress::progress(int64_t max, const std::string& action)
-	: m_job(job_scheduler::instance().current_job()), m_max(max), m_action(action)
+progress::progress(int64_t max, const std::string &action)
+	: m_job(job_scheduler::instance().current_job())
+	, m_max(max)
+	, m_action(action)
 	, m_cur(0)
 	, m_last_update(std::chrono::system_clock::now())
 {
-
 }
 
-void progress::consumed(int64_t n)	// consumed is relative
+void progress::consumed(int64_t n) // consumed is relative
 {
 	if (not m_job)
 		return;
@@ -177,7 +181,7 @@ void progress::consumed(int64_t n)	// consumed is relative
 	}
 }
 
-void progress::set_progress(int64_t n)		// progress is absolute
+void progress::set_progress(int64_t n) // progress is absolute
 {
 	if (not m_job)
 		return;
@@ -196,7 +200,7 @@ void progress::set_progress(int64_t n)		// progress is absolute
 		m_job->set_progress(p, m_action);
 }
 
-void progress::set_action(const std::string& action)
+void progress::set_action(const std::string &action)
 {
 	m_action = action;
 }

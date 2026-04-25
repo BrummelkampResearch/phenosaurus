@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -26,12 +26,13 @@
 
 #pragma once
 
+#include "screen-data.hpp"
+
+#include <list>
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/rest-controller.hpp>
 #include <zeep/http/security.hpp>
 #include <zeep/nvp.hpp>
-
-#include "screen-data.hpp"
 
 // --------------------------------------------------------------------
 
@@ -47,7 +48,7 @@ class screen_data_cache
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd) const
 	{
 		return m_type == type and m_assembly == assembly and m_trim_length == trim_length and
-			   m_transcript_selection == transcript_selection and
+		       m_transcript_selection == transcript_selection and
 		       m_mode == mode and m_cutOverlap == cutOverlap and m_geneStart == geneStart and m_geneEnd == geneEnd;
 	}
 
@@ -94,13 +95,7 @@ struct ip_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("pv", pv)
-		   & zeep::make_nvp("fcpv", fcpv)
-		   & zeep::make_nvp("mi", mi)
-		   & zeep::make_nvp("low", low)
-		   & zeep::make_nvp("high", high)
-		   & zeep::make_nvp("rank", rank);
+		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("pv", pv) & zeep::make_nvp("fcpv", fcpv) & zeep::make_nvp("mi", mi) & zeep::make_nvp("low", low) & zeep::make_nvp("high", high) & zeep::make_nvp("rank", rank);
 	}
 };
 
@@ -113,9 +108,7 @@ struct gene_uniqueness
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("colour", colour)
-		   & zeep::make_nvp("count", count);
+		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("colour", colour) & zeep::make_nvp("count", count);
 	}
 };
 
@@ -130,11 +123,7 @@ struct ip_gene_finder_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("screen", screen)
-		   & zeep::make_nvp("mi", mi)
-		   & zeep::make_nvp("fcpv", fcpv)
-		   & zeep::make_nvp("insertions", insertions)
-		   & zeep::make_nvp("replicate", replicate);
+		ar &zeep::make_nvp("screen", screen) & zeep::make_nvp("mi", mi) & zeep::make_nvp("fcpv", fcpv) & zeep::make_nvp("insertions", insertions) & zeep::make_nvp("replicate", replicate);
 	}
 };
 
@@ -150,10 +139,7 @@ struct similar_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("distance", distance)
-		   & zeep::make_nvp("zscore", zscore)
-		   & zeep::make_nvp("anti", anti);
+		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("distance", distance) & zeep::make_nvp("zscore", zscore) & zeep::make_nvp("anti", anti);
 	}
 };
 
@@ -167,8 +153,7 @@ struct cluster
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar & zeep::make_nvp("genes", genes)
-		   & zeep::make_nvp("variance", variance);
+		ar &zeep::make_nvp("genes", genes) & zeep::make_nvp("variance", variance);
 	}
 };
 
@@ -212,7 +197,6 @@ class ip_screen_data_cache : public screen_data_cache
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
 
   private:
-
 	struct data_point
 	{
 		float pv;
@@ -239,10 +223,7 @@ struct sl_data_replicate
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("binom_fdr", binom_fdr)
-		   & zeep::make_nvp("ref_pv", ref_pv)
-		   & zeep::make_nvp("sense", sense)
-		   & zeep::make_nvp("antisense", antisense);
+		ar &zeep::make_nvp("binom_fdr", binom_fdr) & zeep::make_nvp("ref_pv", ref_pv) & zeep::make_nvp("sense", sense) & zeep::make_nvp("antisense", antisense);
 	}
 };
 
@@ -259,13 +240,7 @@ struct sl_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("gene", gene)
-		   & zeep::make_nvp("odds_ratio", oddsRatio)
-		   & zeep::make_nvp("sense_ratio", senseRatio)
-		   & zeep::make_nvp("control_binom", controlBinom)
-		   & zeep::make_nvp("control_sense_ratio", controlSenseRatio)
-		   & zeep::make_nvp("consistent", consistent)
-		   & zeep::make_nvp("replicate", replicates);
+		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("odds_ratio", oddsRatio) & zeep::make_nvp("sense_ratio", senseRatio) & zeep::make_nvp("control_binom", controlBinom) & zeep::make_nvp("control_sense_ratio", controlSenseRatio) & zeep::make_nvp("consistent", consistent) & zeep::make_nvp("replicate", replicates);
 	}
 };
 
@@ -282,11 +257,7 @@ struct sl_gene_finder_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar & zeep::make_nvp("screen", screen)
-		   & zeep::make_nvp("sense_ratio", senseRatio)
-		   & zeep::make_nvp("sense_ratio_list", senseRatioPerReplicate)
-		   & zeep::make_nvp("odds_ratio", oddsRatio)
-		   & zeep::make_nvp("consistent", consistent);
+		ar &zeep::make_nvp("screen", screen) & zeep::make_nvp("sense_ratio", senseRatio) & zeep::make_nvp("sense_ratio_list", senseRatioPerReplicate) & zeep::make_nvp("odds_ratio", oddsRatio) & zeep::make_nvp("consistent", consistent);
 	}
 };
 
@@ -317,7 +288,6 @@ class sl_screen_data_cache : public screen_data_cache
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
 
   private:
-
 	struct data_point
 	{
 		float odds_ratio;
@@ -354,7 +324,7 @@ class screen_service
 	std::vector<screen_info> get_all_screens_for_user(const std::string &user) const;
 	std::vector<screen_info> get_all_screens_for_user_and_type(const std::string &user, ScreenType type) const;
 	std::vector<screen_info> get_all_public_screens_for_type(ScreenType type) const;
-	
+
 	// return list of allowed screens based on user info (name, groups)
 	std::set<std::string> get_allowed_screens_for_user(const user &user) const;
 
@@ -376,7 +346,7 @@ class screen_service
 	void refresh_manifest(const std::string &name);
 	void refresh_manifest_all();
 
-	template<typename ScreenDataType>
+	template <typename ScreenDataType>
 	std::unique_ptr<ScreenDataType> load_screen(const std::string &screen)
 	{
 		return std::make_unique<ScreenDataType>(m_screen_data_dir / screen);
@@ -413,7 +383,7 @@ class screen_service
 	static std::unique_ptr<screen_service> s_instance;
 };
 
-template<>
+template <>
 inline std::unique_ptr<ScreenData> screen_service::load_screen<ScreenData>(const std::string &screen)
 {
 	return ScreenData::load(m_screen_data_dir / screen);

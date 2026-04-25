@@ -24,16 +24,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "mrsrc.hpp"
-
 #include "screen-qc.hpp"
-#include "screen-service.hpp"
 
-#include <zeep/unicode-support.hpp>
+#include "mrsrc.hpp"
+#include "screen-service.hpp"
 
 #include <filesystem>
 #include <iostream>
 #include <numeric>
+#include <zeep/unicode-support.hpp>
 
 using json = zeep::json::element;
 namespace fs = std::filesystem;

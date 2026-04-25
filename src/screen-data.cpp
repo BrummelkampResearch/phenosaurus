@@ -24,25 +24,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <exception>
-#include <fstream>
-#include <future>
-#include <iostream>
-#include <regex>
-#include <stdexcept>
-
-#include <gxrio.hpp>
-
-#include <zeep/json/parser.hpp>
-#include <zeep/value-serializer.hpp>
-
-#include <squeeze.hpp>
+#include "screen-data.hpp"
 
 #include "binom.hpp"
 #include "bowtie.hpp"
 #include "fisher.hpp"
-#include "screen-data.hpp"
 #include "utils.hpp"
+
+#include <exception>
+#include <fstream>
+#include <gxrio.hpp>
+#include <iostream>
+#include <list>
+#include <squeeze.hpp>
+#include <stdexcept>
+#include <zeep/json/parser.hpp>
+#include <zeep/value-serializer.hpp>
 
 namespace fs = std::filesystem;
 using namespace std::literals;
@@ -213,7 +210,9 @@ void ScreenData::map(const std::string &assembly, unsigned trimLength,
 		mi.file.emplace_back(screen_insertion_count{ name, static_cast<uint32_t>(hits.size()) });
 	}
 
-	mInfo.mappedInfo.erase(std::remove_if(mInfo.mappedInfo.begin(), mInfo.mappedInfo.end(), [=](auto &mi) { return mi.assembly == assembly and mi.trimlength == trimLength;}), mInfo.mappedInfo.end());
+	mInfo.mappedInfo.erase(std::remove_if(mInfo.mappedInfo.begin(), mInfo.mappedInfo.end(), [=](auto &mi)
+							   { return mi.assembly == assembly and mi.trimlength == trimLength; }),
+		mInfo.mappedInfo.end());
 	mInfo.mappedInfo.emplace_back(std::move(mi));
 
 	saveManifest(mInfo, mDataDir);
@@ -502,7 +501,7 @@ void ScreenData::refreshManifest(screen_info &info, const std::filesystem::path 
 						p = d / f;
 					if (fs::exists(p))
 
-					mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
+						mi.file.emplace_back(screen_insertion_count{ f, ScreenData::count_insertions(p) });
 				}
 			}
 

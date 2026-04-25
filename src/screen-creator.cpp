@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -24,25 +24,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "utils.hpp"
+#include "screen-creator.hpp"
 
 #include "screen-analyzer.hpp"
 #include "screen-data.hpp"
-#include "screen-creator.hpp"
 #include "user-service.hpp"
-
-#include <zeep/json/element.hpp>
-#include <zeep/unicode-support.hpp>
+#include "utils.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-
 #include <pwd.h>
+#include <zeep/json/element.hpp>
+#include <zeep/unicode-support.hpp>
 
 namespace fs = std::filesystem;
 
-using json = zeep::json::element;	
+using json = zeep::json::element;
 
 // // --------------------------------------------------------------------
 
@@ -146,7 +144,7 @@ using json = zeep::json::element;
 // 		{
 // 			if (not (vm.count("low") and vm.count("high")))
 // 				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
-			
+
 // 			auto low = vm["low"].as<std::string>();
 // 			auto high = vm["high"].as<std::string>();
 // 			auto data = std::make_unique<IPScreenData>(screenDir, screen, low, high);
@@ -157,7 +155,7 @@ using json = zeep::json::element;
 // 		{
 // 			if (not (vm.count("low") and vm.count("high")))
 // 				throw std::runtime_error("For IP screens you should provide both low and high fastq files");
-			
+
 // 			auto low = vm["low"].as<std::string>();
 // 			auto high = vm["high"].as<std::string>();
 // 			auto data = std::make_unique<PAScreenData>(screenDir, screen, low, high);
@@ -221,7 +219,7 @@ using json = zeep::json::element;
 // 	unsigned trimLength = 50;
 // 	if (vm.count("trim-length"))
 // 		trimLength = vm["trim-length"].as<unsigned>();
-	
+
 // 	unsigned threads = 1;
 // 	if (vm.count("threads"))
 // 		threads = vm["threads"].as<unsigned>();
@@ -245,10 +243,10 @@ using json = zeep::json::element;
 // Mode longest-exon means the longest expression region, which can be
 // different from the longest-transcript.
 
-// Mode collapse means, for each gene take the region between the first 
+// Mode collapse means, for each gene take the region between the first
 // start and last end.
 
-// Start and end should be either 'cds' or 'tx' with an optional offset 
+// Start and end should be either 'cds' or 'tx' with an optional offset
 // appended. Optionally you can also specify cdsStart, cdsEnd, txStart
 // or txEnd to have the start at the cdsEnd e.g.
 
@@ -259,7 +257,7 @@ using json = zeep::json::element;
 
 // 	--mode=longest-transcript --start=cds-100 --end=cds
 
-// 		For each gene take the longest transcript. For these we take the 
+// 		For each gene take the longest transcript. For these we take the
 // 		cdsStart minus 100 basepairs as start and cdsEnd as end. This means
 // 		no  3' UTR and whatever fits in the 100 basepairs of the 5' UTR.
 
@@ -278,13 +276,13 @@ using json = zeep::json::element;
 // 	unsigned trimLength = 0;
 // 	if (vm.count("trim-length"))
 // 		trimLength = vm["trim-length"].as<unsigned>();
-	
+
 // 	// -----------------------------------------------------------------------
 
 // 	bool cutOverlap = true;
 // 	if (vm.count("overlap") and vm["overlap"].as<std::string>() == "both")
 // 		cutOverlap = false;
-	
+
 // 	Mode mode = zeep::value_serializer<Mode>::from_string(vm["mode"].as<std::string>());
 
 // 	auto transcripts = loadTranscripts(assembly, mode, vm["start"].as<std::string>(), vm["end"].as<std::string>(), cutOverlap);
@@ -310,7 +308,7 @@ using json = zeep::json::element;
 // 	}
 
 // 	// -----------------------------------------------------------------------
-	
+
 // 	std::cerr << '\n'
 // 			<< std::string(get_terminal_width(), '-') << '\n'
 // 			<< "Low: \n"
@@ -362,7 +360,7 @@ using json = zeep::json::element;
 // 		((vm.count("start") == 0 or vm.count("end") == 0) and vm.count("gene-bed-file") == 0))
 // 	{
 // 		std::cerr << R"(
-// Start and end should be either 'cds' or 'tx' with an optional offset 
+// Start and end should be either 'cds' or 'tx' with an optional offset
 // appended. Optionally you can also specify cdsStart, cdsEnd, txStart
 // or txEnd to have the start at the cdsEnd e.g.
 // )"				<< '\n';
@@ -374,7 +372,7 @@ using json = zeep::json::element;
 // 	unsigned trimLength = 0;
 // 	if (vm.count("trim-length"))
 // 		trimLength = vm["trim-length"].as<unsigned>();
-	
+
 // 	// -----------------------------------------------------------------------
 
 // 	std::vector<Transcript> transcripts;
@@ -399,7 +397,7 @@ using json = zeep::json::element;
 // 	});
 
 // 	// --------------------------------------------------------------------
-	
+
 // 	unsigned replicate = 1;
 // 	if (vm.count("replicate"))
 // 		replicate = vm["replicate"].as<unsigned short>();
@@ -443,7 +441,7 @@ using json = zeep::json::element;
 // 	{
 // 		if (significantOnly and not r.significant.count(dp.gene))
 // 			continue;
-		
+
 // 		std::cout << dp.gene << '\t'
 // 				  << dp.sense << '\t'
 // 				  << dp.antisense << '\t'
@@ -492,7 +490,7 @@ using json = zeep::json::element;
 // 														"effect size" },
 
 // 			{ "gene-bed-file", po::value<std::string>(),	"Optionally provide a gene BED file instead of calculating one" },
-			
+
 // 			{ "output,o",	po::value<std::string>(),	"Output file" }
 // 			}, { "screen-name", "assembly" });
 
