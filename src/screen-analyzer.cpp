@@ -35,6 +35,7 @@
 #include "user-service.hpp"
 #include "utils.hpp"
 
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -53,14 +54,15 @@ int VERBOSE = 0;
 // recursively print exception whats:
 void print_what(const std::exception &e)
 {
-	std::cerr << e.what() << '\n';
+	// std::cerr << e.what() << '\n';
+	fprintf(stderr, "%s\n", ex.what());
 	try
 	{
 		std::rethrow_if_nested(e);
 	}
 	catch (const std::exception &nested)
 	{
-		std::cerr << " >> ";
+		// std::cerr << " >> ";
 		print_what(nested);
 	}
 }
@@ -981,7 +983,7 @@ The following options are always recognized:
 	catch (const std::exception &ex)
 	{
 		// std::cerr << "\nFatal exception\n";
-		fprintf(stderr, "%s\n", ex.what());
+		fputs("Fatal exception: ", stderr);
 
 		print_what(ex);
 		result = 1;
