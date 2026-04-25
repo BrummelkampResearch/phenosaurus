@@ -137,7 +137,7 @@ int map_main(int argc, char *const argv[])
 		mcfp::make_option<std::string>("assembly", "hg38", "Default assembly to use, currently one of hg19 or hg38"),
 		mcfp::make_option<unsigned>("trim-length", 50, "Trim reads to this length"),
 		mcfp::make_option<unsigned>("threads", 1, "Nr of threads to use"),
-		mcfp::make_option<std::string>("screen-dir", "Directory containing the screen data"),
+		mcfp::make_option<std::string>("screen-dir", "/srv/data/screens", "Directory containing the screen data"),
 		mcfp::make_option<std::string>("transcripts-dir", "Directory containing the transcript files"),
 		mcfp::make_option<std::string>("bowtie-index-hg19", "Bowtie index parameter for HG19"),
 		mcfp::make_option<std::string>("bowtie-index-hg38", "Bowtie index parameter for HG38")
@@ -458,7 +458,7 @@ int analyze_main(int argc, char *const argv[])
 		mcfp::make_option<std::string>("assembly", "hg38", "Default assembly to use, currently one of hg19 or hg38"),
 		mcfp::make_option<unsigned>("trim-length", 50, "Trim reads to this length"),
 		mcfp::make_option<unsigned>("threads", 1, "Nr of threads to use"),
-		mcfp::make_option<std::string>("screen-dir", "Directory containing the screen data"),
+		mcfp::make_option<std::string>("screen-dir", "/srv/data/screens", "Directory containing the screen data"),
 		mcfp::make_option<std::string>("transcripts-dir", "Directory containing the transcript files"),
 
 		mcfp::make_option<std::string>("mode", "collapse", "Mode, should be either collapse, longest-exon or longest-transcript"),
@@ -559,7 +559,7 @@ Command should be either:
 		mcfp::make_option<std::string>("assembly", "hg38", "Default assembly to use, currently one of hg19 or hg38"),
 		mcfp::make_option<unsigned>("trim-length", 50, "Trim reads to this length"),
 		mcfp::make_option<unsigned>("threads", std::thread::hardware_concurrency(), "Nr of threads to use"),
-		mcfp::make_option<std::string>("screen-dir", "Directory containing the screen data"),
+		mcfp::make_option<std::string>("screen-dir", "/srv/data/screens", "Directory containing the screen data"),
 		mcfp::make_option<std::string>("transcripts-dir", "Directory containing the transcript files"),
 		mcfp::make_option<std::string>("bowtie-index-hg19", "Bowtie index parameter for HG19"),
 		mcfp::make_option<std::string>("bowtie-index-hg38", "Bowtie index parameter for HG38"),
