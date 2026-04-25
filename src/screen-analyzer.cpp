@@ -55,7 +55,7 @@ int VERBOSE = 0;
 void print_what(const std::exception &e)
 {
 	// std::cerr << e.what() << '\n';
-	fprintf(stderr, "%s\n", ex.what());
+	fprintf(stderr, "%s\n", e.what());
 	try
 	{
 		std::rethrow_if_nested(e);
