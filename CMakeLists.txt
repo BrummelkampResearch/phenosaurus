@@ -59,12 +59,12 @@ include(VersionString)
 write_version_header(${PROJECT_SOURCE_DIR}/src)
 
 # Optionally use mrc to create resources
-find_package(mrc QUIET)
+find_package(mrc REQUIRED)
 
 if(MRC_FOUND)
 	option(USE_RSRC "Use mrc to create resources" ON)
 else()
-	message(STATUS "screen-analyzer: Not using resources since mrc was not found")
+	message(FATAL_ERROR "screen-analyzer: Not using resources since mrc was not found")
 endif()
 
 if(USE_RSRC STREQUAL "ON")
@@ -73,7 +73,7 @@ if(USE_RSRC STREQUAL "ON")
 	message(STATUS "screen-analyzer: Using resources compiled with ${MRC}")
 	add_compile_definitions(USE_RSRC WEBAPP_USES_RESOURCES)
 
-	mrc_write_header(${CMAKE_BINARY_DIR}/mrsrc.hpp)
+	mrc_write_header(${CMAKE_CURRENT_SOURCE_DIR}/src/mrsrc.hpp)
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD)
