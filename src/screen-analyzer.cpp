@@ -313,7 +313,7 @@ int analyze_sl(SLScreenData &screenData, SLScreenData &controlData)
 	auto &config = mcfp::config::instance();
 
 	if (not config.has("assembly") or not config.has("control") or
-		not ((config.has("start") and config.has("end")) or config.has("gene-bed-file")))
+		not((config.has("start") and config.has("end")) or config.has("gene-bed-file")))
 	{
 		std::cerr << R"(
 Start and end should be either 'cds' or 'tx' with an optional offset 
@@ -503,34 +503,43 @@ int analyze_main(int argc, char *const argv[])
 	if (out.is_open())
 		sb = std::cout.rdbuf(out.rdbuf());
 
-	// Load refseq, if specified
-	if (config.count("refseq"))
-		init_refseq(config.get("refseq"));
-
-	fs::path screenDir = config.get("screen-dir");
-
-	auto data = ScreenData::load(screenDir / config.operands().front());
-
-	switch (data->get_type())
+	try
 	{
-		case ScreenType::IntracellularPhenotype:
-			result = analyze_ip(*static_cast<IPScreenData *>(data.get()));
-			break;
+		// Load refseq, if specified
+		if (config.count("refseq"))
+			init_refseq(config.get("refseq"));
 
-		case ScreenType::IntracellularPhenotypeActivation:
-			result = analyze_ip(*static_cast<PAScreenData *>(data.get()));
-			break;
+		fs::path screenDir = config.get("screen-dir");
 
-		case ScreenType::SyntheticLethal:
+		auto data = ScreenData::load(screenDir / config.operands().front());
+
+		switch (data->get_type())
 		{
-			SLScreenData controlScreen(screenDir / config.get("control"));
-			result = analyze_sl(*static_cast<SLScreenData *>(data.get()), controlScreen);
-			break;
-		}
+			case ScreenType::IntracellularPhenotype:
+				result = analyze_ip(*static_cast<IPScreenData *>(data.get()));
+				break;
 
-		case ScreenType::Unspecified:
-			throw std::runtime_error("Unknown screen type");
-			break;
+			case ScreenType::IntracellularPhenotypeActivation:
+				result = analyze_ip(*static_cast<PAScreenData *>(data.get()));
+				break;
+
+			case ScreenType::SyntheticLethal:
+			{
+				SLScreenData controlScreen(screenDir / config.get("control"));
+				result = analyze_sl(*static_cast<SLScreenData *>(data.get()), controlScreen);
+				break;
+			}
+
+			case ScreenType::Unspecified:
+				throw std::runtime_error("Unknown screen type");
+				break;
+		}
+	}
+	catch (...)
+	{
+		if (sb)
+			std::cout.rdbuf(sb);
+		throw;
 	}
 
 	if (sb)
@@ -971,7 +980,8 @@ The following options are always recognized:
 	}
 	catch (const std::exception &ex)
 	{
-		std::cerr << "\nFatal exception\n";
+		// std::cerr << "\nFatal exception\n";
+		fprintf(stderr, "%s\n", ex.what());
 
 		print_what(ex);
 		result = 1;
