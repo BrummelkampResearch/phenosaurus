@@ -960,9 +960,9 @@ int passwd_main(int argc, char *const argv[])
 	std::string smtpServer = config.get("smtp-server");
 	uint16_t smtpPort = config.get<uint16_t>("smtp-port");
 	std::string smtpUser, smtpPassword;
-	if (config.count("smtp-user"))
+	if (config.has("smtp-user"))
 		smtpUser = config.get("smtp-user");
-	if (config.count("smtp-password"))
+	if (config.has("smtp-password"))
 		smtpPassword = config.get("smtp-password");
 
 	user_service::init(smtpServer, smtpPort, smtpUser, smtpPassword);
