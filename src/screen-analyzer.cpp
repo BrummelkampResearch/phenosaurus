@@ -161,14 +161,14 @@ int map_main(int argc, char *const argv[])
 
 	auto data = ScreenData::load(screenDir);
 
-	if (config.count("bowtie") == 0)
+	if (not config.has("bowtie"))
 		throw std::runtime_error("Bowtie executable not specified");
 	fs::path bowtie = config.get("bowtie");
 
 	std::string assembly = config.get("assembly");
 
 	fs::path bowtieIndex;
-	if (config.count("bowtie-index") != 0)
+	if (config.has("bowtie-index"))
 		bowtieIndex = config.get("bowtie-index");
 	else
 	{
@@ -191,7 +191,7 @@ int analyze_ip(IPPAScreenData &screenData)
 {
 	auto &config = mcfp::config::instance();
 
-	if (config.count("assembly") == 0 or
+	if (not config.has("assembly") or
 		not config.has("start") or not config.has("end") or
 		(config.has("overlap") and config.get("overlap") != "both" and config.get("overlap") != "neither"))
 	{
@@ -226,7 +226,7 @@ Examples:
 		includes both 5' UTR and 3' UTR.
 
 )" << config << '\n';
-		exit(config.count("help") ? 0 : 1);
+		exit(config.has("help") ? 0 : 1);
 	}
 
 	std::string assembly = config.get("assembly");
@@ -236,7 +236,7 @@ Examples:
 	// -----------------------------------------------------------------------
 
 	bool cutOverlap = true;
-	if (config.count("overlap") and config.get("overlap") == "both")
+	if (config.has("overlap") and config.get("overlap") == "both")
 		cutOverlap = false;
 
 	Mode mode = zeep::value_serializer<Mode>::from_string(config.get("mode"));
@@ -275,7 +275,7 @@ Examples:
 			  << " anti sense : " << std::setw(10) << highAntiSenseCount << '\n';
 
 	Direction direction = Direction::Sense;
-	if (config.count("direction"))
+	if (config.has("direction"))
 	{
 		if (config.get("direction") == "sense")
 			direction = Direction::Sense;
@@ -323,7 +323,7 @@ appended. Optionally you can also specify cdsStart, cdsEnd, txStart
 or txEnd to have the start at the cdsEnd e.g.
 
 )";
-		exit(config.count("help") ? 0 : 1);
+		exit(config.has("help") ? 0 : 1);
 	}
 
 	std::string assembly = config.get("assembly");
@@ -334,14 +334,14 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	std::vector<Transcript> transcripts;
 
-	if (config.count("gene-bed-file"))
+	if (config.has("gene-bed-file"))
 		transcripts = loadTranscripts(config.get("gene-bed-file"));
 	else
 	{
 		Mode mode = zeep::value_serializer<Mode>::from_string(config.get("mode"));
 
 		bool cutOverlap = true;
-		if (config.count("overlap") and config.get("overlap") == "both")
+		if (config.has("overlap") and config.get("overlap") == "both")
 			cutOverlap = false;
 
 		transcripts = loadTranscripts(assembly, "default", mode, config.get("start"), config.get("end"), cutOverlap);
@@ -371,7 +371,7 @@ or txEnd to have the start at the cdsEnd e.g.
 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize);
 	bool significantOnly = config.has("significant");
 
-	if (config.count("no-header") == 0)
+	if (not config.has("no-header"))
 	{
 		std::cout
 			<< "gene" << '\t'
@@ -508,7 +508,7 @@ int analyze_main(int argc, char *const argv[])
 	try
 	{
 		// Load refseq, if specified
-		if (config.count("refseq"))
+		if (config.has("refseq"))
 			init_refseq(config.get("refseq"));
 
 		fs::path screenDir = config.get("screen-dir");
@@ -624,16 +624,16 @@ Command should be either:
 	std::string smtpServer = config.get("smtp-server");
 	uint16_t smtpPort = config.get<uint16_t>("smtp-port");
 	std::string smtpUser, smtpPassword;
-	if (config.count("smtp-user"))
+	if (config.has("smtp-user"))
 		smtpUser = config.get("smtp-user");
-	if (config.count("smtp-password"))
+	if (config.has("smtp-password"))
 		smtpPassword = config.get("smtp-password");
 
 	user_service::init(smtpServer, smtpPort, smtpUser, smtpPassword);
 
 	// --------------------------------------------------------------------
 
-	if (config.count("bowtie") == 0)
+	if (not config.has("bowtie"))
 		throw std::runtime_error("Bowtie executable not specified");
 	fs::path bowtie = config.get("bowtie");
 
@@ -670,7 +670,7 @@ Command should be either:
 #endif
 
 	std::string secret;
-	if (config.count("secret"))
+	if (config.has("secret"))
 		secret = config.get("secret");
 	else
 	{
@@ -679,11 +679,11 @@ Command should be either:
 	}
 
 	std::string context_name;
-	if (config.count("context"))
+	if (config.has("context"))
 		context_name = config.get("context");
 
 	std::string user = "www-data";
-	if (config.count("user") != 0)
+	if (config.has("user"))
 		user = config.get("user");
 
 	std::string address = config.get("address");
@@ -691,7 +691,7 @@ Command should be either:
 
 	std::string access_log, error_log, pid_file;
 
-	if (config.count("public"))
+	if (config.has("public"))
 	{
 		access_log = "/var/log/screen-analyzer/access-public";
 		error_log = "/var/log/screen-analyzer/error-public";
@@ -723,7 +723,7 @@ Command should be either:
 	{
 		std::cout << "starting server at http://" << address << ':' << port << '/' << '\n';
 
-		if (config.count("no-daemon"))
+		if (config.has("no-daemon"))
 			result = server.run_foreground(address, port);
 		else
 			result = server.start(address, port, 4, user);

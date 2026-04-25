@@ -780,7 +780,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 				++overlapN;
 		double variance = 1 - static_cast<double>(overlapN) / screenCount;
 
-		clusters.emplace_back(move(genes), variance);
+		clusters.emplace_back(std::move(genes), variance);
 	}
 
 	std::sort(clusters.begin(), clusters.end(), [](auto a, auto b)

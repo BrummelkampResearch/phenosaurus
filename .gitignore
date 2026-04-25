@@ -22,3 +22,4 @@ src/revision.hpp
 src/config.hpp
 .cache/
 
+rm src/mrsrc.hpp
