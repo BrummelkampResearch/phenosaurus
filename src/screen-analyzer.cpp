@@ -24,24 +24,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.hpp"
+#include "screen-analyzer.hpp"
 
 #include "bowtie.hpp"
+#include "config.hpp"
 #include "db-connection.hpp"
-#include "screen-analyzer.hpp"
+#include "revision.hpp"
 #include "screen-data.hpp"
 #include "screen-server.hpp"
 #include "user-service.hpp"
 #include "utils.hpp"
 
-#include "revision.hpp"
-
-#include <zeep/crypto.hpp>
-#include <zeep/http/daemon.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <zeep/crypto.hpp>
+#include <zeep/http/daemon.hpp>
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -192,8 +190,8 @@ int analyze_ip(IPPAScreenData &screenData)
 	auto &config = mcfp::config::instance();
 
 	if (config.count("assembly") == 0 or
-		config.count("start") == 0 or config.count("end") == 0 or
-		(config.count("overlap") != 0 and config.get("overlap") != "both" and config.get("overlap") != "neither"))
+		not config.has("start") or not config.has("end") or
+		(config.has("overlap") and config.get("overlap") != "both" and config.get("overlap") != "neither"))
 	{
 		std::cerr << R"(
 Mode longest-transcript means take the longest transcript for each gene,
@@ -225,7 +223,7 @@ Examples:
 		and the maximum txEnd plus 1000 basepairs as end. This obviously
 		includes both 5' UTR and 3' UTR.
 
-)";
+)" << config << '\n';
 		exit(config.count("help") ? 0 : 1);
 	}
 
@@ -314,8 +312,8 @@ int analyze_sl(SLScreenData &screenData, SLScreenData &controlData)
 {
 	auto &config = mcfp::config::instance();
 
-	if (config.count("assembly") == 0 or config.count("control") == 0 or
-		((config.count("start") == 0 or config.count("end") == 0) and config.count("gene-bed-file") == 0))
+	if (not config.has("assembly") or not config.has("control") or
+		not ((config.has("start") and config.has("end")) or config.has("gene-bed-file")))
 	{
 		std::cerr << R"(
 Start and end should be either 'cds' or 'tx' with an optional offset 
@@ -369,7 +367,7 @@ or txEnd to have the start at the cdsEnd e.g.
 	// -----------------------------------------------------------------------
 
 	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize);
-	bool significantOnly = config.count("significant");
+	bool significantOnly = config.has("significant");
 
 	if (config.count("no-header") == 0)
 	{
@@ -463,7 +461,7 @@ int analyze_main(int argc, char *const argv[])
 		mcfp::make_option<std::string>("screen-dir", "Directory containing the screen data"),
 		mcfp::make_option<std::string>("transcripts-dir", "Directory containing the transcript files"),
 
-		mcfp::make_option<std::string>("mode", "longest-exon", "Mode, should be either collapse, longest-exon or longest-transcript"),
+		mcfp::make_option<std::string>("mode", "collapse", "Mode, should be either collapse, longest-exon or longest-transcript"),
 		mcfp::make_option<std::string>("start", "tx", "cds or tx with optional offset (e.g. +100 or -500)"),
 		mcfp::make_option<std::string>("end", "cds", "cds or tx with optional offset (e.g. +100 or -500)"),
 		mcfp::make_option<std::string>("overlap", "Supported values are both or neither."),
@@ -485,7 +483,7 @@ int analyze_main(int argc, char *const argv[])
 	auto &config = mcfp::config::instance();
 	parse_argv(argc, argv, config);
 
-	if (config.operands().empty() or config.operands().size() > 2)
+	if (config.operands().empty() or config.operands().size() < 2)
 	{
 		std::cerr << "Missing arguments\n"
 				  << config;
@@ -494,7 +492,7 @@ int analyze_main(int argc, char *const argv[])
 
 	// fail early
 	std::ofstream out;
-	if (config.operands().size() == 2)
+	if (config.operands().size() == 3)
 	{
 		out.open(config.operands().back());
 		if (not out.is_open())
@@ -701,7 +699,7 @@ Command should be either:
 	zh::daemon server([secret, docroot,
 						  screenDir = config.get("screen-dir"),
 						  transcriptsDir = config.get("transcripts-dir"),
-						  is_public = config.count("public"),
+						  is_public = config.has("public"),
 						  context_name]()
 		{
 		if (is_public)
@@ -761,7 +759,7 @@ Command should be either:
 // Mode longest-exon means the longest expression region, which can be
 // different from the longest-transcript.
 
-// Mode collapse means, for each gene take the region between the first 
+// Mode collapse means, for each gene take the region between the first
 // start and last end.
 
 // Overlap: in case of both, all genes will be added, in case of neither
@@ -829,7 +827,7 @@ int dump_main(int argc, char *const argv[])
 		R"(usage: screen-analyzer dump [options] screen-name assembly file)");
 
 	// --------------------------------------------------------------------
-	
+
 	auto &config = mcfp::config::instance();
 	parse_argv(argc, argv, config);
 
@@ -841,7 +839,7 @@ int dump_main(int argc, char *const argv[])
 	}
 
 	// --------------------------------------------------------------------
-	
+
 	fs::path screenDir = config.get("screen-dir");
 	screenDir /= config.operands()[0];
 

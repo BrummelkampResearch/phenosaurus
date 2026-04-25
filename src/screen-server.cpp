@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -24,23 +24,20 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <iostream>
-#include <numeric>
+#include "screen-server.hpp"
 
+#include "db-connection.hpp"
+#include "genome-browser.hpp"
+#include "screen-data.hpp"
+#include "screen-qc.hpp"
+#include "screen-service.hpp"
+#include "user-service.hpp"
+
+#include <iostream>
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/login-controller.hpp>
 #include <zeep/http/rest-controller.hpp>
 #include <zeep/http/server.hpp>
-
-#include "db-connection.hpp"
-#include "fisher.hpp"
-#include "genome-browser.hpp"
-#include "screen-data.hpp"
-#include "screen-qc.hpp"
-#include "screen-server.hpp"
-#include "screen-service.hpp"
-#include "user-service.hpp"
-#include "utils.hpp"
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -156,7 +153,7 @@ class IPScreenRestController : public zh::rest_controller
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
-	
+
 	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
 		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
@@ -272,12 +269,12 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 	for (auto &t : transcripts)
 	{
-		auto &tn = result.genes.emplace_back(Gene{t.geneName, {t.strand}, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		auto &tn = result.genes.emplace_back(Gene{ t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end });
 		for (auto e : t.exons)
 		{
 			if (e.start >= t.cds.start and e.end <= t.cds.end)
 			{
-				tn.exons.emplace_back(GeneExon{e.start, e.end});
+				tn.exons.emplace_back(GeneExon{ e.start, e.end });
 				continue;
 			}
 
@@ -288,9 +285,9 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 					u.end = t.cds.start;
 
 				if (t.strand == '+')
-					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
 				else
-					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
 
 				e.start = t.cds.start;
 				if (e.start >= e.end)
@@ -304,16 +301,16 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 					u.start = t.cds.end;
 
 				if (t.strand == '+')
-					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
 				else
-					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
 
 				e.end = t.cds.end;
 				if (e.start >= e.end)
 					continue;
 			}
 
-			tn.exons.emplace_back(GeneExon{e.start, e.end});
+			tn.exons.emplace_back(GeneExon{ e.start, e.end });
 		}
 
 		if (t.geneName != gene)
@@ -337,10 +334,10 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 	auto data = IPPAScreenData::load(screenDir);
 
-	result.insertions.assign({{"+", "high"},
-		{"-", "high"},
-		{"+", "low"},
-		{"-", "low"}});
+	result.insertions.assign({ { "+", "high" },
+		{ "-", "high" },
+		{ "+", "low" },
+		{ "-", "low" } });
 
 	std::tie(result.insertions[0].pos, result.insertions[1].pos, result.insertions[2].pos, result.insertions[3].pos) =
 		data->insertions(assembly, result.chrom, result.start, result.end);
@@ -353,10 +350,10 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 		if (t.geneName != gene)
 			continue;
 
-		result.geneStrand = {t.strand};
+		result.geneStrand = { t.strand };
 
 		for (auto &r : t.ranges)
-			result.area.emplace_back(GeneExon{r.start, r.end});
+			result.area.emplace_back(GeneExon{ r.start, r.end });
 	}
 
 	return result;
@@ -364,7 +361,7 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 zeep::http::reply IPScreenRestController::getBED(const std::string &screen, const std::string &channel, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, {1, 1});
+	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
 
 	auto data = IPPAScreenData::load(mScreenDir / screen);
 
@@ -437,7 +434,7 @@ class ScreenHtmlControllerBase : public zh::html_controller
 
 		json screenInfo;
 		for (auto &si : s)
-			screenInfo.push_back({{"name", si.name}, {"ignore", si.ignore}});
+			screenInfo.push_back({ { "name", si.name }, { "ignore", si.ignore } });
 		scope.put("screenInfo", screenInfo);
 
 		scope.put("screenType", mType);
@@ -445,8 +442,8 @@ class ScreenHtmlControllerBase : public zh::html_controller
 		// New, list the available transcripts
 		json transcripts;
 		for (auto t : screen_service::instance().get_all_transcripts())
-			transcripts.push_back({{"id", t},
-				{"name", t}});
+			transcripts.push_back({ { "id", t },
+				{ "name", t } });
 		scope.put("transcripts", transcripts);
 	}
 
@@ -651,12 +648,12 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 	for (auto &t : transcripts)
 	{
-		auto &tn = result.genes.emplace_back(Gene{t.geneName, {t.strand}, t.tx.start, t.tx.end, t.cds.start, t.cds.end});
+		auto &tn = result.genes.emplace_back(Gene{ t.geneName, { t.strand }, t.tx.start, t.tx.end, t.cds.start, t.cds.end });
 		for (auto e : t.exons)
 		{
 			if (e.start >= t.cds.start and e.end <= t.cds.end)
 			{
-				tn.exons.emplace_back(GeneExon{e.start, e.end});
+				tn.exons.emplace_back(GeneExon{ e.start, e.end });
 				continue;
 			}
 
@@ -667,9 +664,9 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 					u.end = t.cds.start;
 
 				if (t.strand == '+')
-					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
 				else
-					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
 
 				e.start = t.cds.start;
 				if (e.start >= e.end)
@@ -683,16 +680,16 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 					u.start = t.cds.end;
 
 				if (t.strand == '+')
-					tn.utr5.emplace_back(GeneExon{u.start, u.end});
+					tn.utr5.emplace_back(GeneExon{ u.start, u.end });
 				else
-					tn.utr3.emplace_back(GeneExon{u.start, u.end});
+					tn.utr3.emplace_back(GeneExon{ u.start, u.end });
 
 				e.end = t.cds.end;
 				if (e.start >= e.end)
 					continue;
 			}
 
-			tn.exons.emplace_back(GeneExon{e.start, e.end});
+			tn.exons.emplace_back(GeneExon{ e.start, e.end });
 		}
 
 		if (t.geneName != gene)
@@ -735,10 +732,10 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 		if (t.geneName != gene)
 			continue;
 
-		result.geneStrand = {t.strand};
+		result.geneStrand = { t.strand };
 
 		for (auto &r : t.ranges)
-			result.area.emplace_back(GeneExon{r.start, r.end});
+			result.area.emplace_back(GeneExon{ r.start, r.end });
 	}
 
 	return result;
@@ -746,7 +743,7 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 zeep::http::reply SLScreenRestController::getBED(const std::string &screen, const std::string &replicate, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, {1, 1});
+	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
 
 	auto data = SLScreenData::load(mScreenDir / screen);
 
@@ -842,10 +839,10 @@ zh::server *createServer(const fs::path &docroot,
 	screen_service::init(screenDir, transcriptDir);
 
 	auto sc = new zh::security_context(secret, user_service::instance());
-	sc->add_rule("/admin", {"ADMIN"});
-	sc->add_rule("/admin/**", {"ADMIN"});
-	sc->add_rule("/{ip,pa,sl,screen}/", {"USER"});
-	sc->add_rule("/{qc,screens}", {"USER"});
+	sc->add_rule("/admin", { "ADMIN" });
+	sc->add_rule("/admin/**", { "ADMIN" });
+	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
+	sc->add_rule("/{qc,screens}", { "USER" });
 	sc->add_rule("/", {});
 
 	sc->set_validate_csrf(true);

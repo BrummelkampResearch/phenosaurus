@@ -42,7 +42,9 @@ struct group
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("id", id) & zeep::name_value_pair("name", name) & zeep::name_value_pair("members", members);
+		ar &zeep::name_value_pair("id", id) &     //
+			zeep::name_value_pair("name", name) & //
+			zeep::name_value_pair("members", members);
 	}
 };
 
@@ -63,7 +65,15 @@ struct user
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("id", id) & zeep::name_value_pair("username", username) & zeep::name_value_pair("firstname", firstname) & zeep::name_value_pair("lastname", lastname) & zeep::name_value_pair("email", email) & zeep::name_value_pair("active", active) & zeep::name_value_pair("password", password) & zeep::name_value_pair("admin", admin) & zeep::name_value_pair("groups", groups);
+		ar &zeep::name_value_pair("id", id) &               //
+			zeep::name_value_pair("username", username) &   //
+			zeep::name_value_pair("firstname", firstname) & //
+			zeep::name_value_pair("lastname", lastname) &   //
+			zeep::name_value_pair("email", email) &         //
+			zeep::name_value_pair("active", active) &       //
+			zeep::name_value_pair("password", password) &   //
+			zeep::name_value_pair("admin", admin) &         //
+			zeep::name_value_pair("groups", groups);
 	}
 };
 

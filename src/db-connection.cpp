@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -33,24 +33,24 @@
 std::unique_ptr<db_connection> db_connection::s_instance;
 thread_local std::unique_ptr<pqxx::connection> db_connection::s_connection;
 
-void db_connection::init(const std::string& connection_string)
+void db_connection::init(const std::string &connection_string)
 {
 	s_instance.reset(new db_connection(connection_string));
 }
 
-db_connection& db_connection::instance()
+db_connection &db_connection::instance()
 {
 	return *s_instance;
 }
 
 // --------------------------------------------------------------------
 
-db_connection::db_connection(const std::string& connectionString)
+db_connection::db_connection(const std::string &connectionString)
 	: m_connection_string(connectionString)
 {
 }
 
-pqxx::connection& db_connection::get_connection()
+pqxx::connection &db_connection::get_connection()
 {
 	static std::mutex sLock;
 	std::unique_lock lock(sLock);
@@ -59,7 +59,7 @@ pqxx::connection& db_connection::get_connection()
 	{
 		s_connection.reset(new pqxx::connection(m_connection_string));
 
-		for (auto& psf: m_prepared_statement_factories)
+		for (auto &psf : m_prepared_statement_factories)
 			psf(*s_connection);
 	}
 
@@ -73,7 +73,7 @@ void db_connection::reset()
 
 // --------------------------------------------------------------------
 
-bool db_error_handler::create_error_reply(const zeep::http::request& req, std::exception_ptr eptr, zeep::http::reply& reply)
+bool db_error_handler::create_error_reply(const zeep::http::request &req, std::exception_ptr eptr, zeep::http::reply &reply)
 {
 	bool handled = false;
 
@@ -81,7 +81,7 @@ bool db_error_handler::create_error_reply(const zeep::http::request& req, std::e
 	{
 		std::rethrow_exception(eptr);
 	}
-	catch (pqxx::broken_connection& ex)
+	catch (pqxx::broken_connection &ex)
 	{
 		std::cerr << ex.what() << '\n';
 		db_connection::instance().reset();
@@ -92,6 +92,6 @@ bool db_error_handler::create_error_reply(const zeep::http::request& req, std::e
 	catch (...)
 	{
 	}
-	
+
 	return handled;
 }

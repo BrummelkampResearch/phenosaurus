@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -29,7 +29,7 @@
 #include <mcfp/mcfp.hpp>
 
 template <typename... Options>
-mcfp::config &load_and_init_config(std::string_view usage, Options... options)
+mcfp::config &load_and_init_config(std::string usage, Options &&... options)
 {
 	auto &config = mcfp::config::instance();
 
@@ -42,7 +42,7 @@ mcfp::config &load_and_init_config(std::string_view usage, Options... options)
 
 		mcfp::make_option<std::string>("config", "screen-analyzer.conf", "Configuration file to use"),
 
-		options...);
+		std::forward<Options>(options)...);
 
 	return config;
 }

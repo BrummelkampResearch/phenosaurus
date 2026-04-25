@@ -24,19 +24,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <random>
+#include "user-service.hpp"
 
-#include <zeep/crypto.hpp>
+#include "db-connection.hpp"
+#include "mrsrc.hpp"
+#include "screen-analyzer.hpp"
+#include "screen-service.hpp"
 
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
-
-#include "mrsrc.hpp"
-
-#include "db-connection.hpp"
-#include "screen-analyzer.hpp"
-#include "screen-service.hpp"
-#include "user-service.hpp"
+#include <random>
+#include <zeep/crypto.hpp>
 
 // --------------------------------------------------------------------
 

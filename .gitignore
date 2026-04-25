@@ -20,3 +20,5 @@ vincentsdata/
 build
 src/revision.hpp
 src/config.hpp
+.cache/
+

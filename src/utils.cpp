@@ -1,17 +1,17 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
- * 
+ *
  * Copyright (c) 2022 NKI/AVL, Netherlands Cancer Institute
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -24,28 +24,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <pwd.h>
-#include <termios.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <thread>
-#include <iomanip>
-
-#include <iostream>
-#include <regex>
-#include <atomic>
-#include <mutex>
-
-#include <zeep/streambuf.hpp>
-
 #include "utils.hpp"
-#include "mrsrc.hpp"
+
+#include <atomic>
+#include <list>
+#include <mutex>
+#include <pwd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <thread>
+#include <unistd.h>
+#include <zeep/streambuf.hpp>
 
 const auto kProcessorCount = std::thread::hardware_concurrency();
 
 // --------------------------------------------------------------------
 
-void parallel_for(size_t N, std::function<void(size_t)>&& f)
+void parallel_for(size_t N, std::function<void(size_t)> &&f)
 {
 
 #if DEBUG
@@ -66,7 +61,7 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 
 	for (size_t n = 0; n < kProcessorCount; ++n)
 		t.emplace_back([N, &i, &f, &eptr, &m]()
-		{
+			{
 			try
 			{
 				for (;;)
@@ -82,10 +77,9 @@ void parallel_for(size_t N, std::function<void(size_t)>&& f)
 			{
 				std::unique_lock lock(m);
 				eptr = std::current_exception();
-			}
-		});
+			} });
 
-	for (auto& ti: t)
+	for (auto &ti : t)
 		ti.join();
 
 	if (eptr)
@@ -114,8 +108,8 @@ std::string get_user_name()
 	struct passwd pwd;
 	struct passwd *result = nullptr;
 	char buf[16384];
-	
+
 	int s = getpwuid_r(getuid(), &pwd, buf, sizeof(buf), &result);
 
-	return (s>= 0 and result != nullptr) ? result->pw_name : "";
+	return (s >= 0 and result != nullptr) ? result->pw_name : "";
 }
