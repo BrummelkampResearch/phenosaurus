@@ -368,7 +368,8 @@ or txEnd to have the start at the cdsEnd e.g.
 
 	// -----------------------------------------------------------------------
 
-	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize);
+// TODO: optionally unnormalized
+	auto r = screenData.dataPoints(assembly, trimLength, transcripts, controlData, groupSize, true);
 	bool significantOnly = config.has("significant");
 
 	if (not config.has("no-header"))

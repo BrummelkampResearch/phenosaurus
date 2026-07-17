@@ -528,11 +528,12 @@ class SLScreenRestController : public zh::rest_controller
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
-			"id", "assembly", "transcripts", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction");
+			"id", "assembly", "transcripts", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "normalize");
 
 		map_get_request("screen/{id}/description", &SLScreenRestController::screenDescription, "id", "assembly");
 
-		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo, "id", "screen", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end");
+		map_post_request("gene-info/{id}", &SLScreenRestController::geneInfo,
+			"id", "screen", "assembly", "transcripts", "mode", "cut-overlap", "gene-start", "gene-end");
 
 		// download data
 		map_get_request("screen/{id}/bed/{replicate}", &SLScreenRestController::getBED, "id", "replicate", "assembly");
@@ -546,7 +547,7 @@ class SLScreenRestController : public zh::rest_controller
 	}
 
 	std::vector<sl_data_point> screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
-		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction, std::optional<bool> normalize);
 
 	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
@@ -570,9 +571,9 @@ class SLScreenRestController : public zh::rest_controller
 };
 
 std::vector<sl_data_point> SLScreenRestController::screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
-	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction, std::optional<bool> normalize)
 {
-	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcript_selection, mode, cutOverlap, geneStart, geneEnd);
+	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcript_selection, mode, cutOverlap, geneStart, geneEnd, normalize.value_or(true));
 	return dp->data_points(screen);
 
 	// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
@@ -759,9 +760,10 @@ std::vector<std::string> SLScreenRestController::getReplicates(const std::string
 	return static_cast<SLScreenData *>(data.get())->getReplicateNames();
 }
 
-std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string &gene, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
+std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string &gene, const std::string &assembly,
+	const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
-	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd);
+	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, true);
 	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
 	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }

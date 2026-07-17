@@ -55,6 +55,10 @@ class GeneSelectionEditor {
 
 		fd.append("gene-end", geneEnd);
 
+		const normalizeCB = document.getElementById('normalize');
+		if (normalizeCB)
+			fd.append('normalize', normalizeCB.checked);
+
 		return fd;
 	}
 }
