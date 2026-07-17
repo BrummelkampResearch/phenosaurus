@@ -430,10 +430,11 @@ class SLScreenData : public ScreenData
 		const std::vector<Transcript> &transcripts, unsigned groupSize) const;
 
 	std::vector<SLDataPoint> dataPoints(const std::string &assembly, unsigned readLength,
-		const std::vector<Transcript> &transcripts, const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize);
+		const std::vector<Transcript> &transcripts, const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize,
+		bool normalize_counts);
 
 	std::vector<SLDataPoint> dataPoints(const std::string &assembly, unsigned readLength,
-		const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize);
+		const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize, bool normalize_counts);
 
 	std::vector<std::string> getReplicateNames() const;
 	std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> getInsertionsForReplicate(
@@ -448,7 +449,8 @@ class SLScreenData : public ScreenData
 
 	std::vector<SLDataReplicate> dataPoints(const std::vector<Transcript> &transcripts,
 		const std::vector<InsertionCount> &insertions,
-		const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize);
+		const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize,
+		bool normalize_counts);
 
 	// std::vector<SLDataPoint> dataPoints(const std::vector<Transcript>& transcripts,
 	// 	const std::vector<InsertionCount>& insertions,

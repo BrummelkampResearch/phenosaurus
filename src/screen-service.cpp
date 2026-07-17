@@ -807,8 +807,9 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 // --------------------------------------------------------------------
 
 sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short trim_length, const std::string &transcript_selection,
-	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
+	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, bool normalize_counts)
 	: screen_data_cache(ScreenType::SyntheticLethal, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd)
+	, m_normalize_counts(normalize_counts)
 {
 	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
 	auto screenDataDir = screen_service::instance().get_screen_data_dir();
@@ -894,12 +895,17 @@ sl_screen_data_cache::sl_screen_data_cache(const std::string &assembly, short tr
 
 			// ----------------------------------------------------------------------
 
-			auto dp = data->dataPoints(assembly, trim_length, m_transcripts, normalizedControlInsertions, groupSize);
+			auto dp = data->dataPoints(assembly, trim_length, m_transcripts, normalizedControlInsertions, groupSize, m_normalize_counts);
 
 			for (size_t ti = 0; ti < N; ++ti)
 			{
 				auto &d = d_data[ti];
 				auto &p = dp[ti];
+
+#ifndef NDEBUG
+				if (VERBOSE and p.gene == "KIF11")
+					std::cout << "kif11\n";
+#endif
 
 				d.odds_ratio = p.oddsRatio;
 				// d.sense_ratio = p.senseRatio;
@@ -956,6 +962,9 @@ fs::path sl_screen_data_cache::get_cache_file_path(const std::string &screen_nam
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
 	   << '-' << m_geneEnd;
+	
+	if (not m_normalize_counts)
+		ss << "-" << "unnormalized";
 
 	std::string assembly = m_assembly;
 	if (not(m_transcript_selection.empty() and m_transcript_selection != "default"))
@@ -1559,12 +1568,13 @@ std::shared_ptr<ip_screen_data_cache> screen_service::get_screen_data(const Scre
 }
 
 std::shared_ptr<sl_screen_data_cache> screen_service::get_screen_data(const std::string &assembly, short trim_length,
-	const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
+	const std::string &transcript_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+	bool normalize_counts)
 {
 	std::unique_lock lock(m_mutex);
 
 	auto i = std::find_if(m_sl_data_cache.begin(), m_sl_data_cache.end(),
-		std::bind(&sl_screen_data_cache::is_for, std::placeholders::_1, ScreenType::SyntheticLethal, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd));
+		std::bind(&sl_screen_data_cache::is_for, std::placeholders::_1, ScreenType::SyntheticLethal, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd, normalize_counts));
 
 	std::shared_ptr<sl_screen_data_cache> result;
 
@@ -1578,7 +1588,7 @@ std::shared_ptr<sl_screen_data_cache> screen_service::get_screen_data(const std:
 
 	if (not result)
 	{
-		result = std::make_shared<sl_screen_data_cache>(assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd);
+		result = std::make_shared<sl_screen_data_cache>(assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd, normalize_counts);
 		m_sl_data_cache.emplace_back(result);
 	}
 

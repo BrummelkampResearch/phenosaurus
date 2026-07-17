@@ -267,7 +267,7 @@ class sl_screen_data_cache : public screen_data_cache
 {
   public:
 	sl_screen_data_cache(const std::string &assembly, short trim_length, const std::string &transcript_selection,
-		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, bool normalizeCounts);
 
 	~sl_screen_data_cache();
 
@@ -287,6 +287,12 @@ class sl_screen_data_cache : public screen_data_cache
 
 	virtual std::filesystem::path get_cache_file_path(const std::string &screen_name) const override;
 
+	bool is_for(ScreenType type, const std::string &assembly, short trim_length, const std::string &transcript_selection,
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, bool normalize_counts) const
+	{
+		return screen_data_cache::is_for(type, assembly, trim_length, transcript_selection, mode, cutOverlap, geneStart, geneEnd) and m_normalize_counts == normalize_counts;
+	}
+
   private:
 	struct data_point
 	{
@@ -303,6 +309,7 @@ class sl_screen_data_cache : public screen_data_cache
 
 	data_point *m_data;
 	data_point_replicate *m_replicate_data;
+	bool m_normalize_counts = true;
 };
 
 // --------------------------------------------------------------------
@@ -359,7 +366,8 @@ class screen_service
 
 	std::shared_ptr<sl_screen_data_cache> get_screen_data(
 		const std::string &assembly, short trim_length, const std::string &transcript_selection,
-		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
+		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+		bool normalizeCounts);
 
 	// std::vector<ip_data_point> get_data_points(const ScreenType type, const std::string &screen, const std::string &assembly, short trim_length, const std::string &transcript_selection,
 	// 	Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction);

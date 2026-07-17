@@ -945,15 +945,17 @@ std::array<std::vector<InsertionCount>, 4> SLScreenData::loadNormalizedInsertion
 }
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
-	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize)
+	const std::vector<Transcript> &transcripts, const SLScreenData &controlData, unsigned groupSize,
+	bool normalize_counts)
 {
 	auto normalizedControlInsertions = controlData.loadNormalizedInsertions(assembly, trimLength, transcripts, groupSize);
-	return dataPoints(assembly, trimLength, transcripts, normalizedControlInsertions, groupSize);
+	return dataPoints(assembly, trimLength, transcripts, normalizedControlInsertions, groupSize, normalize_counts);
 }
 
 std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, unsigned trimLength,
 	const std::vector<Transcript> &transcripts,
-	const std::array<std::vector<InsertionCount>, 4> &normalizedControlInsertions, unsigned groupSize)
+	const std::array<std::vector<InsertionCount>, 4> &normalizedControlInsertions, unsigned groupSize,
+	bool normalize_counts)
 {
 	std::exception_ptr eptr;
 
@@ -973,7 +975,7 @@ std::vector<SLDataPoint> SLScreenData::dataPoints(const std::string &assembly, u
 			count_insertions(replicate, assembly, trimLength, transcripts, insertions);
 
 			// And now analyse this
-			repl = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize);
+			repl = dataPoints(transcripts, insertions, normalizedControlInsertions, groupSize, normalize_counts);
 		}
 		catch (const std::exception &e)
 		{
@@ -1109,6 +1111,11 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 		int sense = insertions[i].sense;
 		int antisense = insertions[i].antiSense;
 
+		#ifndef NDEBUG
+			if (i == 9607)
+				std::cout << "kif11\n";
+		#endif
+
 		if (sense + antisense >= 20 and
 			((controlInsertions[0][i].sense + controlInsertions[0][i].antiSense) >= 20) and
 			((controlInsertions[1][i].sense + controlInsertions[1][i].antiSense) >= 20) and
@@ -1185,6 +1192,11 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 		{
 			auto iix = index[ix];
 			assert(iix < insertions.size());
+
+#ifndef NDEBUG
+			if (iix == 9607)
+				std::cout << "kif11\n";
+#endif
 
 			auto iSenseRatio = senseRatio[iix];
 
@@ -1277,9 +1289,10 @@ std::tuple<std::vector<uint32_t>, std::vector<uint32_t>> SLScreenData::getInsert
 // 	unsigned groupSize)
 std::vector<SLDataReplicate> SLScreenData::dataPoints(const std::vector<Transcript> &transcripts,
 	const std::vector<InsertionCount> &insertions,
-	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize)
+	const std::array<std::vector<InsertionCount>, 4> &controlInsertions, unsigned groupSize,
+	bool normalize_counts)
 {
-	auto normalized = normalize(insertions, controlInsertions, groupSize);
+	auto normalized = normalize_counts ? normalize(insertions, controlInsertions, groupSize) : insertions;
 
 	const size_t N = transcripts.size();
 	std::vector<SLDataReplicate> result(N, SLDataReplicate{});
