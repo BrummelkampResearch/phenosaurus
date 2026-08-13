@@ -316,7 +316,7 @@ th.sortable:hover {
 
 th.sorted-asc::after {
 	content: "";
-	background: url("../docroot/images/driehoek-op.png") no-repeat top right;
+	background: url("../images/driehoek-op.png") no-repeat top right;
 	display: inline-block;
 	width: 10px;
 	height: 10px;
@@ -325,7 +325,7 @@ th.sorted-asc::after {
 
 th.sorted-desc::after {
 	content: "";
-	background: url("../docroot/images/driehoek-neer.png") no-repeat top right;
+	background: url("../images/driehoek-neer.png") no-repeat top right;
 	display: inline-block;
 	width: 10px;
 	height: 10px;

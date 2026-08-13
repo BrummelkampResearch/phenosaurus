@@ -1,9 +1,13 @@
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const path = require('path');
+const glob = require('glob-all');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { PurgeCSSPlugin } = require("purgecss-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
+const CopyPlugin = require('copy-webpack-plugin');
 
-const SCRIPTS = __dirname + "/webapp/";
-const DEST = __dirname + "/docroot/dist/";
+const SCRIPTS = path.resolve(__dirname, "webapp");
+const DEST = path.resolve(__dirname, "docroot");
 
 module.exports = (env) => {
 
@@ -12,41 +16,48 @@ module.exports = (env) => {
 	const webpackConf = {
 
 		entry: {
-			'style': SCRIPTS + 'sa-style.scss',
+			'style': path.resolve(SCRIPTS, 'sa-style.scss'),
 
-			'index': SCRIPTS + "index.js",
-			'screen': SCRIPTS + "screen.js",
-			'sl-screen': SCRIPTS + "sl-screen.js",
+			'index': path.resolve(SCRIPTS, "index.js"),
+			'screen': path.resolve(SCRIPTS, "screen.js"),
+			'sl-screen': path.resolve(SCRIPTS, "sl-screen.js"),
 
-			'gene-selection': SCRIPTS + 'gene-selection.js',
-			'find-gene': SCRIPTS + 'find-gene.js',
-			'find-similar': SCRIPTS + 'find-similar.js',
-			'find-cluster': SCRIPTS + 'find-cluster.js',
+			'gene-selection': path.resolve(SCRIPTS, 'gene-selection.js'),
+			'find-gene': path.resolve(SCRIPTS, 'find-gene.js'),
+			'find-similar': path.resolve(SCRIPTS, 'find-similar.js'),
+			'find-cluster': path.resolve(SCRIPTS, 'find-cluster.js'),
 
-			'compare-screens': SCRIPTS + "compare-screens.js",
+			'compare-screens': path.resolve(SCRIPTS, "compare-screens.js"),
 
-			'admin-user': SCRIPTS + "admin-user.js",
-			'admin-group': SCRIPTS + "admin-group.js",
-			'genome-browser': SCRIPTS + "genome-browser.js",
+			'admin-user': path.resolve(SCRIPTS, "admin-user.js"),
+			'admin-group': path.resolve(SCRIPTS, "admin-group.js"),
+			'genome-browser': path.resolve(SCRIPTS, "genome-browser.js"),
 
-			'create-screen': SCRIPTS + "create-screen.js",
-			'edit-screen': SCRIPTS + "edit-screen.js",
-			'list-screen': SCRIPTS + "list-screen.js",
+			'create-screen': path.resolve(SCRIPTS, "create-screen.js"),
+			'edit-screen': path.resolve(SCRIPTS, "edit-screen.js"),
+			'list-screen': path.resolve(SCRIPTS, "list-screen.js"),
 
-			'qc': SCRIPTS + "qc.js",
+			'qc': path.resolve(SCRIPTS, "qc.js"),
 
-			'sortable': SCRIPTS + "sortable.js"
+			'sortable': path.resolve(SCRIPTS, "sortable.js")
 		},
 
 		output: {
 			path: DEST,
-			crossOriginLoading: 'anonymous'
+			crossOriginLoading: 'anonymous',
+			filename: "scripts/[name].js",
+			clean: {
+				dry: true,
+				keep(asset) {
+					return /\.(html|ico|xml|json)$/.test(asset)
+				}
+			}
 		},
 
 		module: {
 			rules: [
 				{
-					test: /\.js/,
+					test: /\.js$/,
 					exclude: /node_modules/,
 					use: {
 						loader: "babel-loader",
@@ -59,46 +70,85 @@ module.exports = (env) => {
 				{
 					test: /\.(sa|sc|c)ss$/i,
 					use: [
-						/* PRODUCTION ?  */MiniCssExtractPlugin.loader/*  : "style-loader" */,
+						MiniCssExtractPlugin.loader,
 						"css-loader",
-						"postcss-loader",
-						"sass-loader"
+						{
+							loader: "sass-loader",
+							options: {
+								sassOptions: {
+									silenceDeprecations: [
+										"color-functions",
+										"global-builtin",
+										"import",
+										"if-function"
+									]
+								}
+							}
+						}
 					]
 				},
 
 				{
-					test: /\.woff(2)?(\?v=[0-9]\.[0-9]\.[0-9])?$/,
-					include: path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
-					type: 'asset/resource'
+					test: /\.(woff(2)?|ttf)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+					include: [
+						path.resolve(__dirname, './node_modules/bootstrap-icons/font/fonts'),
+						path.resolve(SCRIPTS, 'fonts')
+					],
+					type: 'asset/resource',
+					generator: {
+						filename: 'fonts/[name][ext]'
+					}
+				},
+
+				{
+					test: /\.(png|ico)/,
+					include: [
+						path.resolve(__dirname, 'images')
+					],
+					type: 'asset/resource',
+					generator: {
+						filename: 'images/[name][ext]'
+					}
 				}
 			]
 		},
 
 		resolve: {
-			extensions: ['.js', '.scss'],
+			extensions: ['.js', '.css', '.scss'],
 		},
 
-		plugins: [
-			new MiniCssExtractPlugin({}),
-			new CleanWebpackPlugin({
-				verbose: true
-			})
-		],
-
 		optimization: {
-			minimizer: []
-		}
+			minimize: true,
+			minimizer: [new TerserPlugin()]
+		},
+
+		target: 'web',
+
+		plugins: [
+			new MiniCssExtractPlugin({
+				filename: "css/[name].css"
+			}),
+			new PurgeCSSPlugin({
+				paths: glob.sync([
+					`${SCRIPTS}/**/*`,
+					`${DEST}/**/*`
+				], { nodir: true })
+			}),
+			new CopyPlugin(
+				{
+					patterns: [
+						{
+							from: path.resolve(__dirname, 'favicons'),
+							to: `${DEST}`
+						}
+					]
+				}
+			)
+		]
 	};
 
 	if (PRODUCTION) {
 		webpackConf.mode = "production";
-
-		// webpackConf.plugins.push(
-		// 	new CleanWebpackPlugin({
-		// 		verbose: true
-		// 	})/* ,
-		// 	new MiniCssExtractPlugin({}) */
-		// );
 	} else {
 		webpackConf.mode = "development";
 		webpackConf.devtool = 'source-map';
@@ -106,4 +156,3 @@ module.exports = (env) => {
 
 	return webpackConf;
 };
-
