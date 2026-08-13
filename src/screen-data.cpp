@@ -38,8 +38,9 @@
 #include <list>
 #include <squeeze.hpp>
 #include <stdexcept>
-#include <zeep/json/parser.hpp>
-#include <zeep/value-serializer.hpp>
+#include <zeep/el/object.hpp>
+#include <zeep/el/serializer.hpp>
+#include <zeem/zeem.hpp>
 
 namespace fs = std::filesystem;
 using namespace std::literals;
@@ -355,7 +356,7 @@ std::vector<Insertion> ScreenData::read_insertions(const std::string &assembly, 
 	return read_insertions(mDataDir / assembly / std::to_string(readLength) / file);
 }
 
-std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const
+std::unique_ptr<std::istream> ScreenData::get_bed_file_for_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const
 {
 	std::unique_ptr<std::stringstream> result(new std::stringstream());
 
@@ -370,7 +371,7 @@ std::istream *ScreenData::get_bed_file_for_insertions(const std::string &assembl
 				<< strand << '\n';
 	}
 
-	return result.release();
+	return result;
 }
 
 // --------------------------------------------------------------------
@@ -445,11 +446,9 @@ screen_info ScreenData::loadManifest(const std::filesystem::path &dir)
 	if (not manifestFile.is_open())
 		throw std::runtime_error("Could not open manifest file (" + dir.string() + ')');
 
-	zeep::json::element jInfo;
-	zeep::json::parse_json(manifestFile, jInfo);
+	auto jInfo = zeep::el::object::parse_JSON(manifestFile);
 
-	screen_info result;
-	zeep::json::from_element(jInfo, result);
+	auto result = zeep::el::from_object<screen_info>(jInfo);
 
 	// Some info may be missing (old screens?)
 	if (result.mappedInfo.empty())
@@ -542,9 +541,7 @@ void ScreenData::saveManifest(const screen_info &info, const std::filesystem::pa
 	if (not manifest.is_open())
 		throw std::runtime_error("Could not create manifest file in " + dir.string());
 
-	zeep::json::element jInfo;
-	zeep::json::to_element(jInfo, info);
-	manifest << jInfo;
+	manifest << zeep::el::to_object(info);
 	manifest.close();
 }
 

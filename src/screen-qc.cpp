@@ -32,9 +32,10 @@
 #include <filesystem>
 #include <iostream>
 #include <numeric>
+#include <zeep/el/object.hpp>
 #include <zeep/unicode-support.hpp>
 
-using json = zeep::json::element;
+using json = zeep::el::object;
 namespace fs = std::filesystem;
 
 extern int VERBOSE;
@@ -68,24 +69,23 @@ RefSeqInfo::RefSeqInfo(size_t binSize)
 	: binSize(binSize)
 {
 	mrsrc::istream file("refSeqs.json");
-	json data;
-	parse_json(file, data);
+	auto data = zeep::el::object::parse_JSON(file);
 
 	size_t binStart = 0;
 
 	for (auto ci : data)
 	{
-		CHROM chr = from_string(ci["name"].as<std::string>());
+		CHROM chr = from_string(ci["name"].get<std::string>());
 
 		if (chr == INVALID)
 		{
 			if (VERBOSE > 1)
-				std::cout << "skipping chrom: " << ci["name"].as<std::string>() << '\n';
+				std::cout << "skipping chrom: " << ci["name"].get<std::string>() << '\n';
 
 			continue;
 		}
 
-		emplace_back(ChromosomeInfo{ chr, ci["start"].as<size_t>(), ci["end"].as<size_t>() });
+		emplace_back(ChromosomeInfo{ chr, ci["start"].get<size_t>(), ci["end"].get<size_t>() });
 
 		chromToBinStart[chr] = binStart;
 		binStart += back().end / binSize + 1;
@@ -125,7 +125,7 @@ void InsertionCounts::add(const std::string &screen, std::vector<uint16_t> &&cou
 {
 	assert(counts.size() == refseq.binCount);
 
-	insertions.emplace(make_pair(screen, move(counts)));
+	insertions.emplace(make_pair(screen, std::move(counts)));
 }
 
 void InsertionCounts::calculateStats()
@@ -215,7 +215,7 @@ InsertionCounts createIndex(RefSeqInfo &refseq, std::vector<std::tuple<std::stri
 
 					std::lock_guard lock(m);
 
-					inscnt.add(name, move(counts));
+					inscnt.add(name, std::move(counts));
 					std::cout << '.';
 					std::cout.flush();
 				}
@@ -308,8 +308,8 @@ typedef std::map<std::string, bin_remapper, ChromComparator> ChromBinMap;
 class screen_qc_data
 {
   public:
-	// size_t  binSize() const							{ return m_data["binSize"].as<size_t>(); }
-	// size_t  binCount() const						{ return m_data["binCount"].as<size_t>(); }
+	// size_t  binSize() const							{ return m_data["binSize"].get<size_t>(); }
+	// size_t  binCount() const						{ return m_data["binCount"].get<size_t>(); }
 
 	static screen_qc_data &instance();
 
@@ -573,7 +573,7 @@ std::map<std::string, std::vector<float>> screen_qc_data::heatmap(const ChromBin
 		for (auto &ci : c)
 			sumsq += (ci - avg) * (ci - avg);
 
-		float stddev = sqrt(sumsq / (NS - 1));
+		float stddev = std::sqrt(sumsq / (NS - 1));
 
 		averages.push_back(avg);
 		stddevs.push_back(stddev);
@@ -682,7 +682,7 @@ std::map<std::string, std::vector<float>> screen_qc_data::emptiness(const ChromB
 		for (auto &ci : c)
 			sumsq += (ci - avg) * (ci - avg);
 
-		float stddev = sqrt(sumsq / (NS - 1));
+		float stddev = std::sqrt(sumsq / (NS - 1));
 
 		averages.push_back(avg);
 		stddevs.push_back(stddev);
@@ -854,7 +854,7 @@ std::vector<std::string> screen_qc_data::cluster(const std::map<std::string, std
 // --------------------------------------------------------------------
 
 screen_qc_rest_controller::screen_qc_rest_controller()
-	: zeep::http::rest_controller("/qc")
+	: zeep::http::controller("/qc")
 {
 	map_post_request("heatmap", &screen_qc_rest_controller::get_heatmap, "requestedBinCount", "chr", "skip");
 	map_post_request("emptybins", &screen_qc_rest_controller::get_emptybins, "requestedBinCount", "chr", "skip");
@@ -937,7 +937,7 @@ void screen_qc_html_controller::index(const zeep::http::request &request, const 
 	zeep::http::scope sub(scope);
 
 	sub.put("page", "index");
-	sub.put("chromosomes", data.chromosomes());
+	sub.put("chromosomes", zeep::el::to_object(data.chromosomes()));
 
 	std::set<std::string> screens;
 	std::regex r(R"(-(?:high|low|replicate-\d)$)");
@@ -945,7 +945,8 @@ void screen_qc_html_controller::index(const zeep::http::request &request, const 
 	for (auto screen : data.screens())
 		screens.insert(std::regex_replace(screen, r, ""));
 
-	sub.put("screens", std::vector<std::string>(screens.begin(), screens.end()));
+	sub.put("screens",
+		zeep::el::to_object(std::vector<std::string>(screens.begin(), screens.end())));
 
 	get_template_processor().create_reply_from_template("qc.html", sub, reply);
 }

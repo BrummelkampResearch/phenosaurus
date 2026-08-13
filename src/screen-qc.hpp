@@ -27,7 +27,6 @@
 #pragma once
 
 #include <zeep/http/html-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 
 // --------------------------------------------------------------------
 
@@ -40,9 +39,9 @@ struct ChromStart
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::make_nvp("chrom", chrom)   //
-			& zeep::make_nvp("start", start) //
-			& zeep::make_nvp("binBaseCount", binBaseCount);
+		ar &zeem::name_value_pair("chrom", chrom)   //
+			& zeem::name_value_pair("start", start) //
+			& zeem::name_value_pair("binBaseCount", binBaseCount);
 	}
 };
 
@@ -59,16 +58,16 @@ struct ScreenQCData
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::make_nvp("binCount", binCount)                   //
-			& zeep::make_nvp("screens", screens)                   //
-			& zeep::make_nvp("chromosomeStarts", chromosomeStarts) //
-			& zeep::make_nvp("data", data);
+		ar &zeem::name_value_pair("binCount", binCount)                   //
+			& zeem::name_value_pair("screens", screens)                   //
+			& zeem::name_value_pair("chromosomeStarts", chromosomeStarts) //
+			& zeem::name_value_pair("data", data);
 	}
 };
 
 // --------------------------------------------------------------------
 
-class screen_qc_rest_controller : public zeep::http::rest_controller
+class screen_qc_rest_controller : public zeep::http::controller
 {
   public:
 	screen_qc_rest_controller();
@@ -84,7 +83,7 @@ class screen_qc_rest_controller : public zeep::http::rest_controller
 
 // --------------------------------------------------------------------
 
-class screen_qc_html_controller : public zeep::http::html_controller
+class screen_qc_html_controller : public zeep::http::html_controller_v1
 {
   public:
 	screen_qc_html_controller();

@@ -30,7 +30,7 @@
 
 #include <functional>
 #include <iostream>
-#include <zeep/value-serializer.hpp>
+#include <zeep/el/serializer.hpp>
 
 // --------------------------------------------------------------------
 

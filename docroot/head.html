@@ -3,19 +3,21 @@
 <html lang="en" xmlns:z="http://www.hekkelman.com/libzeep/m2">
 
 <head z:fragment="head(title,links,scripts)">
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; child-src 'none'; img-src 'self' data:" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' 'unsafe-inline'; child-src 'none'; img-src 'self' data:" />
 
     <title z:replace="${title}">Phenosaurus</title>
 
     <z:block z:replace="${links}"></z:block>
 
+    <script src="/scripts/index.js" type="application/ecmascript" z:src="@{/scripts/index.js}"></script>
+
+    <link rel="stylesheet" type="text/css" href="css/styles.css" z:href="@{/css/style.css}" />
+
     <z:block z:replace="${scripts}"></z:block>
-
-    <link rel="stylesheet" type="text/css" href="css/styles.css"
-          z:href="@{/css/style.css}"/>
-
+ 
     <!-- <link rel="apple-touch-icon" sizes="57x57" z:href="@{/scripts/apple-icon-57x57.png}"/>
     <link rel="apple-touch-icon" sizes="60x60" z:href="@{/scripts/apple-icon-60x60.png}"/>
     <link rel="apple-touch-icon" sizes="72x72" z:href="@{/scripts/apple-icon-72x72.png}"/>
@@ -34,15 +36,10 @@
     <meta name="msapplication-TileImage" z:content="@{/scripts/ms-icon-144x144.png}"/>
     <meta name="theme-color" content="#ffffff"/> -->
 
-<script z:inline="javascript">
-	const context_name = /*[[@{/}]]*/ "";
-</script>
+    <script z:inline="javascript">
+        const context_name = /*[[@{/}]]*/ "";
+    </script>
 
 </head>
 
-<body>
-
-</body>
 </html>
-
-

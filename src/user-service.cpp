@@ -35,6 +35,8 @@
 #include <mailio/smtp.hpp>
 #include <random>
 #include <zeep/crypto.hpp>
+#include <zeep/el/serializer.hpp>
+#include <zeep/http/html-controller.hpp>
 
 // --------------------------------------------------------------------
 
@@ -805,7 +807,7 @@ void user_service_html_controller::handle_reset_password(const zeep::http::reque
 		{
 			auto email = request.get_parameter("email");
 
-			user_service::instance().send_new_password_for(email);
+			user_service::instance().send_new_password_for(email.value_or(""));
 		}
 		catch (const std::exception &ex)
 		{
@@ -819,7 +821,7 @@ void user_service_html_controller::handle_reset_password(const zeep::http::reque
 // --------------------------------------------------------------------
 
 user_admin_html_controller::user_admin_html_controller()
-	: zeep::http::html_controller("/admin")
+	: zeep::http::html_controller_v1("/admin")
 {
 	mount("users", &user_admin_html_controller::handle_user_admin);
 	mount("groups", &user_admin_html_controller::handle_group_admin);
@@ -829,10 +831,7 @@ void user_admin_html_controller::handle_user_admin(const zeep::http::request &re
 {
 	zeep::http::scope sub(scope);
 
-	zeep::json::element users;
-	auto u = user_service::instance().get_all_users();
-	to_element(users, u);
-	sub.put("users", users);
+	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
 
 	get_template_processor().create_reply_from_template("admin-users.html", sub, reply);
 }
@@ -841,15 +840,8 @@ void user_admin_html_controller::handle_group_admin(const zeep::http::request &r
 {
 	zeep::http::scope sub(scope);
 
-	zeep::json::element users;
-	auto u = user_service::instance().get_all_users();
-	to_element(users, u);
-	sub.put("users", users);
-
-	zeep::json::element groups;
-	auto g = user_service::instance().get_all_groups();
-	to_element(groups, g);
-	sub.put("groups", groups);
+	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
+	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
 	get_template_processor().create_reply_from_template("admin-groups.html", sub, reply);
 }
@@ -857,7 +849,7 @@ void user_admin_html_controller::handle_group_admin(const zeep::http::request &r
 // --------------------------------------------------------------------
 
 user_admin_rest_controller::user_admin_rest_controller()
-	: zeep::http::rest_controller("/admin")
+	: zeep::http::controller("/admin")
 {
 	map_post_request("user", &user_admin_rest_controller::create_user, "user");
 	map_get_request("user/{id}", &user_admin_rest_controller::retrieve_user, "id");

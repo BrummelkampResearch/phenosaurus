@@ -30,8 +30,7 @@
 #include "job-scheduler.hpp"
 
 #include <filesystem>
-#include <zeep/json/element.hpp>
-#include <zeep/nvp.hpp>
+#include <zeep/el/object.hpp>
 
 // --------------------------------------------------------------------
 
@@ -63,8 +62,8 @@ struct screen_file
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("name", name) //
-			& zeep::name_value_pair("source", source);
+		ar &zeem::name_value_pair("name", name) //
+			& zeem::name_value_pair("source", source);
 	}
 };
 
@@ -76,8 +75,8 @@ struct screen_insertion_count
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("file", file) //
-			& zeep::make_nvp("count", count);
+		ar &zeem::name_value_pair("file", file) //
+			& zeem::name_value_pair("count", count);
 	}
 };
 
@@ -89,8 +88,8 @@ struct screen_description
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("description", description) //
-			& zeep::make_nvp("count", counts);
+		ar &zeem::name_value_pair("description", description) //
+			& zeem::name_value_pair("count", counts);
 	}
 };
 
@@ -106,12 +105,12 @@ struct mapped_info
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("assembly", assembly)               //
-			& zeep::name_value_pair("trim-length", trimlength)        //
-			& zeep::name_value_pair("bowtie-version", bowtie_version) //
-			& zeep::name_value_pair("bowtie-params", bowtie_params)   //
-			& zeep::name_value_pair("bowtie-index", bowtie_index)     //
-			& zeep::name_value_pair("insertion-counts", file);
+		ar &zeem::name_value_pair("assembly", assembly)               //
+			& zeem::name_value_pair("trim-length", trimlength)        //
+			& zeem::name_value_pair("bowtie-version", bowtie_version) //
+			& zeem::name_value_pair("bowtie-params", bowtie_params)   //
+			& zeem::name_value_pair("bowtie-index", bowtie_index)     //
+			& zeem::name_value_pair("insertion-counts", file);
 	}
 };
 
@@ -137,22 +136,22 @@ struct screen_info
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("name", name)                             //
-			& zeep::name_value_pair("published_name", published_name)       //
-			& zeep::name_value_pair("scientist", scientist)                 //
-			& zeep::name_value_pair("type", type)                           //
-			& zeep::name_value_pair("detected_signal", detected_signal)     //
-			& zeep::name_value_pair("genotype", genotype)                   //
-			& zeep::name_value_pair("treatment", treatment)                 //
-			& zeep::name_value_pair("treatment_details", treatment_details) //
-			& zeep::name_value_pair("cell_line", cell_line)                 //
-			& zeep::name_value_pair("description", description)             //
-			& zeep::name_value_pair("ignore", ignore)                       //
-			& zeep::name_value_pair("created", created)                     //
-			& zeep::name_value_pair("groups", groups)                       //
-			& zeep::name_value_pair("files", files)                         //
-			& zeep::name_value_pair("mapped", mappedInfo)                   //
-			& zeep::name_value_pair("status", status);
+		ar &zeem::name_value_pair("name", name)                             //
+			& zeem::name_value_pair("published_name", published_name)       //
+			& zeem::name_value_pair("scientist", scientist)                 //
+			& zeem::name_value_pair("type", type)                           //
+			& zeem::name_value_pair("detected_signal", detected_signal)     //
+			& zeem::name_value_pair("genotype", genotype)                   //
+			& zeem::name_value_pair("treatment", treatment)                 //
+			& zeem::name_value_pair("treatment_details", treatment_details) //
+			& zeem::name_value_pair("cell_line", cell_line)                 //
+			& zeem::name_value_pair("description", description)             //
+			& zeem::name_value_pair("ignore", ignore)                       //
+			& zeem::name_value_pair("created", created)                     //
+			& zeem::name_value_pair("groups", groups)                       //
+			& zeem::name_value_pair("files", files)                         //
+			& zeem::name_value_pair("mapped", mappedInfo)                   //
+			& zeem::name_value_pair("status", status);
 	}
 };
 
@@ -197,8 +196,8 @@ struct GeneExon
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("start", start) //
-			& zeep::make_nvp("end", end);
+		ar &zeem::name_value_pair("start", start) //
+			& zeem::name_value_pair("end", end);
 	}
 };
 
@@ -214,15 +213,15 @@ struct Gene
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("name", geneName)       //
-			& zeep::make_nvp("strand", strand)     //
-			& zeep::make_nvp("txStart", txStart)   //
-			& zeep::make_nvp("txEnd", txEnd)       //
-			& zeep::make_nvp("cdsStart", cdsStart) //
-			& zeep::make_nvp("cdsEnd", cdsEnd)     //
-			& zeep::make_nvp("utr3", utr3)         //
-			& zeep::make_nvp("exons", exons)       //
-			& zeep::make_nvp("utr5", utr5);
+		ar &zeem::name_value_pair("name", geneName)       //
+			& zeem::name_value_pair("strand", strand)     //
+			& zeem::name_value_pair("txStart", txStart)   //
+			& zeem::name_value_pair("txEnd", txEnd)       //
+			& zeem::name_value_pair("cdsStart", cdsStart) //
+			& zeem::name_value_pair("cdsEnd", cdsEnd)     //
+			& zeem::name_value_pair("utr3", utr3)         //
+			& zeem::name_value_pair("exons", exons)       //
+			& zeem::name_value_pair("utr5", utr5);
 	}
 };
 
@@ -256,9 +255,9 @@ struct InsertionInfo
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("strand", strand) //
-			& zeep::make_nvp("name", name)   //
-			& zeep::make_nvp("pos", pos);
+		ar &zeem::name_value_pair("strand", strand) //
+			& zeem::name_value_pair("name", name)   //
+			& zeem::name_value_pair("pos", pos);
 	}
 };
 
@@ -274,13 +273,13 @@ struct Region
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("chrom", chrom)             //
-			& zeep::make_nvp("start", start)           //
-			& zeep::make_nvp("end", end)               //
-			& zeep::make_nvp("geneStrand", geneStrand) //
-			& zeep::make_nvp("genes", genes)           //
-			& zeep::make_nvp("area", area)             //
-			& zeep::make_nvp("insertions", insertions);
+		ar &zeem::name_value_pair("chrom", chrom)             //
+			& zeem::name_value_pair("start", start)           //
+			& zeem::name_value_pair("end", end)               //
+			& zeem::name_value_pair("geneStrand", geneStrand) //
+			& zeem::name_value_pair("genes", genes)           //
+			& zeem::name_value_pair("area", area)             //
+			& zeem::name_value_pair("insertions", insertions);
 	}
 };
 
@@ -328,7 +327,7 @@ class ScreenData
 	static void saveManifest(const screen_info &info, const std::filesystem::path &dir);
 	static void refreshManifest(screen_info &info, const std::filesystem::path &dir);
 
-	std::istream *get_bed_file_for_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const;
+	std::unique_ptr<std::istream> get_bed_file_for_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const;
 
   protected:
 	std::vector<Insertion> read_insertions(const std::string &assembly, unsigned readLength, const std::string &file) const;

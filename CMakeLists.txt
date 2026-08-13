@@ -82,15 +82,11 @@ find_package(Threads)
 
 CPMAddPackage(NAME date GIT_REPOSITORY https://github.com/HowardHinnant/date VERSION 3.0.4 EXCLUDE_FROM_ALL)
 
-CPMAddPackage(NAME zeep
-	GIT_REPOSITORY "https://forge.hekkelman.net/maarten/zeep.git"
-	VERSION 6.1.0
-	EXCLUDE_FROM_ALL YES)
-
 find_package(Boost REQUIRED)
 find_package(gxrio REQUIRED)
 find_package(mcfp REQUIRED)
 find_package(libpqxx 7.7.4 REQUIRED)
+find_package(zeep 8.1.0 REQUIRED)
 
 pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
 
@@ -170,7 +166,6 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/screen-analyzer.cpp
 	${CMAKE_SOURCE_DIR}/src/job-scheduler.hpp
 	${CMAKE_SOURCE_DIR}/src/user-service.hpp
-	${CMAKE_SOURCE_DIR}/src/screen-creator.cpp
 	${CMAKE_SOURCE_DIR}/src/screen-data.hpp
 	${CMAKE_SOURCE_DIR}/src/utils.cpp
 	${CMAKE_SOURCE_DIR}/src/screen-service.cpp

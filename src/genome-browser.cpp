@@ -25,16 +25,18 @@
  */
 
 #include "genome-browser.hpp"
+#include <zeep/el/object.hpp>
 
 // --------------------------------------------------------------------
 
 genome_browser_html_controller::genome_browser_html_controller()
 {
-	mount("jbrowse/{dist,plugins,img}/", &genome_browser_html_controller::handle_file);
 	mount("genome-browser", &genome_browser_html_controller::genome_browser);
 	mount("jbrowse/jbrowse.conf", &genome_browser_html_controller::jbrowse_conf);
 	mount("jbrowse/jbrowse_conf.json", &genome_browser_html_controller::jbrowse_conf_json);
-	mount("jbrowse/data/seq/", &genome_browser_html_controller::handle_file);
+
+	map_get_file("jbrowse/{dist,plugins,img}/");
+	map_get_file("jbrowse/data/seq/");
 }
 
 void genome_browser_html_controller::genome_browser(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
@@ -53,13 +55,13 @@ include += {dataRoot}/tracks.conf
 
 void genome_browser_html_controller::jbrowse_conf_json(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
 {
-	reply.set_content(zeep::json::element::object());
+	reply.set_content(zeep::el::object{zeep::el::object::value_type::object});
 }
 
 // --------------------------------------------------------------------
 
 genome_browser_rest_controller::genome_browser_rest_controller()
-	: zeep::http::rest_controller("/jbrowse")
+	: zeep::http::controller("/jbrowse")
 {
 	map_get_request("data/trackList.json", &genome_browser_rest_controller::trackList);
 	map_get_request("data/tracks.conf", &genome_browser_rest_controller::tracks);

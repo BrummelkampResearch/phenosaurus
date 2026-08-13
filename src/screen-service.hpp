@@ -30,9 +30,7 @@
 
 #include <list>
 #include <zeep/http/html-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 #include <zeep/http/security.hpp>
-#include <zeep/nvp.hpp>
 
 // --------------------------------------------------------------------
 
@@ -95,7 +93,15 @@ struct ip_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("pv", pv) & zeep::make_nvp("fcpv", fcpv) & zeep::make_nvp("mi", mi) & zeep::make_nvp("low", low) & zeep::make_nvp("high", high) & zeep::make_nvp("rank", rank);
+		// clang-format off
+		ar & zeem::name_value_pair("gene", gene)
+		   & zeem::name_value_pair("pv", pv)
+		   & zeem::name_value_pair("fcpv", fcpv)
+		   & zeem::name_value_pair("mi", mi)
+		   & zeem::name_value_pair("low", low)
+		   & zeem::name_value_pair("high", high)
+		   & zeem::name_value_pair("rank", rank);
+		// clang-format on
 	}
 };
 
@@ -108,7 +114,11 @@ struct gene_uniqueness
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("colour", colour) & zeep::make_nvp("count", count);
+		// clang-format off
+		ar & zeem::name_value_pair("gene", gene)
+		   & zeem::name_value_pair("colour", colour)
+		   & zeem::name_value_pair("count", count);
+		// clang-format on
 	}
 };
 
@@ -123,7 +133,13 @@ struct ip_gene_finder_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("screen", screen) & zeep::make_nvp("mi", mi) & zeep::make_nvp("fcpv", fcpv) & zeep::make_nvp("insertions", insertions) & zeep::make_nvp("replicate", replicate);
+		// clang-format off
+		ar & zeem::name_value_pair("screen", screen)
+		   & zeem::name_value_pair("mi", mi)
+		   & zeem::name_value_pair("fcpv", fcpv)
+		   & zeem::name_value_pair("insertions", insertions)
+		   & zeem::name_value_pair("replicate", replicate);
+		// clang-format on
 	}
 };
 
@@ -139,7 +155,12 @@ struct similar_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("distance", distance) & zeep::make_nvp("zscore", zscore) & zeep::make_nvp("anti", anti);
+		// clang-format off
+		ar & zeem::name_value_pair("gene", gene)
+		   & zeem::name_value_pair("distance", distance)
+		   & zeem::name_value_pair("zscore", zscore)
+		   & zeem::name_value_pair("anti", anti);
+		// clang-format on
 	}
 };
 
@@ -153,7 +174,10 @@ struct cluster
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::make_nvp("genes", genes) & zeep::make_nvp("variance", variance);
+		// clang-format off
+		ar & zeem::name_value_pair("genes", genes)
+		   & zeem::name_value_pair("variance", variance);
+		// clang-format on
 	}
 };
 
@@ -217,13 +241,18 @@ class ip_screen_data_cache : public screen_data_cache
 struct sl_data_replicate
 {
 	float binom_fdr;
-	float ref_pv[4];
+	std::array<float, 4> ref_pv;
 	uint32_t sense, antisense;
 
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("binom_fdr", binom_fdr) & zeep::make_nvp("ref_pv", ref_pv) & zeep::make_nvp("sense", sense) & zeep::make_nvp("antisense", antisense);
+		// clang-format off
+		ar & zeem::name_value_pair("binom_fdr", binom_fdr)
+		   & zeem::name_value_pair("ref_pv", ref_pv)
+		   & zeem::name_value_pair("sense", sense)
+		   & zeem::name_value_pair("antisense", antisense);
+		// clang-format on
 	}
 };
 
@@ -240,7 +269,15 @@ struct sl_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("gene", gene) & zeep::make_nvp("odds_ratio", oddsRatio) & zeep::make_nvp("sense_ratio", senseRatio) & zeep::make_nvp("control_binom", controlBinom) & zeep::make_nvp("control_sense_ratio", controlSenseRatio) & zeep::make_nvp("consistent", consistent) & zeep::make_nvp("replicate", replicates);
+		// clang-format off
+		ar & zeem::name_value_pair("gene", gene)
+		   & zeem::name_value_pair("odds_ratio", oddsRatio)
+		   & zeem::name_value_pair("sense_ratio", senseRatio)
+		   & zeem::name_value_pair("control_binom", controlBinom)
+		   & zeem::name_value_pair("control_sense_ratio", controlSenseRatio)
+		   & zeem::name_value_pair("consistent", consistent)
+		   & zeem::name_value_pair("replicate", replicates);
+		// clang-format on
 	}
 };
 
@@ -257,7 +294,13 @@ struct sl_gene_finder_data_point
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::make_nvp("screen", screen) & zeep::make_nvp("sense_ratio", senseRatio) & zeep::make_nvp("sense_ratio_list", senseRatioPerReplicate) & zeep::make_nvp("odds_ratio", oddsRatio) & zeep::make_nvp("consistent", consistent);
+		// clang-format off
+		ar & zeem::name_value_pair("screen", screen)
+		   & zeem::name_value_pair("sense_ratio", senseRatio)
+		   & zeem::name_value_pair("sense_ratio_list", senseRatioPerReplicate)
+		   & zeem::name_value_pair("odds_ratio", oddsRatio)
+		   & zeem::name_value_pair("consistent", consistent);
+		// clang-format on
 	}
 };
 
@@ -399,7 +442,7 @@ inline std::unique_ptr<ScreenData> screen_service::load_screen<ScreenData>(const
 
 // --------------------------------------------------------------------
 
-class screen_html_controller : public zeep::http::html_controller
+class screen_html_controller : public zeep::http::html_controller_v1
 {
   public:
 	screen_html_controller();
@@ -412,15 +455,15 @@ class screen_html_controller : public zeep::http::html_controller
 
 // --------------------------------------------------------------------
 
-class screen_rest_controller : public zeep::http::rest_controller
+class screen_rest_controller : public zeep::http::controller
 {
   public:
 	screen_rest_controller();
 
 	std::string create_screen(const screen_info &screen);
-	screen_info retrieve_screen(const std::string &name);
-	void update_screen(const std::string &name, const screen_info &screen);
-	void delete_screen(const std::string &name);
+	screen_info retrieve_screen(const zeep::http::scope &scope, const std::string &name);
+	void update_screen(const zeep::http::scope &scope, const std::string &name, const screen_info &screen);
+	void delete_screen(const zeep::http::scope &scope, const std::string &name);
 
 	bool validateFastQFile(const std::string &filename);
 	bool validateScreenName(const std::string &name);

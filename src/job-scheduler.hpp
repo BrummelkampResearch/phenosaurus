@@ -32,7 +32,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
-#include <zeep/nvp.hpp>
+#include <zeem/zeem.hpp>
 
 // --------------------------------------------------------------------
 
@@ -58,9 +58,9 @@ struct job_status
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long)
 	{
-		ar &zeep::name_value_pair("status", m_status) //
-		 & zeep::name_value_pair("progress", m_progress) //
-		 & zeep::name_value_pair("action", m_action);
+		ar &zeem::name_value_pair("status", m_status) //
+		 & zeem::name_value_pair("progress", m_progress) //
+		 & zeem::name_value_pair("action", m_action);
 	}
 };
 

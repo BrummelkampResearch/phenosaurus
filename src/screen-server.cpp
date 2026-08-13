@@ -34,10 +34,14 @@
 #include "user-service.hpp"
 
 #include <iostream>
+#include <system_error>
+#include <zeem/serialize.hpp>
+#include <zeep/exception.hpp>
 #include <zeep/http/html-controller.hpp>
 #include <zeep/http/login-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 #include <zeep/http/server.hpp>
+#include <zeep/el/serializer.hpp>
+#include <zeep/http/status.hpp>
 
 namespace fs = std::filesystem;
 namespace zh = zeep::http;
@@ -58,7 +62,7 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 		if (methodName == "listJoin" and parameters.size() == 2)
 		{
 			auto list = parameters[0];
-			auto separator = parameters[1].as<std::string>();
+			auto separator = parameters[1].get<std::string>();
 
 			std::ostringstream s;
 
@@ -67,7 +71,7 @@ class sa_strings_object : public zh::expression_utility_object<sa_strings_object
 				auto n = list.size();
 				for (auto &e : list)
 				{
-					s << e.as<std::string>();
+					s << e.get<std::string>();
 					if (--n > 0)
 						s << separator;
 				}
@@ -96,7 +100,7 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 		if (methodName == "contains" and parameters.size() == 2)
 		{
 			auto list = parameters[0];
-			auto query = parameters[1].as<std::string>();
+			auto query = parameters[1].get<std::string>();
 
 			if (list.is_array())
 			{
@@ -118,11 +122,11 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 
 // -----------------------------------------------------------------------
 
-class IPScreenRestController : public zh::rest_controller
+class IPScreenRestController : public zh::controller
 {
   public:
 	IPScreenRestController(const fs::path &screenDir, ScreenType type)
-		: zh::rest_controller(zeep::value_serializer<ScreenType>::to_string(type))
+		: zh::controller(zeem::value_serializer<ScreenType>::to_string(type))
 		, mScreenDir(screenDir)
 		, mType(type)
 	{
@@ -149,40 +153,37 @@ class IPScreenRestController : public zh::rest_controller
 		map_get_request("screen/{id}/bed/{channel}", &IPScreenRestController::getBED, "id", "channel", "assembly");
 	}
 
-	std::vector<ip_data_point> screenData(const std::string &screen,
+	std::vector<ip_data_point> screenData(const zeep::http::scope &scope, const std::string &screen,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
+	zeep::el::object screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
 		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
-
-		zeep::json::element result;
-		to_element(result, desc);
-		return result;
+		return zeep::el::to_object(desc);
 	}
 
-	std::vector<ip_gene_finder_data_point> find_gene(const std::string &gene,
+	std::vector<ip_gene_finder_data_point> find_gene(const zeep::http::scope &scope, const std::string &gene,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
-	std::vector<similar_data_point> find_similar(const std::string &gene,
+	std::vector<similar_data_point> find_similar(const zeep::http::scope &scope, const std::string &gene,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 		float pvCutOff, float zscoreCutOff);
 
-	std::vector<cluster> find_clusters(const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+	std::vector<cluster> find_clusters(const zeep::http::scope &scope, const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 		float pvCutOff, size_t minPts, float eps, size_t NNs);
 
-	std::vector<gene_uniqueness> uniqueness(const std::string &screen,
+	std::vector<gene_uniqueness> uniqueness(const zeep::http::scope &scope, const std::string &screen,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction, float pvCutOff, bool singlesided);
 
-	Region geneInfo(const std::string &gene, const std::string &screen,
+	Region geneInfo(const zeep::http::scope &scope, const std::string &gene, const std::string &screen,
 		const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 		bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
@@ -192,12 +193,12 @@ class IPScreenRestController : public zh::rest_controller
 	ScreenType mType;
 };
 
-std::vector<ip_data_point> IPScreenRestController::screenData(const std::string &screen,
+std::vector<ip_data_point> IPScreenRestController::screenData(const zeep::http::scope &scope, const std::string &screen,
 	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
-	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(screen, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	// return screen_service::instance().get_data_points(mType, screen, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
@@ -213,28 +214,28 @@ std::vector<ip_data_point> IPScreenRestController::screenData(const std::string 
 	return result;
 }
 
-std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const std::string &screen,
+std::vector<gene_uniqueness> IPScreenRestController::uniqueness(const zeep::http::scope &scope, const std::string &screen,
 	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction, float pvCutOff,
 	bool singlesided)
 {
-	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(screen, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
 	return dp->uniqueness(screen, pvCutOff, singlesided);
 }
 
-std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const std::string &gene,
+std::vector<ip_gene_finder_data_point> IPScreenRestController::find_gene(const zeep::http::scope &scope, const std::string &gene,
 	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(mType, assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, direction);
-	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
+	auto user = user_service::instance().retrieve_user(scope.get_credentials()["username"].get<std::string>());
 	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }
 
-std::vector<similar_data_point> IPScreenRestController::find_similar(const std::string &gene,
+std::vector<similar_data_point> IPScreenRestController::find_similar(const zeep::http::scope &scope, const std::string &gene,
 	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 	float pvCutOff, float zscoreCutOff)
@@ -243,7 +244,7 @@ std::vector<similar_data_point> IPScreenRestController::find_similar(const std::
 	return dp->find_similar(gene, pvCutOff, zscoreCutOff);
 }
 
-std::vector<cluster> IPScreenRestController::find_clusters(const std::string &assembly, const std::string &transcripts_selection, Mode mode,
+std::vector<cluster> IPScreenRestController::find_clusters(const zeep::http::scope &scope, const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction,
 	float pvCutOff, size_t minPts, float eps, size_t NNs)
 {
@@ -251,12 +252,12 @@ std::vector<cluster> IPScreenRestController::find_clusters(const std::string &as
 	return dp->find_clusters(pvCutOff, minPts, eps, NNs);
 }
 
-Region IPScreenRestController::geneInfo(const std::string &gene, const std::string &screen,
+Region IPScreenRestController::geneInfo(const zeep::http::scope &scope, const std::string &gene, const std::string &screen,
 	const std::string &assembly, const std::string &transcripts_selection, Mode mode,
 	bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
 {
-	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(screen, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	const int kWindowSize = 4000;
 
@@ -361,7 +362,7 @@ Region IPScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 zeep::http::reply IPScreenRestController::getBED(const std::string &screen, const std::string &channel, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
+	zeep::http::reply rep(zeep::http::status_type::ok, { 1, 1 });
 
 	auto data = IPPAScreenData::load(mScreenDir / screen);
 
@@ -373,11 +374,11 @@ zeep::http::reply IPScreenRestController::getBED(const std::string &screen, cons
 
 // --------------------------------------------------------------------
 
-class ScreenHtmlControllerBase : public zh::html_controller
+class ScreenHtmlControllerBase : public zh::html_controller_v1
 {
   protected:
 	ScreenHtmlControllerBase(ScreenType type, bool is_public)
-		: zh::html_controller(zeep::value_serializer<ScreenType>::to_string(type))
+		: zh::html_controller_v1(zeep::value_serializer<ScreenType>::to_string(type))
 		, mType(type)
 		, m_is_public(is_public)
 	{
@@ -404,43 +405,41 @@ class ScreenHtmlControllerBase : public zh::html_controller
 			return result;
 		};
 
-		auto credentials = get_credentials();
-
-		using json = zeep::json::element;
-		json screens;
+		auto credentials = scope.get_credentials();
 
 		scope.put("public", m_is_public);
 
-		auto s = m_is_public ? screen_service::instance().get_all_public_screens_for_type(mType) : has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(mType)
-		                                                                                                             : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), mType);
+		auto s = m_is_public
+		             ? screen_service::instance().get_all_public_screens_for_type(mType)
+		         : scope.has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(mType)
+		                             : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].get<std::string>(), mType);
 
 		std::sort(s.begin(), s.end(), sort_screen);
 
-		to_element(screens, s);
-		scope.put("screens", screens);
+		scope.put("screens", zeep::el::to_object(s));
 
 		if (mType == ScreenType::IntracellularPhenotypeActivation)
 		{
 			// let's make abdel happy
 
-			auto s2 = has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype) : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].as<std::string>(), ScreenType::IntracellularPhenotype);
+			auto s2 = scope.has_role("ADMIN")
+			              ? screen_service::instance().get_all_screens_for_type(ScreenType::IntracellularPhenotype)
+			              : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].get<std::string>(), ScreenType::IntracellularPhenotype);
 
 			std::sort(s2.begin(), s2.end(), sort_screen);
 
-			json paScreens;
-			to_element(paScreens, s2);
-			scope.put("pa-screens", paScreens);
+			scope.put("pa-screens", zeep::el::to_object(s2));
 		}
 
-		json screenInfo;
+		zeep::el::object screenInfo;
 		for (auto &si : s)
 			screenInfo.push_back({ { "name", si.name }, { "ignore", si.ignore } });
 		scope.put("screenInfo", screenInfo);
 
-		scope.put("screenType", mType);
+		scope.put("screenType", zeem::value_serializer<ScreenType>::to_string(mType));
 
 		// New, list the available transcripts
-		json transcripts;
+		zeep::el::object transcripts;
 		for (auto t : screen_service::instance().get_all_transcripts())
 			transcripts.push_back({ { "id", t },
 				{ "name", t } });
@@ -520,11 +519,11 @@ void IPScreenHtmlController::compare_3(const zh::request &request, const zh::sco
 
 // --------------------------------------------------------------------
 
-class SLScreenRestController : public zh::rest_controller
+class SLScreenRestController : public zh::controller
 {
   public:
 	SLScreenRestController(const fs::path &screenDir)
-		: zh::rest_controller("sl")
+		: zh::controller("sl")
 		, mScreenDir(screenDir)
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
@@ -549,22 +548,20 @@ class SLScreenRestController : public zh::rest_controller
 	std::vector<sl_data_point> screenData(const std::string &screen, const std::string &assembly, const std::string &transcript_selection, const std::string &control,
 		Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction, std::optional<bool> normalize);
 
-	zeep::json::element screenDescription(const std::string &screen, std::optional<std::string> assembly)
+	zeep::el::object screenDescription(const std::string &screen, std::optional<std::string> assembly)
 	{
 		auto desc = screen_service::instance().get_description(screen, assembly.value_or("hg38"), 50);
 
-		zeep::json::element result;
-		to_element(result, desc);
-		return result;
+		return zeep::el::to_object(desc);
 	}
 
-	Region geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
+	Region geneInfo(const zeep::http::scope &scope, const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd);
 
 	zeep::http::reply getBED(const std::string &screen, const std::string &replicate, const std::string &assembly);
 
 	std::vector<std::string> getReplicates(const std::string &screen);
 
-	std::vector<sl_gene_finder_data_point> find_gene(const std::string &gene, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
+	std::vector<sl_gene_finder_data_point> find_gene(const zeep::http::scope &scope, const std::string &gene, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd,
 		Direction direction);
 
 	fs::path mScreenDir;
@@ -576,8 +573,8 @@ std::vector<sl_data_point> SLScreenRestController::screenData(const std::string 
 	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcript_selection, mode, cutOverlap, geneStart, geneEnd, normalize.value_or(true));
 	return dp->data_points(screen);
 
-	// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-	// 		throw zeep::http::forbidden;
+	// 	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].get<std::string>()))
+	// 		throw std::system_error(zeep::http::status_type::forbidden);
 
 	// 	fs::path screenDir = mScreenDir / screen;
 
@@ -623,10 +620,10 @@ std::vector<sl_data_point> SLScreenRestController::screenData(const std::string 
 // 	return screenData(screen, "hg19", Mode::Collapse, true, "tx", "cds", Direction::Sense);
 // }
 
-Region SLScreenRestController::geneInfo(const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
+Region SLScreenRestController::geneInfo(const zeep::http::scope &scope, const std::string &gene, const std::string &screen, const std::string &assembly, const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd)
 {
-	if (not screen_service::instance().is_allowed(screen, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(screen, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	const int kWindowSize = 4000;
 
@@ -744,7 +741,7 @@ Region SLScreenRestController::geneInfo(const std::string &gene, const std::stri
 
 zeep::http::reply SLScreenRestController::getBED(const std::string &screen, const std::string &replicate, const std::string &assembly)
 {
-	zeep::http::reply rep(zeep::http::ok, { 1, 1 });
+	zeep::http::reply rep(zeep::http::status_type::ok, { 1, 1 });
 
 	auto data = SLScreenData::load(mScreenDir / screen);
 
@@ -760,11 +757,11 @@ std::vector<std::string> SLScreenRestController::getReplicates(const std::string
 	return static_cast<SLScreenData *>(data.get())->getReplicateNames();
 }
 
-std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const std::string &gene, const std::string &assembly,
+std::vector<sl_gene_finder_data_point> SLScreenRestController::find_gene(const zeep::http::scope &scope, const std::string &gene, const std::string &assembly,
 	const std::string &transcripts_selection, Mode mode, bool cutOverlap, const std::string &geneStart, const std::string &geneEnd, Direction direction)
 {
 	auto dp = screen_service::instance().get_screen_data(assembly, 50, transcripts_selection, mode, cutOverlap, geneStart, geneEnd, true);
-	auto user = user_service::instance().retrieve_user(get_credentials()["username"].as<std::string>());
+	auto user = user_service::instance().retrieve_user(scope.get_credentials()["username"].get<std::string>());
 	return dp->find_gene(gene, screen_service::instance().get_allowed_screens_for_user(user));
 }
 
@@ -800,15 +797,16 @@ void SLScreenHtmlController::finder(const zh::request &request, const zh::scope 
 
 // --------------------------------------------------------------------
 
-class ScreenHtmlController : public zh::html_controller
+class ScreenHtmlController : public zh::html_controller_v1
 {
   public:
 	ScreenHtmlController(bool is_public = false)
 		: m_is_public(is_public)
 	{
 		mount("{,index,index.html}", &ScreenHtmlController::welcome);
-		mount("{scripts,css,fonts,images}/", &ScreenHtmlController::handle_file);
-		mount("favicon.ico", &ScreenHtmlController::handle_file);
+
+		map_get_file("{scripts,css,fonts,images}/");
+		map_get_file("favicon.ico");
 	}
 
 	void welcome(const zh::request &request, const zh::scope &scope, zh::reply &reply);

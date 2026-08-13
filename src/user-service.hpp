@@ -27,9 +27,7 @@
 #pragma once
 
 #include <zeep/http/html-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 #include <zeep/http/security.hpp>
-#include <zeep/nvp.hpp>
 
 // --------------------------------------------------------------------
 
@@ -42,9 +40,9 @@ struct group
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("id", id) &     //
-			zeep::name_value_pair("name", name) & //
-			zeep::name_value_pair("members", members);
+		ar &zeem::name_value_pair("id", id) &     //
+			zeem::name_value_pair("name", name) & //
+			zeem::name_value_pair("members", members);
 	}
 };
 
@@ -65,15 +63,15 @@ struct user
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("id", id) &               //
-			zeep::name_value_pair("username", username) &   //
-			zeep::name_value_pair("firstname", firstname) & //
-			zeep::name_value_pair("lastname", lastname) &   //
-			zeep::name_value_pair("email", email) &         //
-			zeep::name_value_pair("active", active) &       //
-			zeep::name_value_pair("password", password) &   //
-			zeep::name_value_pair("admin", admin) &         //
-			zeep::name_value_pair("groups", groups);
+		ar &zeem::name_value_pair("id", id) &               //
+			zeem::name_value_pair("username", username) &   //
+			zeem::name_value_pair("firstname", firstname) & //
+			zeem::name_value_pair("lastname", lastname) &   //
+			zeem::name_value_pair("email", email) &         //
+			zeem::name_value_pair("active", active) &       //
+			zeem::name_value_pair("password", password) &   //
+			zeem::name_value_pair("admin", admin) &         //
+			zeem::name_value_pair("groups", groups);
 	}
 };
 
@@ -167,7 +165,7 @@ class user_service : public zeep::http::user_service
 
 // --------------------------------------------------------------------
 
-class user_service_html_controller : public zeep::http::html_controller
+class user_service_html_controller : public zeep::http::html_controller_v1
 {
   public:
 	user_service_html_controller();
@@ -177,7 +175,7 @@ class user_service_html_controller : public zeep::http::html_controller
 
 // --------------------------------------------------------------------
 
-class user_admin_html_controller : public zeep::http::html_controller
+class user_admin_html_controller : public zeep::http::html_controller_v1
 {
   public:
 	user_admin_html_controller();
@@ -188,7 +186,7 @@ class user_admin_html_controller : public zeep::http::html_controller
 
 // --------------------------------------------------------------------
 
-class user_admin_rest_controller : public zeep::http::rest_controller
+class user_admin_rest_controller : public zeep::http::controller
 {
   public:
 	user_admin_rest_controller();

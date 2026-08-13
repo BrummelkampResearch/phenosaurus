@@ -24,9 +24,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import "core-js/stable";
-import "regenerator-runtime/runtime";
-
 export class ScreenEditor {
 
 	constructor() {

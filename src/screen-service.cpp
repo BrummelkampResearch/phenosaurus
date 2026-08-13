@@ -37,6 +37,7 @@
 #include <iostream>
 #include <pqxx/pqxx>
 #include <zeep/crypto.hpp>
+#include <zeep/http/status.hpp>
 
 namespace fs = std::filesystem;
 
@@ -962,7 +963,7 @@ fs::path sl_screen_data_cache::get_cache_file_path(const std::string &screen_nam
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
 	   << '-' << m_geneEnd;
-	
+
 	if (not m_normalize_counts)
 		ss << "-" << "unnormalized";
 
@@ -1694,7 +1695,7 @@ class screen_analyzer_mapped_utility_object : public zeep::http::expression_util
 // --------------------------------------------------------------------
 
 screen_html_controller::screen_html_controller()
-	: zeep::http::html_controller("/")
+	: zeep::http::html_controller_v1("/")
 {
 	mount("screens", &screen_html_controller::handle_screen_user);
 	mount("create-screen", &screen_html_controller::handle_create_screen_user);
@@ -1707,20 +1708,13 @@ void screen_html_controller::handle_screen_user(const zeep::http::request &reque
 {
 	zeep::http::scope sub(scope);
 
-	zeep::json::element users;
-	auto u = user_service::instance().get_all_users();
-	to_element(users, u);
-	sub.put("users", users);
+	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
+	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
-	zeep::json::element groups;
-	auto g = user_service::instance().get_all_groups();
-	to_element(groups, g);
-	sub.put("groups", groups);
+	auto credentials = request.get_credentials();
+	auto username = credentials["username"].get<std::string>();
 
-	auto credentials = get_credentials();
-	auto username = credentials["username"].as<std::string>();
-
-	using json = zeep::json::element;
+	using json = zeep::el::object;
 	json screens;
 
 	auto s = screen_service::instance().get_all_screens();
@@ -1747,8 +1741,7 @@ void screen_html_controller::handle_screen_user(const zeep::http::request &reque
 			result = std::tolower(*r.first) < std::tolower(*r.second);
 		return result; });
 
-	to_element(screens, s);
-	sub.put("screens", screens);
+	sub.put("screens", zeep::el::to_object(s));
 
 	get_template_processor().create_reply_from_template("list-screens.html", sub, reply);
 }
@@ -1757,10 +1750,10 @@ void screen_html_controller::handle_screen_table(const zeep::http::request &requ
 {
 	zeep::http::scope sub(scope);
 
-	auto credentials = get_credentials();
-	auto username = credentials["username"].as<std::string>();
+	auto credentials = request.get_credentials();
+	auto username = credentials["username"].get<std::string>();
 
-	using json = zeep::json::element;
+	using json = zeep::el::object;
 	json screens;
 
 	auto s = screen_service::instance().get_all_screens();
@@ -1787,8 +1780,7 @@ void screen_html_controller::handle_screen_table(const zeep::http::request &requ
 			result = std::tolower(*r.first) < std::tolower(*r.second);
 		return result; });
 
-	to_element(screens, s);
-	sub.put("screens", screens);
+	sub.put("screens", zeep::el::to_object(s));
 
 	get_template_processor().create_reply_from_template("list-screens::screen-table", sub, reply);
 }
@@ -1797,15 +1789,8 @@ void screen_html_controller::handle_create_screen_user(const zeep::http::request
 {
 	zeep::http::scope sub(scope);
 
-	zeep::json::element users;
-	auto u = user_service::instance().get_all_users();
-	to_element(users, u);
-	sub.put("users", users);
-
-	zeep::json::element groups;
-	auto g = user_service::instance().get_all_groups();
-	to_element(groups, g);
-	sub.put("groups", groups);
+	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
+	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
 	get_template_processor().create_reply_from_template("create-screen", sub, reply);
 }
@@ -1814,7 +1799,7 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 {
 	zeep::http::scope sub(scope);
 
-	const std::string screenID = request.get_parameter("screen-id");
+	const std::string screenID = request.get_parameter("screen-id").value_or("");
 
 	auto info = screen_service::instance().retrieve_screen(screenID);
 
@@ -1830,14 +1815,8 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 		mapped.push_back({ a, 50 });
 	}
 
-	zeep::json::element screen;
-	to_element(screen, info);
-	sub.put("screen", screen);
-
-	zeep::json::element groups;
-	auto g = user_service::instance().get_all_groups();
-	to_element(groups, g);
-	sub.put("groups", groups);
+	sub.put("screen", zeep::el::to_object(info));
+	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
 	get_template_processor().create_reply_from_template("edit-screen", sub, reply);
 }
@@ -1845,7 +1824,7 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 // --------------------------------------------------------------------
 
 screen_rest_controller::screen_rest_controller()
-	: zeep::http::rest_controller("/")
+	: zeep::http::controller("/")
 {
 	map_post_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
 	map_post_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
@@ -1867,20 +1846,20 @@ std::string screen_rest_controller::create_screen(const screen_info &screen)
 	return screen.name;
 }
 
-screen_info screen_rest_controller::retrieve_screen(const std::string &name)
+screen_info screen_rest_controller::retrieve_screen(const zeep::http::scope &scope, const std::string &name)
 {
-	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(name, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_rest_controller::update_screen(const std::string &name, const screen_info &screen)
+void screen_rest_controller::update_screen(const zeep::http::scope &scope, const std::string &name, const screen_info &screen)
 {
-	auto username = get_credentials()["username"].as<std::string>();
+	auto username = scope.get_credentials()["username"].get<std::string>();
 
 	if (not screen_service::instance().is_allowed(name, username))
-		throw zeep::http::forbidden;
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	auto info = screen_service::instance().retrieve_screen(name);
 
@@ -1905,10 +1884,10 @@ void screen_rest_controller::update_screen(const std::string &name, const screen
 	screen_service::instance().update_screen(name, info);
 }
 
-void screen_rest_controller::delete_screen(const std::string &name)
+void screen_rest_controller::delete_screen(const zeep::http::scope &scope, const std::string &name)
 {
-	if (not screen_service::instance().is_allowed(name, get_credentials()["username"].as<std::string>()))
-		throw zeep::http::forbidden;
+	if (not screen_service::instance().is_allowed(name, scope.get_credentials()["username"].get<std::string>()))
+		throw std::system_error(zeep::http::status_type::forbidden);
 
 	screen_service::instance().delete_screen(name);
 }

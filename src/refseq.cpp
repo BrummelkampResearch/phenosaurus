@@ -28,7 +28,7 @@
 #include "refseq.hpp"
 #include "screen-service.hpp"
 
-#include <zeep/value-serializer.hpp>
+#include <zeep/el/serializer.hpp>
 #include <mcfp/mcfp.hpp>
 
 #include <iostream>

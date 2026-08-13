@@ -27,13 +27,11 @@
 #pragma once
 
 #include <zeep/http/html-controller.hpp>
-#include <zeep/http/rest-controller.hpp>
 #include <zeep/http/security.hpp>
-#include <zeep/nvp.hpp>
 
 // --------------------------------------------------------------------
 
-class genome_browser_html_controller : public zeep::http::html_controller
+class genome_browser_html_controller : public zeep::http::html_controller_v1
 {
   public:
 	genome_browser_html_controller();
@@ -60,15 +58,15 @@ struct track
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("category", category)         //
-			& zeep::name_value_pair("key", key)                 //
-			& zeep::name_value_pair("label", label)             //
-			& zeep::name_value_pair("storeClass", storeClass)   //
-			& zeep::name_value_pair("type", type)               //
-			& zeep::name_value_pair("seqType", seqType)         //
-			& zeep::name_value_pair("chunkSize", chunkSize)     //
-			& zeep::name_value_pair("urlTemplate", urlTemplate) //
-			& zeep::name_value_pair("baseUrl", baseUrl);        //
+		ar &zeem::name_value_pair("category", category)         //
+			& zeem::name_value_pair("key", key)                 //
+			& zeem::name_value_pair("label", label)             //
+			& zeem::name_value_pair("storeClass", storeClass)   //
+			& zeem::name_value_pair("type", type)               //
+			& zeem::name_value_pair("seqType", seqType)         //
+			& zeem::name_value_pair("chunkSize", chunkSize)     //
+			& zeem::name_value_pair("urlTemplate", urlTemplate) //
+			& zeem::name_value_pair("baseUrl", baseUrl);        //
 	}
 };
 
@@ -80,8 +78,8 @@ struct name
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("type", type)  //
-			& zeep::name_value_pair("url", url); //
+		ar &zeem::name_value_pair("type", type)  //
+			& zeem::name_value_pair("url", url); //
 	}
 };
 
@@ -94,9 +92,9 @@ struct track_list
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("formatVersion", formatVersion) //
-			& zeep::name_value_pair("names", names)               //
-			& zeep::name_value_pair("tracks", tracks);            //
+		ar &zeem::name_value_pair("formatVersion", formatVersion) //
+			& zeem::name_value_pair("names", names)               //
+			& zeem::name_value_pair("tracks", tracks);            //
 	}
 };
 
@@ -111,11 +109,11 @@ struct location
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("ref", ref)                  //
-			& zeep::name_value_pair("start", start)            //
-			& zeep::name_value_pair("end", end)                //
-			& zeep::name_value_pair("tracks", tracks)          //
-			& zeep::name_value_pair("objectName", objectName); //
+		ar &zeem::name_value_pair("ref", ref)                  //
+			& zeem::name_value_pair("start", start)            //
+			& zeem::name_value_pair("end", end)                //
+			& zeem::name_value_pair("tracks", tracks)          //
+			& zeem::name_value_pair("objectName", objectName); //
 	}
 };
 
@@ -127,12 +125,12 @@ struct named_location
 	template <typename Archive>
 	void serialize(Archive &ar, unsigned long version)
 	{
-		ar &zeep::name_value_pair("name", name)       //
-			& zeep::name_value_pair("location", loc); //
+		ar &zeem::name_value_pair("name", name)       //
+			& zeem::name_value_pair("location", loc); //
 	}
 };
 
-class genome_browser_rest_controller : public zeep::http::rest_controller
+class genome_browser_rest_controller : public zeep::http::controller
 {
   public:
 	genome_browser_rest_controller();
