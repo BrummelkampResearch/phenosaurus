@@ -136,7 +136,7 @@ set(webpack_input
 	webapp/signin.css
 	webapp/styles.css)
 
-set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/dist/index.js)
+set(webpack_output ${CMAKE_SOURCE_DIR}/docroot/scripts/index.js)
 
 add_custom_command(
 	OUTPUT ${webpack_output}

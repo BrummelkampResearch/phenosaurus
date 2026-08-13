@@ -807,7 +807,7 @@ class ScreenHtmlController : public zh::html_controller
 		: m_is_public(is_public)
 	{
 		mount("{,index,index.html}", &ScreenHtmlController::welcome);
-		mount("dist/", &ScreenHtmlController::handle_file);
+		mount("{scripts,css,fonts,images}/", &ScreenHtmlController::handle_file);
 		mount("favicon.ico", &ScreenHtmlController::handle_file);
 	}
 
