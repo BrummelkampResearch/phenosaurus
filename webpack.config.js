@@ -47,7 +47,7 @@ module.exports = (env) => {
 			crossOriginLoading: 'anonymous',
 			filename: "scripts/[name].js",
 			clean: {
-				dry: true,
+				// dry: true,
 				keep(asset) {
 					return /\.(html|ico|xml|json)$/.test(asset)
 				}

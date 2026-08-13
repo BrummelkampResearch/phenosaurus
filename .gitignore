@@ -21,5 +21,7 @@ build
 src/revision.hpp
 src/config.hpp
 .cache/
-
-rm src/mrsrc.hpp
+docroot/browserconfig.xml
+docroot/manifest.json
+docroot/favicon.ico
+docroot/icons
