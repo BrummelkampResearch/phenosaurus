@@ -27,6 +27,7 @@
 import * as d3 from "d3";
 import ContextMenu from './context-menu';
 import Tooltip from "./tooltip";
+import * as bootstrap from 'bootstrap';
 
 /*global context_name */
 

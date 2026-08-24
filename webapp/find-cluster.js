@@ -26,7 +26,7 @@
 
 import { geneSelectionEditor } from './gene-selection';
 import { GeneLine } from './gene-line';
-import * as bootstrap from 'bootstrap';
+import { Modal } from 'bootstrap';
 
 const maxGenes = 30;
 
@@ -37,7 +37,7 @@ class ClusterLine {
 		const template = document.querySelector("#cluster-row-template");
 		const clone = template.cloneNode(true);
 		const line = clone.content.querySelector("tr");
-		
+
 		this.line = line;
 
 		const tds = [...line.querySelectorAll("td")];
@@ -49,7 +49,7 @@ class ClusterLine {
 			tds[2].innerText = cl.genes.join(", ");
 		else
 			tds[2].innerText = `${cl.genes.slice(0, maxGenes).join(", ")} and ${cl.genes.length - maxGenes} more`;
-		
+
 		line.clusterLine = this;
 		document.querySelector("#cluster-tabel").appendChild(line);
 
@@ -61,7 +61,7 @@ class ClusterLine {
 	}
 
 	dblclicked() {
-		const dlog = new bootstrap.Modal(document.querySelector("#displayClusterModal"));
+		const dlog = new Modal(document.querySelector("#displayClusterModal"));
 		dlog.show();
 
 		const plot = document.querySelector("#plot");

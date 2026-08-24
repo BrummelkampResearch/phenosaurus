@@ -24,3 +24,4 @@ docroot/browserconfig.xml
 docroot/manifest.json
 docroot/favicon.ico
 docroot/icons
+src/mrsrc.hpp

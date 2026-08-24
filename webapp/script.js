@@ -24,6 +24,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import * as bootstrap from 'bootstrap';
+
 export function readMyFile(file) {
     return new Promise((resolve, reject) => {
         const fr = new FileReader();

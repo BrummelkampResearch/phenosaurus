@@ -24,14 +24,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import * as bootstrap from "bootstrap";
+import { Modal } from "bootstrap";
 
 /*global context_name */
 
 class UserEditor {
 
 	constructor() {
-		this.dialog = new bootstrap.Modal("#user-dialog");
+		this.dialog = new Modal("#user-dialog");
 		this.form = document.getElementById("user-edit-form");
 		this.csrf = this.form.elements['_csrf'].value;
 

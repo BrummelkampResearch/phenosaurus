@@ -24,7 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import * as bootstrap from "bootstrap";
+import * as bootstrap from 'bootstrap';
 
 function attachEventListeners() {
 	[...document.getElementsByClassName('edit-screen-btn')]

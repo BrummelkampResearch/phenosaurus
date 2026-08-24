@@ -25,7 +25,7 @@
  */
 
 import * as d3 from 'd3';
-import * as bootstrap from 'bootstrap';
+import { Modal } from 'bootstrap';
 
 /*global chromosomes screens $*/
 
@@ -253,7 +253,7 @@ window.addEventListener('load', () => {
 		}
 	});
 
-	selectGeneDialog = new bootstrap.Modal("#selectScreensModal");
+	selectGeneDialog = new Modal("#selectScreensModal");
 
 	const updateScreensBtn = document.getElementById('updateSelectedScreens');
 	updateScreensBtn.addEventListener('click', () => {
