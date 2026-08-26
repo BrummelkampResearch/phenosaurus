@@ -116,8 +116,8 @@ class UserEditor {
 				method: method,
 				body: JSON.stringify(this.user)
 			});
-			const data = await reply.json();
 
+			const data = await reply.json();
 			if (!reply.ok)
 				throw data.error || "Error in request";
 
@@ -147,17 +147,16 @@ class UserEditor {
 		if (confirm(`Are you sure you want to delete user ${name}?`)) {
 
 			try {
-				const reply = fetch(`./user/${id}`, {
+				const reply = await fetch(`./user/${id}`, {
 					credentials: "include",
 					method: "delete",
 					headers: {
 						'Accept': 'application/json',
-						// 'Content-Type': 'application/json',
 						'X-CSRF-Token': this.csrf
 					}
 				});
-				const data = await reply.json();
 
+				const data = await reply.json();
 				if (!reply.ok)
 					throw data.error || "Error in request";
 
