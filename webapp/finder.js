@@ -24,6 +24,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import * as bootstrap from 'bootstrap';
 import * as d3 from 'd3';
 
 import Tooltip from './tooltip';

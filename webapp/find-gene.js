@@ -25,6 +25,7 @@
  */
 
 import { GeneLine } from "./gene-line";
+import * as bootstrap from 'bootstrap';
 
 function addGeneLinesFromFile(evt) {
 	const file = evt.target.files[0];

@@ -24,12 +24,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-import * as bootstrap from 'bootstrap';
+import { Modal } from 'bootstrap';
 
 class GroupEditor {
 
 	constructor() {
-		this.dialog = new bootstrap.Modal("#group-dialog");
+		this.dialog = new Modal("#group-dialog");
 		this.form = document.getElementById("group-edit-form");
 		this.csrf =
 			this.form.elements['_csrf'].value || document.logoutForm.elements['_csrf'].value;
@@ -45,14 +45,14 @@ class GroupEditor {
 		this.id = id;
 
 		try {
-			const reply = await fetch(`./group/${id}`, {credentials: "include", method: "get"});
+			const reply = await fetch(`./group/${id}`, { credentials: "include", method: "get" });
 			const data = await reply.json();
 
 			if (!reply.ok)
 				throw data.error || "Error fetching data";
-			
+
 			this.group = data;
-	
+
 			const members = new Set(data.members);
 
 			this.dialog.show();
@@ -111,7 +111,7 @@ class GroupEditor {
 
 			if (!reply.ok)
 				throw data.error || "Error fetching data";
-			
+
 			this.dialog.hide();
 			window.location.reload();
 		} catch (error) {
@@ -172,7 +172,7 @@ class GroupEditor {
 
 				window.location.reload();
 			})
-			.catch(err => alert(err));
+				.catch(err => alert(err));
 		}
 	}
 }

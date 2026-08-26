@@ -1,8 +1,6 @@
 import * as d3 from "d3";
 import { geneSelectionEditor } from './gene-selection';
 import { Plot, DotPlot, LabelPlot, HeatMapPlot, Screens } from './finder.js';
-import { Modal } from "bootstrap";
-
 let nextGeneLineID = 1000;
 let geneLines = [];
 

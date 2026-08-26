@@ -29,6 +29,7 @@ import ScreenColorMap from "./screen-color-map";
 import { gene } from "./gene-info";
 import DotContextMenu from './dot-context-menu';
 import MultiDot from './multidot';
+import * as bootstrap from 'bootstrap';
 
 export const radius = 5;
 export const neutral = "#aaa", highlight = "#b3ff3e";

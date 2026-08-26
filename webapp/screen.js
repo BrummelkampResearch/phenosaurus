@@ -30,6 +30,7 @@ import GenomeViewer from "./genome-viewer";
 import ScreenPlot, { pvCutOff, highlightedGenes, neutral, highlight } from "./screen-plot";
 import { format_pv } from './pvformat';
 import { fillTable } from './table-utils';
+import * as bootstrap from 'bootstrap';
 
 const positive = "#fb8", negative = "#38c", high = "#ffa82e", low = "#f442bc", notHighLow = "#444";
 const cutOff = 5000;

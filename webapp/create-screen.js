@@ -24,6 +24,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import * as bootstrap from 'bootstrap';
+
 class ScreenCreator {
 
 	constructor() {

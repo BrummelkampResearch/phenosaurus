@@ -31,7 +31,7 @@ import { gene } from "./gene-info";
 import * as d3 from 'd3';
 import { format_pv } from './pvformat';
 import GenomeViewer from "./genome-viewer";
-import * as bootstrap from "bootstrap";
+import * as bootstrap from 'bootstrap';
 
 const radius = 5;
 

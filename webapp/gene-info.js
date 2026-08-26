@@ -25,6 +25,7 @@
  */
 
 import * as d3 from "d3";
+import * as bootstrap from 'bootstrap';
 import { format_pv } from "./pvformat";
 import { fillTable } from "./table-utils";
 
