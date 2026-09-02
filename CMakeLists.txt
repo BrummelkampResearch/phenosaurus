@@ -86,7 +86,7 @@ find_package(Boost REQUIRED)
 find_package(gxrio REQUIRED)
 find_package(mcfp REQUIRED)
 find_package(libpqxx 7.7.4 REQUIRED)
-find_package(zeep 8.1.0 REQUIRED)
+find_package(zeep 8.4.0 REQUIRED)
 
 pkg_check_modules(PKG_PQ REQUIRED IMPORTED_TARGET libpq)
 
