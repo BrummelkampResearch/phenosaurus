@@ -58,10 +58,10 @@ class db_connection
 		m_prepared_statement_factories.emplace_back(std::move(psf));
 	}
 
-  private:
 	db_connection(const db_connection &) = delete;
 	db_connection &operator=(const db_connection &) = delete;
 
+  private:
 	db_connection(const std::string &connectionString);
 
 	std::string m_connection_string;
@@ -77,5 +77,5 @@ class db_connection
 class db_error_handler : public zeep::http::error_handler
 {
   public:
-	virtual bool create_error_reply(const zeep::http::request &req, std::exception_ptr eptr, zeep::http::reply &reply);
+	bool create_error_reply(const zeep::http::request &req, const std::exception_ptr &eptr, zeep::http::reply &reply) override;
 };

@@ -858,7 +858,7 @@ zh::server *createServer(const fs::path &docroot,
 	server->set_template_processor(new zeep::http::rsrc_based_html_template_processor());
 #endif
 
-	server->set_context_name(context_name);
+	server->set_context_path(context_name);
 
 	server->add_controller(new user_service_html_controller());
 
@@ -905,7 +905,7 @@ zh::server *createPublicServer(const fs::path &docroot,
 
 	server->add_error_handler(new db_error_handler());
 
-	server->set_context_name(context_name);
+	server->set_context_path(context_name);
 
 	server->add_controller(new ScreenHtmlController(true));
 	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotype));
