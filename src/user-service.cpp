@@ -186,6 +186,13 @@ zeep::http::user_details user_service::load_user(const std::string &username) co
 		if (r.at("admin").as<bool>())
 			result.roles.insert("ADMIN");
 	}
+	catch (pqxx::broken_connection &ex)
+	{
+		std::cerr << ex.what() << '\n';
+		db_connection::instance().reset();
+
+		throw;
+	}
 	catch (const pqxx::unexpected_rows &ex)
 	{
 		std::clog << "Error loading user " << std::quoted(username) << ": " << ex.what() << '\n';
