@@ -114,6 +114,8 @@ class ScreenCreator {
 	}
 
 	updateFastQBox() {
+		this.hideErrorMessage();
+
 		const type = this.form['screen-type'].value;
 		if (type == 'sl') {
 			this.form['fastq-low'].required = false;
@@ -138,6 +140,8 @@ class ScreenCreator {
 	}
 
 	async validateFile(f) {
+		this.hideErrorMessage();
+
 		const input = this.form[`fastq-${f}`];
 
 		const fd = new FormData();
@@ -196,6 +200,8 @@ class ScreenCreator {
 
 	async submitForm(e) {
 		if (e) e.preventDefault();
+
+		this.hideErrorMessage();
 
 		try {
 			const validName = await this.validateScreenName();
