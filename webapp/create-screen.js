@@ -109,7 +109,11 @@ class ScreenCreator {
 
 		try {
 			const reply = await fetch(`screen/validate/fastq?file=${input.value}`, {
-				credentials: "include", method: 'POST', body: fd
+				credentials: "include", method: 'POST', body: fd,
+				headers: {
+					'X-CSRF-Token': this.csrf,
+					'Content-Type': 'application/json'
+				}
 			});
 
 			if (reply.ok)
@@ -133,7 +137,13 @@ class ScreenCreator {
 		fd.append('name', screenName);
 
 		const r = await fetch(`screen/validate/name?name=${screenName.value}`, {
-			credentials: "include", method: 'POST', body: fd
+			credentials: "include",
+			method: 'POST',
+			body: fd,
+			headers: {
+				'X-CSRF-Token': this.csrf,
+				'Content-Type': 'application/json'
+			}
 		});
 
 		if (r.ok) {
