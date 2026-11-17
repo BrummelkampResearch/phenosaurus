@@ -158,3 +158,11 @@ div.plot-title {
 		display: block;
 	}
 }
+
+/* Form and validation */
+
+form {
+	*:invalid {
+		border: red solid 1px;
+	}
+}

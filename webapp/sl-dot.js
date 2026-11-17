@@ -25,7 +25,6 @@
  */
 
 import { highlightedGenes } from "./screen-plot";
-import { significantGenes } from "./sl-screen";
 import Dot from './dot';
 
 export default class SLDot extends Dot {

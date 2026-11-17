@@ -48,7 +48,20 @@ class ScreenCreator {
 		this.form.addEventListener('submit', (e) => this.submitForm(e));
 	}
 
-	updateScreenName() {
+	hideErrorMessage(msg) {
+		const alert = document.querySelector("div.alert");
+		alert.classList.add("invisible")
+	}
+
+	displayErrorMessage(msg) {
+		const alert = document.querySelector("div.alert");
+		alert.textContent = msg;
+		alert.classList.remove("invisible")
+	}
+
+	async updateScreenName() {
+		this.hideErrorMessage();
+
 		const detectedSignal = this.form['detected-signal'].value;
 		const genotype = this.form['genotype'].value;
 		const treatment = this.form['treatment'].value;
@@ -68,13 +81,36 @@ class ScreenCreator {
 				screenName = `${detectedSignal}-in-${genotype}`;
 		}
 
-		this.form['screen-name'].value = screenName
-			.replaceAll(/[ \n\r\t]/g, '-')
-			.replaceAll(/[:<>|&]/g, '')
-			.replaceAll(/--+/g, '-');
+		const r = await fetch(`screen/validate/name?name=${screenName}`, {
+			credentials: "include",
+			method: 'GET',
+			headers: {
+				'X-CSRF-Token': this.csrf,
+				'Content-Type': 'application/json'
+			}
+		});
 
-		this.form['treatment-details'].parentNode.classList.toggle('d-none', treatment.length == 0);
-		this.form['treatment-details'].required = treatment.length > 0;
+		if (r.ok) {
+			const valid = await r.json();
+
+			const screenNameInput = this.form['screen-name']
+
+			if (typeof valid === "object" && typeof valid.error === "string") {
+				this.displayErrorMessage(valid.error)
+			}
+			else if (valid) {
+				screenNameInput.value = screenName
+					.replaceAll(/[ \n\r\t]/g, '-')
+					.replaceAll(/[:<>|&]/g, '')
+					.replaceAll(/--+/g, '-');
+
+				this.form['treatment-details'].parentNode.classList.toggle('d-none', treatment.length == 0);
+				this.form['treatment-details'].required = treatment.length > 0;
+			}
+			else {
+				screenNameInput.value = '<invalid screen name>';
+			}
+		}
 	}
 
 	updateFastQBox() {
@@ -119,7 +155,7 @@ class ScreenCreator {
 			if (reply.ok)
 				input.setCustomValidity('');
 			else {
-				const msg = await r.json();
+				const msg = await reply.json();
 
 				if (msg.error)
 					input.setCustomValidity(`Failed to validate FastQ file: ${msg.error}`);
@@ -127,12 +163,16 @@ class ScreenCreator {
 					input.setCustomValidity("Failed to validate FastQ file, no error message");
 			}
 		} catch (error) {
-			alert(`Could not validate fastq file: ${e}`);
+			this.displayErrorMessage(`Could not validate fastq file: ${error}`);
 		}
 	}
 
 	async validateScreenName() {
 		const screenName = this.form['screen-name'];
+
+		if (screenName.value === '<invalid screen name>')
+			return false;
+
 		const fd = new FormData();
 		fd.append('name', screenName);
 
@@ -215,7 +255,7 @@ class ScreenCreator {
 			else
 				throw r.statusText;
 		} catch (error) {
-			alert(`Error in submitting screen: ${error}`);
+			this.displayErrorMessage(`Error in submitting screen: ${error}`);
 		}
 	}
 }

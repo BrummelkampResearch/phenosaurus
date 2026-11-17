@@ -1827,7 +1827,9 @@ screen_rest_controller::screen_rest_controller()
 	: zeep::http::controller("/")
 {
 	map_post_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
+	map_get_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
 	map_post_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
+	map_get_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
 
 	map_post_request("screen", &screen_rest_controller::create_screen, "screen");
 	map_get_request("screen/{id}", &screen_rest_controller::retrieve_screen, "id");
