@@ -26,7 +26,12 @@
 
 #pragma once
 
+#include <chrono>
+#include <stdexcept>
+#include <utility>
+#include <zeep/http/error-handler.hpp>
 #include <zeep/http/html-controller.hpp>
+#include <zeep/http/login-controller.hpp>
 #include <zeep/http/security.hpp>
 
 // --------------------------------------------------------------------
@@ -80,9 +85,7 @@ struct user
 class unknown_user : public zeep::http::user_unknown_exception
 {
   public:
-	unknown_user()
-	{
-	}
+	unknown_user() = default;
 };
 
 class unknown_group : public std::runtime_error
@@ -90,6 +93,15 @@ class unknown_group : public std::runtime_error
   public:
 	unknown_group()
 		: std::runtime_error("Unknown group")
+	{
+	}
+};
+
+class user_service_error : public std::runtime_error
+{
+  public:
+	user_service_error(const std::string &msg)
+		: std::runtime_error(msg)
 	{
 	}
 };
@@ -135,17 +147,17 @@ class user_service : public zeep::http::user_service
 
 	bool isExistingEmail(const std::string &email);
 
-	/// Update the password to \a password for the user with e-mail address in \a email
-	void send_new_password_for(const std::string &email);
+	zeep::http::reply reset_password(const user &user);
+	user retrieve_user_for_password_request_token(const std::string &token, const std::string &username);
 
 	static std::string generate_password();
 
   private:
-	user_service(const std::string &smtp_server, uint16_t smtp_port, const std::string &smtp_user, const std::string &smtp_password)
-		: m_smtp_server(smtp_server)
+	user_service(std::string smtp_server, uint16_t smtp_port, std::string smtp_user, std::string smtp_password)
+		: m_smtp_server(std::move(smtp_server))
 		, m_smtp_port(smtp_port)
-		, m_smtp_user(smtp_user)
-		, m_smtp_password(smtp_password)
+		, m_smtp_user(std::move(smtp_user))
+		, m_smtp_password(std::move(smtp_password))
 	{
 	}
 
@@ -160,17 +172,39 @@ class user_service : public zeep::http::user_service
 	std::string m_smtp_user;
 	std::string m_smtp_password;
 
+	// List of valid reset password requests
+
+	struct reset_request_entry
+	{
+		std::chrono::system_clock::time_point valid_until;
+		std::string username;
+		std::string secret;
+	};
+
+	std::vector<reset_request_entry> m_reset_requests;
+
 	static std::unique_ptr<user_service> s_instance;
 };
 
 // --------------------------------------------------------------------
 
-class user_service_html_controller : public zeep::http::html_controller_v1
+class user_service_html_controller : public zeep::http::login_controller
 {
   public:
 	user_service_html_controller();
 
-	void handle_reset_password(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
+	zeep::http::reply get_reset_pw(const zeep::http::scope &scope);
+	zeep::http::reply post_reset_pw(const zeep::http::scope &scope, const std::string &username, const std::string &email);
+	zeep::http::reply post_reset_change_pw(const zeep::http::scope &scope, const std::string &token,
+		const std::string &username, const std::string &newPassword, const std::string &newPassword2);
+
+	zeep::http::reply get_change_pw(const zeep::http::scope &scope);
+	zeep::http::reply post_change_pw(const zeep::http::scope &scope, const std::string &oldPassword,
+		const std::string &newPassword, const std::string &newPassword2);
+
+	zeep::http::reply get_update_info(const zeep::http::scope &scope);
+	zeep::http::reply post_update_info(const zeep::http::scope &scope,
+		const std::string &firstname, const std::string &lastname, const std::string &email);
 };
 
 // --------------------------------------------------------------------

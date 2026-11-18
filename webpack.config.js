@@ -18,6 +18,8 @@ module.exports = (env) => {
 		entry: {
 			'style': path.resolve(SCRIPTS, 'sa-style.scss'),
 
+			'dialog': path.resolve(SCRIPTS, "dialog.js"),
+
 			'index': path.resolve(SCRIPTS, "index.js"),
 			'screen': path.resolve(SCRIPTS, "screen.js"),
 			'sl-screen': path.resolve(SCRIPTS, "sl-screen.js"),

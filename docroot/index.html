@@ -4,6 +4,13 @@
 <head z:replace="~{head :: head(~{::title}, ~{}, ~{::script})}">
 	<title>Phenosaurus</title>
     <script src="/scripts/index.js" type="application/ecmascript" z:src="@{/scripts/index.js}"></script>
+
+	<script type="text/javascript" z:inline="javascript">
+		const dialog_name = /*[[${dialog}]]*/ null;
+	</script>
+
+	<script z:if="${dialog}" z:src="@{/scripts/dialog.js}" type="text/javascript"></script>
+
 </head>
 
 <body class="site">
@@ -14,6 +21,16 @@
 			<h3>Phenosaurus</h3>
 			<p>An interactive platform for visualization and analysis of haploid screens</p>
 		</div>
+	</div>
+
+	<div z:switch="${dialog}">
+		<div z:case="login" z:replace="~{dialogs::login}"></div>
+		<!-- <div z:case="register" z:replace="~{dialogs::register}"></div> -->
+		<div z:case="reset" z:replace="~{dialogs::reset}"></div>
+		<div z:case="change" z:replace="~{dialogs::change}"></div>
+		<div z:case="reset-change" z:replace="~{dialogs::reset-change}"></div>
+		<div z:case="update" z:replace="~{dialogs::update}"></div>
+		<!-- <div z:case="delete" z:replace="~{dialogs::delete}"></div> -->
 	</div>
 
 	<footer z:replace="~{footer :: content}"></footer>

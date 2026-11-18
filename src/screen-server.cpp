@@ -850,6 +850,7 @@ zh::server *createServer(const fs::path &docroot,
 	auto server = new zh::server(sc, docroot);
 
 	server->add_error_handler(new db_error_handler());
+
 	server->add_controller(new zh::login_controller());
 
 #ifndef NDEBUG

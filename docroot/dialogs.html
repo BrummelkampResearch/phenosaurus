@@ -1,0 +1,283 @@
+<!DOCTYPE html SYSTEM "about:legacy-compat">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:z2="http://www.hekkelman.com/libzeep/m2" lang="en">
+
+<head z2:replace="~{head::head(~{::title},~{::head/script})}">
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+	<title>PDB-REDO</title>
+</head>
+
+<body>
+
+	<div class="modal" z2:fragment="login" tabindex="-1" data-name="login">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="id_dialog_label">Use a local account to log in.</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+
+				<div class="modal-body">
+
+					<p>You will have to log in before you can access the requested page</p>
+
+					<form z2:action="@{/login}" method="post" class="form-group" id="login-form">
+						<input type="hidden" name="_csrf" value="" />
+						<input type="hidden" name="uri" z2:value="${uri ?: '/'}" />
+
+						<div z2:if="${param.error}" class="alert alert-warning" role="alert">
+							Invalid username and password
+						</div>
+						<div z2:if="${param.logout}" class="alert alert-success" role="alert">
+							You have been logged out
+						</div>
+
+						<div class="form-group">
+							<label for="username" class="col-md-4 control-label text-truncate">User name</label>
+							<div class="col-md-8">
+								<input class="form-control" id="username" maxlength="254" name="username"
+									placeholder="User name" type="text" required="required" />
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="password" class="col-md-4 control-label">Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="password" name="password" placeholder="Password"
+									type="password" required="required" />
+								<div class="invalid-feedback">
+									Invalid username/password
+								</div>
+							</div>
+						</div>
+
+					</form>
+
+					<span class="error" id="failedToLoginMsg" style="display: none">Login failed</span>
+
+				</div>
+
+				<div class="modal-footer">
+					<div class="col-md-8">
+						<a z2:href="@{/register}">register</a> /
+						<a z2:href="@{/reset-password}">reset password</a>
+					</div>
+
+					<!--<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>-->
+					<button type="submit" form="login-form" class="btn btn-primary col-md-2 ms-auto">Log in</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div data-name="reset" class="modal" z2:fragment="reset" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="id_dialog_label">Reset password</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+
+				<div class="modal-body">
+
+					<p>Please enter your username and email address below. A new password will then be sent to the email
+						address stored on our system.</p>
+
+					<form id="reset-form" z2:action="@{/reset-password}" method="post" class="form-group">
+						<div class="form-group">
+							<label for="username" class="col-md-4 control-label text-truncate">User name</label>
+							<div class="col-md-8">
+								<input class="form-control" id="username" maxlength="254" name="username"
+									placeholder="User name" type="text" required="required" />
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="email" class="col-md-4 control-label">E-mail</label>
+							<div class="col-md-8">
+								<input class="form-control" id="email" name="email" placeholder="john.doe@example.com"
+									type="email" required="required" />
+							</div>
+						</div>
+
+					</form>
+				</div>
+
+				<div class="modal-footer">
+					<button type="submit" form="reset-form" class="btn btn-primary col-md-2 ms-auto">Submit</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div data-name="change" class="modal" z2:fragment="change-password" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="id_dialog_label">Change password</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+
+				<div class="modal-body">
+
+					<form id="change-form" z2:action="@{/change-password}" method="post" class="form-group">
+
+						<div class="form-group">
+							<label for="old-password" class="col-md-4 control-label text-truncate">Old Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="old-password" maxlength="254" name="old-password"
+									type="password" required="required" />
+								<div class="invalid-feedback">
+									Invalid password
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="new-password" class="col-md-4 control-label text-truncate">New Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="new-password" maxlength="254" name="new-password"
+									type="password" required="required" />
+								<div class="invalid-feedback">
+									Invalid password or password too weak
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="new-password-2" class="col-md-4 control-label text-truncate">Re-enter
+								Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="new-password-2" maxlength="254" name="new-password-2"
+									type="password" required="required" />
+								<div class="invalid-feedback">
+									Passwords are not the same
+								</div>
+							</div>
+						</div>
+
+					</form>
+				</div>
+
+				<div class="modal-footer">
+					<button type="submit" form="change-form" class="btn btn-primary col-md-2 ms-auto">Submit</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div data-name="reset-change" class="modal" z2:fragment="reset-change" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="id_dialog_label">Change password</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+
+				<div class="modal-body">
+
+					<form id="change-form" z2:action="@{/reset-change-password}" method="post" class="form-group">
+
+						<input type="hidden" name="token" z2:value="${token}" />
+
+						<div class="form-group">
+							<label for="username" class="col-md-4 control-label text-truncate">User name</label>
+							<div class="col-md-8">
+								<input class="form-control" id="username" maxlength="254" name="username"
+									placeholder="User name" type="text" required="required" />
+							</div>
+						</div>
+
+
+						<div class="form-group">
+							<label for="new-password" class="col-md-4 control-label text-truncate">New Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="new-password" maxlength="254" name="new-password"
+									type="password" required="required" autocomplete="off" />
+								<div class="invalid-feedback">
+									Invalid password or password too weak
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="new-password-2" class="col-md-4 control-label text-truncate">Re-enter
+								Password</label>
+							<div class="col-md-8">
+								<input class="form-control" id="new-password-2" maxlength="254" name="new-password-2"
+									type="password" required="required" autocomplete="off" />
+								<div class="invalid-feedback">
+									Passwords are not the same
+								</div>
+							</div>
+						</div>
+
+					</form>
+				</div>
+
+				<div class="modal-footer">
+					<button type="submit" form="change-form" class="btn btn-primary col-md-2 ms-auto">Submit</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div data-name="update" class="modal" z2:fragment="update" tabindex="-1">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="id_dialog_label">Update information</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+
+				<div class="modal-body">
+
+					<form id="update-form" z2:action="@{/update-info}" method="post" class="form-group">
+
+						<div class="form-group">
+							<label for="firstname" class="col-md-4 control-label text-truncate">First name</label>
+							<div class="col-md-8">
+								<input class="form-control" id="firstname" maxlength="254" name="firstname"
+									placeholder="first name" type="text" required="required" z2:value="${firstname}" />
+								<div class="invalid-feedback">
+									Invalid first name
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="lastname" class="col-md-4 control-label text-truncate">Last name</label>
+							<div class="col-md-8">
+								<input class="form-control" id="lastname" maxlength="254" name="lastname"
+									placeholder="Last name" type="text" required="required" z2:value="${lastname}" />
+								<div class="invalid-feedback">
+									Invalid lastname name
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group">
+							<label for="email" class="col-md-4 control-label">E-mail</label>
+							<div class="col-md-8">
+								<input class="form-control" id="email" name="email" placeholder="john.doe@example.com"
+									type="email" required="required" z2:value="${email}" />
+								<div class="invalid-feedback">
+									Invalid or e-mail address, or already in use by other user
+								</div>
+							</div>
+						</div>
+					</form>
+				</div>
+
+				<div class="modal-footer">
+					<button type="submit" form="update-form" class="btn btn-primary col-md-2 ms-auto">Submit</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+</html>

@@ -101,6 +101,7 @@ set(webpack_input
 	webapp/compare-screens.js
 	webapp/context-menu.js
 	webapp/create-screen.js
+	webapp/dialog.js
 	webapp/dot-context-menu.js
 	webapp/dot.js
 	webapp/edit-screen.js
