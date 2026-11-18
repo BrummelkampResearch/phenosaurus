@@ -842,16 +842,14 @@ zh::server *createServer(const fs::path &docroot,
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });
 	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
-	sc->add_rule("/{qc,screens}", { "USER" });
-	sc->add_rule("/", {});
+	sc->add_rule("/{,login,reset-password,reset-change-password,css/style.css,css/signin.css,scripts/dialog.js}", {});
+	sc->add_rule("/", { "USER" });
 
 	sc->set_validate_csrf(true);
 
 	auto server = new zh::server(sc, docroot);
 
 	server->add_error_handler(new db_error_handler());
-
-	server->add_controller(new zh::login_controller());
 
 #ifndef NDEBUG
 	server->set_template_processor(new zeep::http::file_based_html_template_processor("docroot"));
@@ -861,7 +859,7 @@ zh::server *createServer(const fs::path &docroot,
 
 	server->set_context_path(context_name);
 
-	server->add_controller(new user_service_html_controller());
+	server->add_controller(new user_service_controller());
 
 	server->add_controller(new ScreenHtmlController());
 	server->add_controller(new IPScreenRestController(screenDir, ScreenType::IntracellularPhenotype));

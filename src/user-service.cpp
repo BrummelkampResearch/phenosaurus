@@ -833,22 +833,42 @@ user user_service::retrieve_user_for_password_request_token(const std::string &t
 
 // --------------------------------------------------------------------
 
-user_service_html_controller::user_service_html_controller()
+user_service_controller::user_service_controller()
 	: zeep::http::login_controller()
 {
-	map_get("reset-password", &user_service_html_controller::get_reset_pw);
-	map_post("reset-password", &user_service_html_controller::post_reset_pw, "username", "email");
-	map_post("reset-change-password", &user_service_html_controller::post_reset_change_pw,
+	map_get("reset-password", &user_service_controller::get_reset_pw);
+	map_post("reset-password", &user_service_controller::post_reset_pw, "username", "email");
+	map_post("reset-change-password", &user_service_controller::post_reset_change_pw,
 		"token", "username", "new-password", "new-password-2");
 
-	map_get("change-password", &user_service_html_controller::get_change_pw);
-	map_post("change-password", &user_service_html_controller::post_change_pw, "old-password", "new-password", "new-password-2");
+	map_get("change-password", &user_service_controller::get_change_pw);
+	map_post("change-password", &user_service_controller::post_change_pw, "old-password", "new-password", "new-password-2");
 
-	map_get("update-info", &user_service_html_controller::get_update_info);
-	map_post("update-info", &user_service_html_controller::post_update_info, "firstname", "lastname", "email");
+	map_get("update-info", &user_service_controller::get_update_info);
+	map_post("update-info", &user_service_controller::post_update_info, "firstname", "lastname", "email");
 }
 
-zeep::http::reply user_service_html_controller::get_reset_pw(const zeep::http::scope &scope)
+zeem::document user_service_controller::load_login_form(const zeep::http::request &req) const
+{
+	auto uri = get_prefixless_path(req);
+
+	zeep::http::scope scope(m_server, req);
+
+	scope.put("baseuri", uri.string());
+	scope.put("dialog", "login");
+
+	auto &tp = m_server->get_template_processor();
+
+	zeem::document doc;
+	doc.set_preserve_cdata(true);
+
+	tp.load_template("index", doc);
+	tp.process_tags(doc.child(), scope);
+
+	return doc;
+}
+
+zeep::http::reply user_service_controller::get_reset_pw(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
@@ -863,7 +883,7 @@ zeep::http::reply user_service_html_controller::get_reset_pw(const zeep::http::s
 	return get_template_processor().create_reply_from_template("index", sub);
 }
 
-zeep::http::reply user_service_html_controller::post_reset_pw(const zeep::http::scope &scope, const std::string &username, const std::string &email)
+zeep::http::reply user_service_controller::post_reset_pw(const zeep::http::scope &scope, const std::string &username, const std::string &email)
 {
 	auto &userService = user_service::instance();
 
@@ -877,7 +897,7 @@ zeep::http::reply user_service_html_controller::post_reset_pw(const zeep::http::
 	return zeep::http::reply::redirect("/");
 }
 
-zeep::http::reply user_service_html_controller::post_reset_change_pw(const zeep::http::scope &scope, const std::string &token,
+zeep::http::reply user_service_controller::post_reset_change_pw(const zeep::http::scope &scope, const std::string &token,
 	const std::string &username, const std::string &newPassword, const std::string &newPassword2)
 {
 	try
@@ -944,14 +964,14 @@ zeep::http::reply user_service_html_controller::post_reset_change_pw(const zeep:
 	}
 }
 
-zeep::http::reply user_service_html_controller::get_change_pw(const zeep::http::scope &scope)
+zeep::http::reply user_service_controller::get_change_pw(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 	sub.put("dialog", "change");
 	return get_template_processor().create_reply_from_template("index", sub);
 }
 
-zeep::http::reply user_service_html_controller::post_change_pw(const zeep::http::scope &scope,
+zeep::http::reply user_service_controller::post_change_pw(const zeep::http::scope &scope,
 	const std::string &oldPassword, const std::string &newPassword, const std::string &newPassword2)
 {
 	auto &userService = user_service::instance();
@@ -1007,7 +1027,7 @@ zeep::http::reply user_service_html_controller::post_change_pw(const zeep::http:
 	return rep;
 }
 
-zeep::http::reply user_service_html_controller::get_update_info(const zeep::http::scope &scope)
+zeep::http::reply user_service_controller::get_update_info(const zeep::http::scope &scope)
 {
 	auto &userService = user_service::instance();
 	auto user = userService.retrieve_user(scope.get_credentials()["username"].get<std::string>());
@@ -1025,7 +1045,7 @@ zeep::http::reply user_service_html_controller::get_update_info(const zeep::http
 	return get_template_processor().create_reply_from_template("index", sub);
 }
 
-zeep::http::reply user_service_html_controller::post_update_info(const zeep::http::scope &scope,
+zeep::http::reply user_service_controller::post_update_info(const zeep::http::scope &scope,
 	const std::string &firstname, const std::string &lastname, const std::string &email)
 {
 	auto &userService = user_service::instance();

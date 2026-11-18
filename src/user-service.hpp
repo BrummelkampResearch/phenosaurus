@@ -188,10 +188,12 @@ class user_service : public zeep::http::user_service
 
 // --------------------------------------------------------------------
 
-class user_service_html_controller : public zeep::http::login_controller
+class user_service_controller : public zeep::http::login_controller
 {
   public:
-	user_service_html_controller();
+	user_service_controller();
+
+	[[nodiscard]] zeem::document load_login_form(const zeep::http::request &req) const override;
 
 	zeep::http::reply get_reset_pw(const zeep::http::scope &scope);
 	zeep::http::reply post_reset_pw(const zeep::http::scope &scope, const std::string &username, const std::string &email);

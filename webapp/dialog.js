@@ -83,8 +83,6 @@ window.addEventListener('load', () => {
 		let dialog;
 		if (dialog_name == "ccp4-token-request")
 			dialog = new CCP4TokenDialog(dialog_name);
-		else if (dialog_name == "register")
-			dialog = new PasswordDialog(dialog_name, "password", "password-2");
 		else if (dialog_name == "change" || dialog_name == "reset-change")
 			dialog = new PasswordDialog(dialog_name, "new-password", "new-password-2");
 		else

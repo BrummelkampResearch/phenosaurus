@@ -17,6 +17,7 @@ module.exports = (env) => {
 
 		entry: {
 			'style': path.resolve(SCRIPTS, 'sa-style.scss'),
+			'signin': path.resolve(SCRIPTS, 'signin.css'),
 
 			'dialog': path.resolve(SCRIPTS, "dialog.js"),
 
