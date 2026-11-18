@@ -33,7 +33,6 @@ module.exports = (env) => {
 
 			'admin-user': path.resolve(SCRIPTS, "admin-user.js"),
 			'admin-group': path.resolve(SCRIPTS, "admin-group.js"),
-			'genome-browser': path.resolve(SCRIPTS, "genome-browser.js"),
 
 			'create-screen': path.resolve(SCRIPTS, "create-screen.js"),
 			'edit-screen': path.resolve(SCRIPTS, "edit-screen.js"),

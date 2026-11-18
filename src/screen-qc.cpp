@@ -853,15 +853,39 @@ std::vector<std::string> screen_qc_data::cluster(const std::map<std::string, std
 
 // --------------------------------------------------------------------
 
-screen_qc_rest_controller::screen_qc_rest_controller()
-	: zeep::http::controller("/qc")
+screen_qc_controller::screen_qc_controller()
+	: zeep::http::html_controller("/qc")
 {
-	map_post_request("heatmap", &screen_qc_rest_controller::get_heatmap, "requestedBinCount", "chr", "skip");
-	map_post_request("emptybins", &screen_qc_rest_controller::get_emptybins, "requestedBinCount", "chr", "skip");
+	map_get("qc", &screen_qc_controller::index);
+
+	map_post_request("heatmap", &screen_qc_controller::get_heatmap, "requestedBinCount", "chr", "skip");
+	map_post_request("emptybins", &screen_qc_controller::get_emptybins, "requestedBinCount", "chr", "skip");
 }
 
+zeep::http::reply screen_qc_controller::index(const zeep::http::scope &scope)
+{
+	const auto &data = screen_qc_data::instance();
+
+	zeep::http::scope sub(scope);
+
+	sub.put("page", "index");
+	sub.put("chromosomes", zeep::el::to_object(data.chromosomes()));
+
+	std::set<std::string> screens;
+	std::regex r(R"(-(?:high|low|replicate-\d)$)");
+
+	for (auto screen : data.screens())
+		screens.insert(std::regex_replace(screen, r, ""));
+
+	sub.put("screens",
+		zeep::el::to_object(std::vector<std::string>(screens.begin(), screens.end())));
+
+	return get_template_processor().create_reply_from_template("qc.html", sub);
+}
+
+
 template <typename Algo>
-ScreenQCData screen_qc_rest_controller::get_data(size_t requestedBinCount, std::string chrom, std::string skip, Algo &&algo)
+ScreenQCData screen_qc_controller::get_data(size_t requestedBinCount, std::string chrom, std::string skip, Algo &&algo)
 {
 	const auto &qc_data = screen_qc_data::instance();
 
@@ -909,44 +933,14 @@ ScreenQCData screen_qc_rest_controller::get_data(size_t requestedBinCount, std::
 	};
 }
 
-ScreenQCData screen_qc_rest_controller::get_heatmap(size_t requestedBinCount, std::string chrom, std::string skip)
+ScreenQCData screen_qc_controller::get_heatmap(size_t requestedBinCount, std::string chrom, std::string skip)
 {
 	using namespace std::placeholders;
 	return get_data(requestedBinCount, chrom, skip, bind(&screen_qc_data::heatmap, _1, _2, _3, m_winsorize, false));
 }
 
-ScreenQCData screen_qc_rest_controller::get_emptybins(size_t requestedBinCount, std::string chrom, std::string skip)
+ScreenQCData screen_qc_controller::get_emptybins(size_t requestedBinCount, std::string chrom, std::string skip)
 {
 	using namespace std::placeholders;
 	return get_data(requestedBinCount, chrom, skip, bind(&screen_qc_data::emptiness, _1, _2, _3, m_winsorize));
-}
-
-// --------------------------------------------------------------------
-
-screen_qc_html_controller::screen_qc_html_controller()
-{
-	mount("qc", &screen_qc_html_controller::index);
-}
-
-// --------------------------------------------------------------------
-
-void screen_qc_html_controller::index(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
-{
-	const auto &data = screen_qc_data::instance();
-
-	zeep::http::scope sub(scope);
-
-	sub.put("page", "index");
-	sub.put("chromosomes", zeep::el::to_object(data.chromosomes()));
-
-	std::set<std::string> screens;
-	std::regex r(R"(-(?:high|low|replicate-\d)$)");
-
-	for (auto screen : data.screens())
-		screens.insert(std::regex_replace(screen, r, ""));
-
-	sub.put("screens",
-		zeep::el::to_object(std::vector<std::string>(screens.begin(), screens.end())));
-
-	get_template_processor().create_reply_from_template("qc.html", sub, reply);
 }

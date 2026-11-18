@@ -32,6 +32,7 @@
 #include "screen-service.hpp"
 
 #include <chrono>
+#include <format>
 #include <mailio/message.hpp>
 #include <mailio/smtp.hpp>
 #include <random>
@@ -193,11 +194,12 @@ zeep::http::user_details user_service::load_user(const std::string &username) co
 	{
 		pqxx::transaction tx(db_connection::instance());
 
-		auto r = tx.exec1(
-			"SELECT password, admin "
-			"FROM public.users "
-			"WHERE username = " +
-			tx.quote(username) + " AND active = true");
+		auto r = tx.exec(
+					   std::format("SELECT password, admin "
+								   "FROM public.users "
+								   "WHERE username = {} AND active = true",
+						   tx.quote(username)))
+		             .one_row();
 		tx.commit();
 
 		result.username = username;
@@ -270,7 +272,7 @@ std::vector<group> user_service::get_all_groups()
 bool user_service::user_exists(const std::string &username)
 {
 	pqxx::transaction tx(db_connection::instance());
-	auto row = tx.exec1("SELECT COUNT(*) FROM public.users WHERE username = " + tx.quote(username));
+	auto row = tx.exec(std::format("SELECT COUNT(*) FROM public.users WHERE username = {}", tx.quote(username))).one_row();
 	tx.commit();
 
 	return row[0].as<int>() == 1;
@@ -285,7 +287,7 @@ user user_service::retrieve_user(uint32_t id)
 
 	try
 	{
-		auto row = tx.exec1("SELECT * FROM public.users WHERE id = " + std::to_string(id));
+		auto row = tx.exec(std::format("SELECT * FROM public.users WHERE id = {}", id)).one_row();
 		tx.commit();
 
 		user.username = row.at("username").as<std::string>();
@@ -298,7 +300,7 @@ user user_service::retrieve_user(uint32_t id)
 
 		pqxx::transaction tx2(db_connection::instance());
 		for (auto const &[name] : tx2.stream<std::string>(
-				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+				 std::format("SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = {}", user.id)))
 		{
 			user.groups.push_back(name);
 		}
@@ -319,7 +321,7 @@ user user_service::retrieve_user(const std::string &name)
 
 	try
 	{
-		auto row = tx.exec1("SELECT * FROM public.users WHERE username = " + tx.quote(name));
+		auto row = tx.exec(std::format("SELECT * FROM public.users WHERE username = {}", tx.quote(name))).one_row();
 		tx.commit();
 
 		user.id = row.at("id").as<uint32_t>();
@@ -331,7 +333,7 @@ user user_service::retrieve_user(const std::string &name)
 
 		pqxx::transaction tx2(db_connection::instance());
 		for (auto const &[name] : tx2.stream<std::string>(
-				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+				 std::format("SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = {}", user.id)))
 		{
 			user.groups.push_back(name);
 		}
@@ -353,7 +355,7 @@ user user_service::retrieve_user_by_email(const std::string &email)
 
 	try
 	{
-		auto row = tx.exec1("SELECT * FROM public.users WHERE email = " + tx.quote(email));
+		auto row = tx.exec(std::format("SELECT * FROM public.users WHERE email = {}", tx.quote(email))).one_row();
 		tx.commit();
 
 		user.username = row.at("username").as<std::string>();
@@ -366,7 +368,7 @@ user user_service::retrieve_user_by_email(const std::string &email)
 
 		pqxx::transaction tx2(db_connection::instance());
 		for (auto const &[name] : tx2.stream<std::string>(
-				 "SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = " + std::to_string(user.id)))
+				 std::format("SELECT g.name FROM public.groups g LEFT JOIN public.members m ON g.id = m.group_id WHERE m.user_id = {}", user.id)))
 		{
 			user.groups.push_back(name);
 		}
@@ -397,17 +399,14 @@ uint32_t user_service::create_user(const user &user)
 	auto pw = user_service::create_password_hash(*user.password);
 
 	pqxx::transaction tx(db_connection::instance());
-	auto r = tx.exec1(
-		"INSERT INTO public.users (username, password, email, first_name, last_name, active, admin) "
-		"VALUES(" +
-		tx.quote(user.username) + ", " +
-		tx.quote(pw) + ", " +
-		tx.quote(user.email) + ", " +
-		tx.quote(user.firstname) + ", " +
-		tx.quote(user.lastname) + ", " +
-		tx.quote(user.active) + ", " +
-		tx.quote(user.admin) + ") "
-							   "RETURNING id");
+	auto r = tx.exec(
+				   std::format("INSERT INTO public.users (username, password, email, first_name, last_name, active, admin) "
+							   "VALUES({}, {}, {}, {}, {}, {}, {}) "
+							   "RETURNING id",
+					   tx.quote(user.username), tx.quote(pw), tx.quote(user.email),
+					   tx.quote(user.firstname), tx.quote(user.lastname),
+					   tx.quote(user.active), tx.quote(user.admin)))
+	             .one_row();
 
 	uint32_t id = r[0].as<uint32_t>();
 	tx.commit();
@@ -420,34 +419,21 @@ void user_service::update_user(uint32_t id, const user &user)
 	pqxx::transaction tx(db_connection::instance());
 
 	if (not user.password)
-		tx.exec0(
-			"UPDATE public.users SET email = " + tx.quote(user.email) + ", "
-																		" first_name = " +
-			tx.quote(user.firstname) + ", "
-									   " last_name = " +
-			tx.quote(user.lastname) + ", "
-									  " active = " +
-			tx.quote(user.active) + ", "
-									" admin = " +
-			tx.quote(user.admin) +
-			" WHERE id = " + std::to_string(id));
+		tx.exec(
+			  std::format("UPDATE public.users SET email = {}, first_name = {}, last_name = {}, active = {}, admin = {} WHERE id = {}",
+				  tx.quote(user.email), tx.quote(user.firstname), tx.quote(user.lastname),
+				  tx.quote(user.active), tx.quote(user.admin), id))
+			.no_rows();
 	else if (user.password->empty() or not isValidPassword(*user.password))
 		throw std::runtime_error("Invalid password");
 	else
 	{
-		tx.exec0(
-			"UPDATE public.users SET email = " + tx.quote(user.email) + ", "
-																		" password = " +
-			tx.quote(user_service::create_password_hash(*user.password)) + ", "
-																		   " first_name = " +
-			tx.quote(user.firstname) + ", "
-									   " last_name = " +
-			tx.quote(user.lastname) + ", "
-									  " active = " +
-			tx.quote(user.active) + ", "
-									" admin = " +
-			tx.quote(user.admin) +
-			" WHERE id = " + std::to_string(id));
+		tx.exec(
+			  std::format("UPDATE public.users SET email = {}, password = {}, first_name = {}, last_name = {}, active = {}, admin = {} WHERE id = {}",
+				  tx.quote(user.email), tx.quote(user_service::create_password_hash(*user.password)),
+				  tx.quote(user.firstname), tx.quote(user.lastname),
+				  tx.quote(user.active), tx.quote(user.admin), id))
+			.no_rows();
 	}
 
 	tx.commit();
@@ -456,7 +442,7 @@ void user_service::update_user(uint32_t id, const user &user)
 void user_service::delete_user(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("DELETE FROM public.users WHERE id = " + std::to_string(id));
+	tx.exec(std::format("DELETE FROM public.users WHERE id = {}", id)).no_rows();
 	tx.commit();
 }
 
@@ -466,11 +452,9 @@ uint32_t user_service::create_group(const group &group)
 {
 	pqxx::transaction tx1(db_connection::instance());
 
-	auto r = tx1.exec1(
-		"INSERT INTO public.groups (name) "
-		"VALUES(" +
-		tx1.quote(group.name) + ") "
-								"RETURNING id");
+	auto r = tx1.exec(
+					std::format("INSERT INTO public.groups (name) VALUES({}) RETURNING id", tx1.quote(group.name)))
+	             .one_row();
 
 	uint32_t group_id = r[0].as<uint32_t>();
 	tx1.commit();
@@ -478,11 +462,11 @@ uint32_t user_service::create_group(const group &group)
 	for (auto &m : group.members)
 	{
 		pqxx::transaction tx(db_connection::instance());
-		tx.exec0(
-			"INSERT INTO public.members (group_id, user_id) "
-			"VALUES(" +
-			std::to_string(group_id) + ", " +
-			"(SELECT id FROM public.users WHERE username = " + tx.quote(m) + "))");
+		tx.exec(
+			  std::format("INSERT INTO public.members (group_id, user_id) "
+						  "VALUES({}, (SELECT id FROM public.users WHERE username = {}))",
+				  group_id, tx.quote(m)))
+			.no_rows();
 		tx.commit();
 	}
 
@@ -496,14 +480,14 @@ group user_service::retrieve_group(uint32_t id)
 
 	try
 	{
-		auto row = tx.exec1("SELECT * FROM public.groups WHERE id = " + std::to_string(id));
+		auto row = tx.exec(std::format("SELECT * FROM public.groups WHERE id = {}", id)).one_row();
 		tx.commit();
 
 		group.name = row.at("name").as<std::string>();
 
 		pqxx::transaction tx2(db_connection::instance());
 		for (const auto &[member] : tx2.stream<std::string>(
-				 "SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = " + std::to_string(id)))
+				 std::format("SELECT u.username FROM public.members m JOIN public.users u ON m.user_id = u.id WHERE m.group_id = {}", id)))
 		{
 			group.members.push_back(member);
 		}
@@ -523,7 +507,7 @@ void user_service::update_group(uint32_t id, group group)
 	if (current.name != group.name)
 	{
 		pqxx::transaction tx(db_connection::instance());
-		tx.exec0("UPDATE public.groups SET name = " + tx.quote(group.name) + " WHERE id = " + std::to_string(id));
+		tx.exec(std::format("UPDATE public.groups SET name = {} WHERE id = {}", tx.quote(group.name), id)).no_rows();
 		tx.commit();
 	}
 
@@ -541,11 +525,11 @@ void user_service::update_group(uint32_t id, group group)
 		for (auto &member : diff)
 		{
 			pqxx::transaction tx(db_connection::instance());
-			tx.exec0(
-				"INSERT INTO public.members (group_id, user_id) "
-				"VALUES(" +
-				std::to_string(id) + ", " +
-				"(SELECT id FROM public.users WHERE username = " + tx.quote(member) + "))");
+			tx.exec(
+				  std::format("INSERT INTO public.members (group_id, user_id) "
+							  "VALUES({}, (SELECT id FROM public.users WHERE username = {}))",
+					  id, tx.quote(member)))
+				.no_rows();
 			tx.commit();
 		}
 
@@ -559,9 +543,10 @@ void user_service::update_group(uint32_t id, group group)
 		for (auto &member : diff)
 		{
 			pqxx::transaction tx(db_connection::instance());
-			tx.exec0(
-				"DELETE FROM public.members WHERE group_id = " + tx.quote(id) +
-				" AND user_id = (SELECT id FROM public.users WHERE username = " + tx.quote(member) + ")");
+			tx.exec(
+				  std::format("DELETE FROM public.members WHERE group_id = {} AND user_id = (SELECT id FROM public.users WHERE username = {})",
+					  tx.quote(id), tx.quote(member)))
+				.no_rows();
 			tx.commit();
 		}
 	}
@@ -570,7 +555,7 @@ void user_service::update_group(uint32_t id, group group)
 void user_service::delete_group(uint32_t id)
 {
 	pqxx::transaction tx(db_connection::instance());
-	tx.exec0("DELETE FROM public.groups WHERE id = " + std::to_string(id));
+	tx.exec(std::format("DELETE FROM public.groups WHERE id = {}", id)).no_rows();
 	tx.commit();
 }
 
@@ -627,7 +612,7 @@ bool user_service::isExistingEmail(const std::string &email)
 {
 	pqxx::transaction tx0(db_connection::instance());
 
-	auto v = tx0.query_value<int>("SELECT COUNT(*) FROM public.users WHERE email = " + tx0.quote(email));
+	auto v = tx0.query_value<int>(std::format("SELECT COUNT(*) FROM public.users WHERE email = {}", tx0.quote(email)));
 	tx0.commit();
 
 	return v == 1;
@@ -765,7 +750,7 @@ zeep::http::reply user_service::reset_password(const user &user)
 {
 	auto now = std::chrono::system_clock::now();
 
-	// Clean up old requests first
+	// Clean up old requests first, and all older outstanding requests
 	std::erase_if(m_reset_requests, [now, username = user.username](const reset_request_entry &e)
 		{ return e.valid_until < now or e.username == username; });
 
@@ -826,11 +811,23 @@ zeep::http::reply user_service::reset_password(const user &user)
 
 user user_service::retrieve_user_for_password_request_token(const std::string &token, const std::string &username)
 {
+	auto now = std::chrono::system_clock::now();
+
+	// Clean up old requests first
+	std::erase_if(m_reset_requests, [now](const reset_request_entry &e)
+		{ return e.valid_until < now; });
+
 	for (auto &req : m_reset_requests)
 	{
 		if (req.secret == token and req.username == username)
+		{
+			std::erase_if(m_reset_requests, [username](const reset_request_entry &e)
+				{ return e.username == username; });
+
 			return retrieve_user(username);
+		}
 	}
+
 	throw user_service_error("Invalid password reset request, please try again");
 }
 
@@ -893,10 +890,7 @@ zeep::http::reply user_service_html_controller::post_reset_change_pw(const zeep:
 
 		if (newPWValid and newPWValid2)
 		{
-			zeep::http::pbkdf2_sha256_password_encoder enc(kIterations, kKeyLength / 8);
-
-			user.password = enc.encode(newPassword);
-
+			user.password = newPassword;
 			userService.update_user(user.id, user);
 
 			return zeep::http::reply::redirect("/login");
@@ -969,10 +963,7 @@ zeep::http::reply user_service_html_controller::post_change_pw(const zeep::http:
 
 	if (oldPWValid and newPWValid and newPWValid2)
 	{
-		zeep::http::pbkdf2_sha256_password_encoder enc(kIterations, kKeyLength / 8);
-
-		user.password = enc.encode(newPassword);
-
+		user.password = newPassword;
 		userService.update_user(user.id, user);
 
 		return create_redirect_for_request(scope.get_request());
@@ -1087,84 +1078,78 @@ zeep::http::reply user_service_html_controller::post_update_info(const zeep::htt
 
 // --------------------------------------------------------------------
 
-user_admin_html_controller::user_admin_html_controller()
-	: zeep::http::html_controller_v1("/admin")
+user_admin_controller::user_admin_controller()
+	: zeep::http::html_controller("/admin")
 {
-	mount("users", &user_admin_html_controller::handle_user_admin);
-	mount("groups", &user_admin_html_controller::handle_group_admin);
+	map_get("users", &user_admin_controller::handle_user_admin);
+	map_get("groups", &user_admin_controller::handle_group_admin);
+
+	map_post_request("user", &user_admin_controller::create_user, "user");
+	map_get_request("user/{id}", &user_admin_controller::retrieve_user, "id");
+	map_put_request("user/{id}", &user_admin_controller::update_user, "id", "user");
+	map_delete_request("user/{id}", &user_admin_controller::delete_user, "id");
+
+	map_post_request("group", &user_admin_controller::create_group, "group");
+	map_get_request("group/{id}", &user_admin_controller::retrieve_group, "id");
+	map_put_request("group/{id}", &user_admin_controller::update_group, "id", "group");
+	map_delete_request("group/{id}", &user_admin_controller::delete_group, "id");
 }
 
-void user_admin_html_controller::handle_user_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply user_admin_controller::handle_user_admin(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
 	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
 
-	get_template_processor().create_reply_from_template("admin-users.html", sub, reply);
+	return get_template_processor().create_reply_from_template("admin-users.html", sub);
 }
 
-void user_admin_html_controller::handle_group_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply user_admin_controller::handle_group_admin(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
 	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
 	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
-	get_template_processor().create_reply_from_template("admin-groups.html", sub, reply);
+	return get_template_processor().create_reply_from_template("admin-groups.html", sub);
 }
 
-// --------------------------------------------------------------------
-
-user_admin_rest_controller::user_admin_rest_controller()
-	: zeep::http::controller("/admin")
-{
-	map_post_request("user", &user_admin_rest_controller::create_user, "user");
-	map_get_request("user/{id}", &user_admin_rest_controller::retrieve_user, "id");
-	map_put_request("user/{id}", &user_admin_rest_controller::update_user, "id", "user");
-	map_delete_request("user/{id}", &user_admin_rest_controller::delete_user, "id");
-
-	map_post_request("group", &user_admin_rest_controller::create_group, "group");
-	map_get_request("group/{id}", &user_admin_rest_controller::retrieve_group, "id");
-	map_put_request("group/{id}", &user_admin_rest_controller::update_group, "id", "group");
-	map_delete_request("group/{id}", &user_admin_rest_controller::delete_group, "id");
-}
-
-uint32_t user_admin_rest_controller::create_user(const user &user)
+uint32_t user_admin_controller::create_user(const user &user)
 {
 	return user_service::instance().create_user(user);
 }
 
-user user_admin_rest_controller::retrieve_user(uint32_t id)
+user user_admin_controller::retrieve_user(uint32_t id)
 {
 	return user_service::instance().retrieve_user(id);
 }
 
-void user_admin_rest_controller::update_user(uint32_t id, const user &user)
+void user_admin_controller::update_user(uint32_t id, const user &user)
 {
 	user_service::instance().update_user(id, user);
 }
 
-void user_admin_rest_controller::delete_user(uint32_t id)
+void user_admin_controller::delete_user(uint32_t id)
 {
 	user_service::instance().delete_user(id);
 }
 
-uint32_t user_admin_rest_controller::create_group(const group &group)
+uint32_t user_admin_controller::create_group(const group &group)
 {
 	return user_service::instance().create_group(group);
 }
 
-group user_admin_rest_controller::retrieve_group(uint32_t id)
+group user_admin_controller::retrieve_group(uint32_t id)
 {
 	return user_service::instance().retrieve_group(id);
 }
 
-void user_admin_rest_controller::update_group(uint32_t id, const group &group)
+void user_admin_controller::update_group(uint32_t id, const group &group)
 {
 	user_service::instance().update_group(id, group);
 }
 
-void user_admin_rest_controller::delete_group(uint32_t id)
+void user_admin_controller::delete_group(uint32_t id)
 {
 	user_service::instance().delete_group(id);
 }

@@ -10,7 +10,7 @@ Checks: '-*,
          '
 
 # HeaderFilterRegex: '.*'
-ExcludeHeaderFilterRegex: 'Eigen|Eigen/Eigenvalues|eigen3/Eigen/Eigenvalues|sqlite3.h'
+ExcludeHeaderFilterRegex: '.*mailio/.*'
 CheckOptions:
   - key: bugprone-narrowing-conversions.WarnOnIntegerNarrowingConversion
     value: false

@@ -209,21 +209,13 @@ class user_service_html_controller : public zeep::http::login_controller
 
 // --------------------------------------------------------------------
 
-class user_admin_html_controller : public zeep::http::html_controller_v1
+class user_admin_controller : public zeep::http::html_controller
 {
   public:
-	user_admin_html_controller();
+	user_admin_controller();
 
-	void handle_user_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-	void handle_group_admin(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-};
-
-// --------------------------------------------------------------------
-
-class user_admin_rest_controller : public zeep::http::controller
-{
-  public:
-	user_admin_rest_controller();
+	zeep::http::reply handle_user_admin(const zeep::http::scope &scope);
+	zeep::http::reply handle_group_admin(const zeep::http::scope &scope);
 
 	uint32_t create_user(const user &user);
 	user retrieve_user(uint32_t id);

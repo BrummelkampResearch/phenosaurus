@@ -27,14 +27,15 @@
 #include "screen-server.hpp"
 
 #include "db-connection.hpp"
-#include "genome-browser.hpp"
 #include "screen-data.hpp"
 #include "screen-qc.hpp"
 #include "screen-service.hpp"
 #include "user-service.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <system_error>
+#include <utility>
 #include <zeem/serialize.hpp>
 #include <zeep/exception.hpp>
 #include <zeep/http/html-controller.hpp>
@@ -125,9 +126,9 @@ class sa_list_object : public zh::expression_utility_object<sa_list_object>
 class IPScreenRestController : public zh::controller
 {
   public:
-	IPScreenRestController(const fs::path &screenDir, ScreenType type)
+	IPScreenRestController(fs::path screenDir, ScreenType type)
 		: zh::controller(zeem::value_serializer<ScreenType>::to_string(type))
-		, mScreenDir(screenDir)
+		, mScreenDir(std::move(screenDir))
 		, mType(type)
 	{
 		map_post_request("screen/{id}", &IPScreenRestController::screenData,
@@ -374,17 +375,17 @@ zeep::http::reply IPScreenRestController::getBED(const std::string &screen, cons
 
 // --------------------------------------------------------------------
 
-class ScreenHtmlControllerBase : public zh::html_controller_v1
+class ScreenHtmlControllerBase : public zh::html_controller
 {
   protected:
 	ScreenHtmlControllerBase(ScreenType type, bool is_public)
-		: zh::html_controller_v1(zeep::value_serializer<ScreenType>::to_string(type))
+		: zh::html_controller(zeep::value_serializer<ScreenType>::to_string(type))
 		, mType(type)
 		, m_is_public(is_public)
 	{
 	}
 
-	void init_scope(zh::scope &scope)
+	void init_scope(zh::scope &scope) override
 	{
 		auto sort_screen = [this](screen_info &sa, screen_info &sb) -> bool
 		{
@@ -414,7 +415,7 @@ class ScreenHtmlControllerBase : public zh::html_controller_v1
 		         : scope.has_role("ADMIN") ? screen_service::instance().get_all_screens_for_type(mType)
 		                             : screen_service::instance().get_all_screens_for_user_and_type(credentials["username"].get<std::string>(), mType);
 
-		std::sort(s.begin(), s.end(), sort_screen);
+		std::ranges::sort(s, sort_screen);
 
 		scope.put("screens", zeep::el::to_object(s));
 
@@ -455,66 +456,66 @@ class ScreenHtmlControllerBase : public zh::html_controller_v1
 class IPScreenHtmlController : public ScreenHtmlControllerBase
 {
   public:
-	IPScreenHtmlController(const fs::path &screenDir, ScreenType type, bool is_public = false)
+	IPScreenHtmlController(fs::path screenDir, ScreenType type, bool is_public = false)
 		: ScreenHtmlControllerBase(type, is_public)
-		, mScreenDir(screenDir)
+		, mScreenDir(std::move(screenDir))
 	{
-		mount("screen", &IPScreenHtmlController::fishtail);
-		mount("finder", &IPScreenHtmlController::finder);
-		mount("similar", &IPScreenHtmlController::similar);
-		mount("cluster", &IPScreenHtmlController::cluster);
-		mount("compare-1", &IPScreenHtmlController::compare_1);
-		mount("compare-2", &IPScreenHtmlController::compare_2);
-		mount("compare-screens", &IPScreenHtmlController::compare_3);
+		map_get("screen", &IPScreenHtmlController::fishtail);
+		map_get("finder", &IPScreenHtmlController::finder);
+		map_get("similar", &IPScreenHtmlController::similar);
+		map_get("cluster", &IPScreenHtmlController::cluster);
+		map_get("compare-1", &IPScreenHtmlController::compare_1);
+		map_get("compare-2", &IPScreenHtmlController::compare_2);
+		map_get("compare-screens", &IPScreenHtmlController::compare_3);
 	}
 
-	void fishtail(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void finder(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void similar(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void cluster(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void compare_1(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void compare_2(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void compare_3(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	zh::reply fishtail(const zh::scope &scope);
+	zh::reply finder(const zh::scope &scope);
+	zh::reply similar(const zh::scope &scope);
+	zh::reply cluster(const zh::scope &scope);
+	zh::reply compare_1(const zh::scope &scope);
+	zh::reply compare_2(const zh::scope &scope);
+	zh::reply compare_3(const zh::scope &scope);
 
   private:
 	fs::path mScreenDir;
 };
 
-void IPScreenHtmlController::fishtail(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::fishtail(const zh::scope &scope)
 {
 	zh::scope sub(scope);
 	sub.put("page", "fishtail");
-	get_template_processor().create_reply_from_template("fishtail.html", sub, reply);
+	return get_template_processor().create_reply_from_template("fishtail.html", sub);
 }
 
-void IPScreenHtmlController::finder(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::finder(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
+	return get_template_processor().create_reply_from_template("find-genes.html", scope);
 }
 
-void IPScreenHtmlController::similar(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::similar(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("find-similar.html", scope, reply);
+	return get_template_processor().create_reply_from_template("find-similar.html", scope);
 }
 
-void IPScreenHtmlController::cluster(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::cluster(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("find-clusters.html", scope, reply);
+	return get_template_processor().create_reply_from_template("find-clusters.html", scope);
 }
 
-void IPScreenHtmlController::compare_1(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::compare_1(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("compare-1.html", scope, reply);
+	return get_template_processor().create_reply_from_template("compare-1.html", scope);
 }
 
-void IPScreenHtmlController::compare_2(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::compare_2(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("compare-2.html", scope, reply);
+	return get_template_processor().create_reply_from_template("compare-2.html", scope);
 }
 
-void IPScreenHtmlController::compare_3(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply IPScreenHtmlController::compare_3(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("compare-screens.html", scope, reply);
+	return get_template_processor().create_reply_from_template("compare-screens.html", scope);
 }
 
 // --------------------------------------------------------------------
@@ -522,9 +523,9 @@ void IPScreenHtmlController::compare_3(const zh::request &request, const zh::sco
 class SLScreenRestController : public zh::controller
 {
   public:
-	SLScreenRestController(const fs::path &screenDir)
+	SLScreenRestController(fs::path screenDir)
 		: zh::controller("sl")
-		, mScreenDir(screenDir)
+		, mScreenDir(std::move(screenDir))
 	{
 		map_post_request("screen/{id}", &SLScreenRestController::screenData,
 			"id", "assembly", "transcripts", "control", "mode", "cut-overlap", "gene-start", "gene-end", "direction", "normalize");
@@ -632,7 +633,7 @@ Region SLScreenRestController::geneInfo(const zeep::http::scope &scope, const st
 	filterOutExons(transcripts);
 
 	// reorder transcripts based on chr > end-position, makes code easier and faster
-	std::sort(transcripts.begin(), transcripts.end(), [](auto &a, auto &b)
+	std::ranges::sort(transcripts, [](auto &a, auto &b)
 		{
 		int d = a.chrom - b.chrom;
 		if (d == 0)
@@ -774,54 +775,53 @@ class SLScreenHtmlController : public ScreenHtmlControllerBase
 		: ScreenHtmlControllerBase(ScreenType::SyntheticLethal, is_public)
 		, mScreenDir(screenDir)
 	{
-		mount("screen", &SLScreenHtmlController::screen);
-		mount("finder", &SLScreenHtmlController::finder);
+		map_get("screen", &SLScreenHtmlController::screen);
+		map_get("finder", &SLScreenHtmlController::finder);
 	}
 
-	void screen(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void finder(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	zh::reply screen(const zh::scope &scope);
+	zh::reply finder(const zh::scope &scope);
 
   private:
 	fs::path mScreenDir;
 };
 
-void SLScreenHtmlController::screen(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply SLScreenHtmlController::screen(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("sl-screen.html", scope, reply);
+	return get_template_processor().create_reply_from_template("sl-screen.html", scope);
 }
 
-void SLScreenHtmlController::finder(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply SLScreenHtmlController::finder(const zh::scope &scope)
 {
-	get_template_processor().create_reply_from_template("find-genes.html", scope, reply);
+	return get_template_processor().create_reply_from_template("find-genes.html", scope);
 }
 
 // --------------------------------------------------------------------
 
-class ScreenHtmlController : public zh::html_controller_v1
+class ScreenHtmlController : public zh::html_controller
 {
   public:
 	ScreenHtmlController(bool is_public = false)
 		: m_is_public(is_public)
 	{
-		mount("{,index,index.html}", &ScreenHtmlController::welcome);
+		map_get("{,index,index.html}", &ScreenHtmlController::welcome);
 
 		map_get_file("{scripts,css,fonts,images}/");
 		map_get_file("favicon.ico");
 	}
 
-	void welcome(const zh::request &request, const zh::scope &scope, zh::reply &reply);
-	void genome_browser(const zh::request &request, const zh::scope &scope, zh::reply &reply);
+	zh::reply welcome(const zh::scope &scope);
 
 	bool m_is_public;
 };
 
-void ScreenHtmlController::welcome(const zh::request &request, const zh::scope &scope, zh::reply &reply)
+zh::reply ScreenHtmlController::welcome(const zh::scope &scope)
 {
 	zh::scope sub(scope);
 
 	sub.put("public", m_is_public);
 
-	return get_template_processor().create_reply_from_template("index", sub, reply);
+	return get_template_processor().create_reply_from_template("index", sub);
 }
 
 // --------------------------------------------------------------------
@@ -872,18 +872,12 @@ zh::server *createServer(const fs::path &docroot,
 	server->add_controller(new SLScreenRestController(screenDir));
 	server->add_controller(new SLScreenHtmlController(screenDir));
 
-	server->add_controller(new genome_browser_html_controller());
-	server->add_controller(new genome_browser_rest_controller());
+	server->add_controller(new screen_qc_controller());
 
-	server->add_controller(new screen_qc_html_controller());
-	server->add_controller(new screen_qc_rest_controller());
-
-	server->add_controller(new screen_rest_controller());
-	server->add_controller(new screen_html_controller());
+	server->add_controller(new screen_controller());
 
 	// admin
-	server->add_controller(new user_admin_rest_controller());
-	server->add_controller(new user_admin_html_controller());
+	server->add_controller(new user_admin_controller());
 
 	return server;
 }

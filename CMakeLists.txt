@@ -112,7 +112,6 @@ set(webpack_input
 	webapp/gene-info.js
 	webapp/gene-line.js
 	webapp/gene-selection.js
-	webapp/genome-browser.js
 	webapp/genome-viewer.js
 	webapp/index.js
 	webapp/list-screen.js
@@ -175,11 +174,9 @@ add_executable(screen-analyzer
 	${CMAKE_SOURCE_DIR}/src/bowtie.cpp
 	${CMAKE_SOURCE_DIR}/src/bsd-closefrom.h
 	${CMAKE_SOURCE_DIR}/src/db-connection.cpp
-	${CMAKE_SOURCE_DIR}/src/genome-browser.cpp
 	${CMAKE_SOURCE_DIR}/src/fisher.cpp
 	${CMAKE_SOURCE_DIR}/src/binom.cpp
 	${CMAKE_SOURCE_DIR}/src/refseq.hpp
-	${CMAKE_SOURCE_DIR}/src/genome-browser.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-qc.hpp
 	${CMAKE_SOURCE_DIR}/src/binom.hpp
 	${CMAKE_SOURCE_DIR}/src/screen-server.hpp

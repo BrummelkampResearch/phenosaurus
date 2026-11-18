@@ -67,10 +67,12 @@ struct ScreenQCData
 
 // --------------------------------------------------------------------
 
-class screen_qc_rest_controller : public zeep::http::controller
+class screen_qc_controller : public zeep::http::html_controller
 {
   public:
-	screen_qc_rest_controller();
+	screen_qc_controller();
+
+	zeep::http::reply index(const zeep::http::scope &scope);
 
 	template <typename Algo>
 	ScreenQCData get_data(size_t requestedBinCount, std::string chrom, std::string skip, Algo &&algo);
@@ -79,14 +81,4 @@ class screen_qc_rest_controller : public zeep::http::controller
 	ScreenQCData get_emptybins(size_t requestedBinCount, std::string chrom, std::string skip);
 
 	const float m_winsorize = 0.9f;
-};
-
-// --------------------------------------------------------------------
-
-class screen_qc_html_controller : public zeep::http::html_controller_v1
-{
-  public:
-	screen_qc_html_controller();
-
-	void index(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
 };

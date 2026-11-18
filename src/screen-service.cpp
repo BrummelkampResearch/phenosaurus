@@ -27,12 +27,12 @@
 #include "screen-service.hpp"
 
 #include "bowtie.hpp"
-#include "db-connection.hpp"
 #include "job-scheduler.hpp"
 #include "mrsrc.hpp"
 #include "user-service.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <pqxx/pqxx>
@@ -98,7 +98,6 @@ screen_data_cache::~screen_data_cache()
 bool screen_data_cache::is_up_to_date() const
 {
 	auto screens = screen_service::instance().get_all_screens_for_type(m_type);
-	auto screenDataDir = screen_service::instance().get_screen_data_dir();
 
 	std::set<std::string> current;
 	for (auto &s : screens)
@@ -406,8 +405,8 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 
 				data = true;
 
-				miQ = a.mi ? std::log2(a.mi) : 0;
-				miT = b.mi ? std::log2(b.mi) : 0;
+				miQ = a.mi != 0.f ? std::log2(a.mi) : 0;
+				miT = b.mi != 0.f ? std::log2(b.mi) : 0;
 
 				if (anti)
 					sum += (miQ + miT) * (miQ + miT);
@@ -418,7 +417,7 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 			if (not data)
 				continue;
 
-			double d = static_cast<double>(sqrt(sum));
+			auto d = static_cast<double>(std::sqrt(sum));
 
 			hits.push_back(similar_data_point{ m_transcripts[tg_ix].geneName, static_cast<float>(d), 0.f, anti });
 
@@ -431,7 +430,7 @@ std::vector<similar_data_point> ip_screen_data_cache::find_similar(const std::st
 		double stddev = sqrt(sumSq / (geneCount - 1));
 
 		for (auto &hit : hits)
-			hit.zscore = (averageDistance - hit.distance) / stddev;
+			hit.zscore = static_cast<float>((averageDistance - hit.distance) / stddev);
 
 		hits.erase(remove_if(hits.begin(), hits.end(),
 					   [zscoreCutOff, averageDistance](auto hit)
@@ -502,7 +501,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 		for (size_t s_ix = 0; s_ix < screenCount; ++s_ix)
 		{
 			auto &d = m_data[s_ix * geneCount + g_ix];
-			if (d.mi)
+			if (d.mi != 0.f)
 				data[g_ix * screenCount + s_ix] = std::log2(d.mi);
 		}
 	}
@@ -523,11 +522,11 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 			auto ai = a[i];
 			auto bi = b[i];
 
-			if (ai)
+			if (ai != 0.f)
 				++na_significant;
-			if (bi)
+			if (bi != 0.f)
 				++nb_significant;
-			if (ai and bi)
+			if (ai != 0.f and bi != 0.f)
 				++n_significant;
 
 			if (ai == 0 or bi == 0)
@@ -550,7 +549,7 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 			float f1 = (2.0f * n_significant) / (na_significant + nb_significant);
 			float f2 = (0.2f * n_missing) / n_significant;
 
-			int match = n_match - 0.75f * n_mismatch;
+			int match = static_cast<int>(n_match - 0.75f * n_mismatch);
 			if (match < 0)
 				match = 0;
 
@@ -789,13 +788,13 @@ std::vector<cluster> ip_screen_data_cache::find_clusters(float pvCutOff, size_t 
 
 	std::vector<cluster> result;
 
-	for (auto &sc : clusters)
+	for (const auto &[genes, variance] : clusters)
 	{
 		cluster c;
 
-		c.variance = std::get<1>(sc);
+		c.variance = static_cast<float>(variance);
 
-		for (auto g : std::get<0>(sc))
+		for (auto g : genes)
 			c.genes.push_back(m_transcripts[g].geneName);
 
 		if (not c.genes.empty())
@@ -1694,24 +1693,35 @@ class screen_analyzer_mapped_utility_object : public zeep::http::expression_util
 
 // --------------------------------------------------------------------
 
-screen_html_controller::screen_html_controller()
-	: zeep::http::html_controller_v1("/")
+screen_controller::screen_controller()
+	: zeep::http::html_controller("/")
 {
-	mount("screens", &screen_html_controller::handle_screen_user);
-	mount("create-screen", &screen_html_controller::handle_create_screen_user);
-	mount("edit-screen", &screen_html_controller::handle_edit_screen_user);
+	map_get("screens", &screen_controller::handle_screen_user);
+	map_get("create-screen", &screen_controller::handle_create_screen_user);
+	map_get("edit-screen", &screen_controller::handle_edit_screen_user);
+	map_get("screen-table", &screen_controller::handle_screen_table);
 
-	mount("screen-table", &screen_html_controller::handle_screen_table);
+	map_post_request("screen/validate/fastq", &screen_controller::validateFastQFile, "file");
+	map_get_request("screen/validate/fastq", &screen_controller::validateFastQFile, "file");
+	map_post_request("screen/validate/name", &screen_controller::validateScreenName, "name");
+	map_get_request("screen/validate/name", &screen_controller::validateScreenName, "name");
+
+	map_post_request("screen", &screen_controller::create_screen, "screen");
+	map_get_request("screen/{id}", &screen_controller::retrieve_screen, "id");
+	map_put_request("screen/{id}", &screen_controller::update_screen, "id", "screen");
+	map_delete_request("screen/{id}", &screen_controller::delete_screen, "id");
+
+	map_get_request("screen/{id}/map/{assembly}", &screen_controller::map_screen, "id", "assembly");
 }
 
-void screen_html_controller::handle_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply screen_controller::handle_screen_user(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
 	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
 	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
-	auto credentials = request.get_credentials();
+	auto credentials = scope.get_credentials();
 	auto username = credentials["username"].get<std::string>();
 
 	using json = zeep::el::object;
@@ -1743,14 +1753,14 @@ void screen_html_controller::handle_screen_user(const zeep::http::request &reque
 
 	sub.put("screens", zeep::el::to_object(s));
 
-	get_template_processor().create_reply_from_template("list-screens.html", sub, reply);
+	return get_template_processor().create_reply_from_template("list-screens.html", sub);
 }
 
-void screen_html_controller::handle_screen_table(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply screen_controller::handle_screen_table(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
-	auto credentials = request.get_credentials();
+	auto credentials = scope.get_credentials();
 	auto username = credentials["username"].get<std::string>();
 
 	using json = zeep::el::object;
@@ -1782,24 +1792,24 @@ void screen_html_controller::handle_screen_table(const zeep::http::request &requ
 
 	sub.put("screens", zeep::el::to_object(s));
 
-	get_template_processor().create_reply_from_template("list-screens::screen-table", sub, reply);
+	return get_template_processor().create_reply_from_template("list-screens::screen-table", sub);
 }
 
-void screen_html_controller::handle_create_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply screen_controller::handle_create_screen_user(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
 	sub.put("users", zeep::el::to_object(user_service::instance().get_all_users()));
 	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
-	get_template_processor().create_reply_from_template("create-screen", sub, reply);
+	return get_template_processor().create_reply_from_template("create-screen", sub);
 }
 
-void screen_html_controller::handle_edit_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply)
+zeep::http::reply screen_controller::handle_edit_screen_user(const zeep::http::scope &scope)
 {
 	zeep::http::scope sub(scope);
 
-	const std::string screenID = request.get_parameter("screen-id").value_or("");
+	const std::string screenID = scope.get_parameter("screen-id").value_or("");
 
 	auto info = screen_service::instance().retrieve_screen(screenID);
 
@@ -1808,7 +1818,7 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 
 	for (auto a : { "hg19", "hg38" })
 	{
-		if (std::find_if(mapped.begin(), mapped.end(), [a](mapped_info &mi)
+		if (std::ranges::find_if(mapped, [a](mapped_info &mi)
 				{ return mi.assembly == a; }) != mapped.end())
 			continue;
 
@@ -1818,28 +1828,11 @@ void screen_html_controller::handle_edit_screen_user(const zeep::http::request &
 	sub.put("screen", zeep::el::to_object(info));
 	sub.put("groups", zeep::el::to_object(user_service::instance().get_all_groups()));
 
-	get_template_processor().create_reply_from_template("edit-screen", sub, reply);
+	return get_template_processor().create_reply_from_template("edit-screen", sub);
 }
 
-// --------------------------------------------------------------------
 
-screen_rest_controller::screen_rest_controller()
-	: zeep::http::controller("/")
-{
-	map_post_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
-	map_get_request("screen/validate/fastq", &screen_rest_controller::validateFastQFile, "file");
-	map_post_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
-	map_get_request("screen/validate/name", &screen_rest_controller::validateScreenName, "name");
-
-	map_post_request("screen", &screen_rest_controller::create_screen, "screen");
-	map_get_request("screen/{id}", &screen_rest_controller::retrieve_screen, "id");
-	map_put_request("screen/{id}", &screen_rest_controller::update_screen, "id", "screen");
-	map_delete_request("screen/{id}", &screen_rest_controller::delete_screen, "id");
-
-	map_get_request("screen/{id}/map/{assembly}", &screen_rest_controller::map_screen, "id", "assembly");
-}
-
-std::string screen_rest_controller::create_screen(const screen_info &screen)
+std::string screen_controller::create_screen(const screen_info &screen)
 {
 	const auto &params = bowtie_parameters::instance();
 
@@ -1848,7 +1841,7 @@ std::string screen_rest_controller::create_screen(const screen_info &screen)
 	return screen.name;
 }
 
-screen_info screen_rest_controller::retrieve_screen(const zeep::http::scope &scope, const std::string &name)
+screen_info screen_controller::retrieve_screen(const zeep::http::scope &scope, const std::string &name)
 {
 	if (not screen_service::instance().is_allowed(name, scope.get_credentials()["username"].get<std::string>()))
 		throw std::system_error(zeep::http::status_type::forbidden);
@@ -1856,7 +1849,7 @@ screen_info screen_rest_controller::retrieve_screen(const zeep::http::scope &sco
 	return screen_service::instance().retrieve_screen(name);
 }
 
-void screen_rest_controller::update_screen(const zeep::http::scope &scope, const std::string &name, const screen_info &screen)
+void screen_controller::update_screen(const zeep::http::scope &scope, const std::string &name, const screen_info &screen)
 {
 	auto username = scope.get_credentials()["username"].get<std::string>();
 
@@ -1886,7 +1879,7 @@ void screen_rest_controller::update_screen(const zeep::http::scope &scope, const
 	screen_service::instance().update_screen(name, info);
 }
 
-void screen_rest_controller::delete_screen(const zeep::http::scope &scope, const std::string &name)
+void screen_controller::delete_screen(const zeep::http::scope &scope, const std::string &name)
 {
 	if (not screen_service::instance().is_allowed(name, scope.get_credentials()["username"].get<std::string>()))
 		throw std::system_error(zeep::http::status_type::forbidden);
@@ -1894,18 +1887,18 @@ void screen_rest_controller::delete_screen(const zeep::http::scope &scope, const
 	screen_service::instance().delete_screen(name);
 }
 
-bool screen_rest_controller::validateFastQFile(const std::string &filename)
+bool screen_controller::validateFastQFile(const std::string &filename)
 {
 	checkIsFastQ(filename);
 	return true;
 }
 
-bool screen_rest_controller::validateScreenName(const std::string &name)
+bool screen_controller::validateScreenName(const std::string &name)
 {
 	return screen_service::is_valid_name(name) and not screen_service::instance().exists(name);
 }
 
-void screen_rest_controller::map_screen(const std::string &screen, const std::string &assembly)
+void screen_controller::map_screen(const std::string &screen, const std::string &assembly)
 {
 	job_scheduler::instance().push(std::make_shared<map_job>(screen_service::instance().load_screen<ScreenData>(screen), assembly));
 }

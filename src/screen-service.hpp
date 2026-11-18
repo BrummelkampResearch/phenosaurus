@@ -442,23 +442,15 @@ inline std::unique_ptr<ScreenData> screen_service::load_screen<ScreenData>(const
 
 // --------------------------------------------------------------------
 
-class screen_html_controller : public zeep::http::html_controller_v1
+class screen_controller : public zeep::http::html_controller
 {
   public:
-	screen_html_controller();
+	screen_controller();
 
-	void handle_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-	void handle_create_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-	void handle_edit_screen_user(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-	void handle_screen_table(const zeep::http::request &request, const zeep::http::scope &scope, zeep::http::reply &reply);
-};
-
-// --------------------------------------------------------------------
-
-class screen_rest_controller : public zeep::http::controller
-{
-  public:
-	screen_rest_controller();
+	zeep::http::reply handle_screen_user(const zeep::http::scope &scope);
+	zeep::http::reply handle_create_screen_user(const zeep::http::scope &scope);
+	zeep::http::reply handle_edit_screen_user(const zeep::http::scope &scope);
+	zeep::http::reply handle_screen_table(const zeep::http::scope &scope);
 
 	std::string create_screen(const screen_info &screen);
 	screen_info retrieve_screen(const zeep::http::scope &scope, const std::string &name);
