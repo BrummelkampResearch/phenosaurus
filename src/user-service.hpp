@@ -104,7 +104,7 @@ class user_service : public zeep::http::user_service
 	static user_service &instance();
 
 	/// Validate the authorization, returns the validated user. Throws unauthorized_exception in case of failure
-	virtual zeep::http::user_details load_user(const std::string &username) const;
+	[[nodiscard]] zeep::http::user_details load_user(const std::string &username) const override;
 
 	// create a password hash
 	static std::string create_password_hash(const std::string &password);
