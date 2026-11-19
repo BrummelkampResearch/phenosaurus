@@ -41,6 +41,7 @@ include(FindFilesystem)
 include(FindPkgConfig)
 include(GenerateExportHeader)
 include(AddGitSubmodule)
+include(CTest)
 
 set(CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 20)
@@ -198,3 +199,7 @@ install(TARGETS screen-analyzer DESTINATION ${CMAKE_INSTALL_SBINDIR})
 configure_file(screen-analyzer.service.in ${CMAKE_CURRENT_BINARY_DIR}/screen-analyzer.service @ONLY)
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/screen-analyzer.service" DESTINATION "/etc/systemd/system")
+
+if(BUILD_TESTING)
+	add_subdirectory(test)
+endif()
