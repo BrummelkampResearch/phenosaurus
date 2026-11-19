@@ -1159,21 +1159,19 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 		const auto &[b, e] = groups[i];
 		auto l = e - b;
 
+		if (l == 0)
+			return;
+
 		// calculate median ratio for sample and reference in this group
 		// The median for ref can be picked up immediately since the
 		// group is already sorted on this value
 		double ref_median;
+		auto mid = b + l / 2;
 
 		if (l & 1)
-		{
-			auto ix = (e + b) / 2 + 1;
-			ref_median = refSenseRatio[index[ix]];
-		}
+			ref_median = refSenseRatio[index[mid]];
 		else
-		{
-			auto ix = (e + b) / 2;
-			ref_median = (refSenseRatio[index[ix]] + refSenseRatio[index[ix + 1]]) / 2.0;
-		}
+			ref_median = (refSenseRatio[index[mid - 1]] + refSenseRatio[index[mid]]) / 2.0;
 
 		// median for sample needs to be calculated
 		std::vector<double> srs;
@@ -1181,8 +1179,8 @@ std::vector<InsertionCount> SLScreenData::normalize(const std::vector<InsertionC
 			srs.push_back(senseRatio[index[ix]]);
 		std::sort(srs.begin(), srs.end());
 		double sample_median = l & 1
-								   ? srs[l / 2 + 1]
-								   : (srs[l / 2] + srs[l / 2 + 1]) / 2.0;
+								   ? srs[l / 2]
+								   : (srs[l / 2 - 1] + srs[l / 2]) / 2.0;
 
 		// adjust counts
 		for (size_t ix = b; ix < e; ++ix)
