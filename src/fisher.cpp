@@ -450,26 +450,32 @@ std::vector<double> adjustFDR_BH(const std::vector<double> &p)
 {
 	const size_t N = p.size();
 
-	std::vector<size_t> ix(N);
-	std::iota(ix.begin(), ix.end(), 0);
+	std::vector<size_t> valid;
+	valid.reserve(N);
 
-	ix.erase(std::remove_if(ix.begin(), ix.end(), [&p](size_t ix)
-				 { return p[ix] == -1; }),
-		ix.end());
+	std::vector<double> result(N, 1.0);
 
-	const size_t M = ix.size();
-
-	std::sort(ix.begin(), ix.end(), [&p](size_t i, size_t j)
-		{ return p[i] < p[j]; });
-
-	std::vector<double> result(N, 0);
-
-	for (size_t i = 0; i < M; ++i)
+	for (size_t i = 0; i < N; ++i)
 	{
-		auto v = (M * p[ix[i]]) / (i + 1);
-		if (v > 1)
-			v = 1;
-		result[ix[i]] = v;
+		if (std::isfinite(p[i]) and p[i] >= 0 and p[i] <= 1)
+			valid.push_back(i);
+	}
+
+	std::ranges::sort(valid, [&p](size_t a, size_t b)
+		{
+			if (p[a] != p[b])
+				return p[a] < p[b];
+			return a < b; });
+
+	const size_t M = valid.size();
+	double runningMin = 1.0;
+
+	for (size_t rank = M; rank > 0; --rank)
+	{
+		auto i = valid[rank - 1];
+		auto adjusted = p[i] * static_cast<double>(M) / static_cast<double>(rank);
+		runningMin = std::min(runningMin, adjusted);
+		result[i] = std::min(1.0, runningMin);
 	}
 
 	return result;

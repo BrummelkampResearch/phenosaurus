@@ -47,4 +47,7 @@ class FishersExactTest
 
 double fisherTest2x2(long v[2][2], FisherAlternative alternative = FisherAlternative::TwoSided);
 
+/// Adjust p-values using the Benjamini-Hochberg procedure.
+/// Invalid or missing p-values (non-finite, negative, or greater than 1)
+/// are excluded from the correction and returned as 1.0.
 std::vector<double> adjustFDR_BH(const std::vector<double>& p);

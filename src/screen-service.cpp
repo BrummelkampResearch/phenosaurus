@@ -43,6 +43,11 @@ namespace fs = std::filesystem;
 
 extern int VERBOSE;
 
+namespace
+{
+constexpr const char *kAnalysisCacheVersion = "cache-v2";
+}
+
 // --------------------------------------------------------------------
 
 class gene_ranking
@@ -221,7 +226,7 @@ ip_screen_data_cache::~ip_screen_data_cache()
 fs::path ip_screen_data_cache::get_cache_file_path(const std::string &screen_name) const
 {
 	std::stringstream ss;
-	ss << "cache"
+	ss << kAnalysisCacheVersion
 	   << '-' << zeep::value_serializer<Mode>::to_string(m_mode)
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
@@ -957,7 +962,7 @@ sl_screen_data_cache::~sl_screen_data_cache()
 fs::path sl_screen_data_cache::get_cache_file_path(const std::string &screen_name) const
 {
 	std::stringstream ss;
-	ss << "cache"
+	ss << kAnalysisCacheVersion
 	   << '-' << zeep::value_serializer<Mode>::to_string(m_mode)
 	   << '-' << (m_cutOverlap ? "cut" : "no-cut")
 	   << '-' << m_geneStart
