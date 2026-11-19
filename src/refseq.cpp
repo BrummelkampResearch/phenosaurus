@@ -644,7 +644,10 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 					// auto len_b = b.end() - b.start();
 					auto len_b = b.length_exons();
 					if (len_b > len_a)
+					{
+						len_a = len_b;
 						l = ix_b;
+					}
 				}
 
 				transcripts[l].longest = true;
@@ -678,7 +681,10 @@ void selectTranscripts(std::vector<Transcript>& transcripts, uint32_t maxGap, Mo
 
 					auto len_b = b.end() - b.start();
 					if (len_b > len_a)
+					{
+						len_a = len_b;
 						l = ix_b;
+					}
 				}
 
 				transcripts[l].longest = true;
