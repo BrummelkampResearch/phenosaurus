@@ -842,7 +842,7 @@ zh::server *createServer(const fs::path &docroot,
 	sc->add_rule("/admin", { "ADMIN" });
 	sc->add_rule("/admin/**", { "ADMIN" });
 	sc->add_rule("/{ip,pa,sl,screen}/", { "USER" });
-	sc->add_rule("/{,login,reset-password,reset-change-password,css/style.css,css/signin.css,scripts/dialog.js,scripts/index.js,images/}", {});
+	sc->add_rule("/{,login,reset-password,reset-change-password,css/style.css,css/signin.css,scripts/dialog.js,scripts/index.js,images/*}", {});
 	sc->add_rule("/", { "USER" });
 
 	sc->set_validate_csrf(true);
